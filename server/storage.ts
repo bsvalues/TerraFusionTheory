@@ -92,12 +92,14 @@ export class MemStorage implements IStorage {
     this.conversations = new Map();
     this.analysisData = new Map();
     this.feedbackItems = new Map();
+    this.logsData = new Map();
     
     this.currentUserId = 1;
     this.currentProjectId = 1;
     this.currentConversationId = 1;
     this.currentAnalysisId = 1;
     this.currentFeedbackId = 1;
+    this.currentLogId = 1;
     
     // Initialize with sample project
     const sampleProject: Project = {
@@ -181,6 +183,74 @@ export class MemStorage implements IStorage {
     };
     this.feedbackItems.set(this.currentFeedbackId, sampleFeedback);
     this.currentFeedbackId++;
+    
+    // Initialize with sample logs
+    const sampleLogs: Log[] = [
+      {
+        id: this.currentLogId++,
+        timestamp: new Date(),
+        level: LogLevel.INFO,
+        category: LogCategory.SYSTEM,
+        message: 'Application started successfully',
+        details: JSON.stringify({ version: '1.0.0', environment: 'development' }),
+        source: 'server/index.ts'
+      },
+      {
+        id: this.currentLogId++,
+        timestamp: new Date(Date.now() - 60000), // 1 minute ago
+        level: LogLevel.INFO,
+        category: LogCategory.USER,
+        message: 'User logged in',
+        details: JSON.stringify({ userId: 1, username: 'admin' }),
+        source: 'server/controllers/auth.controller.ts'
+      },
+      {
+        id: this.currentLogId++,
+        timestamp: new Date(Date.now() - 120000), // 2 minutes ago
+        level: LogLevel.ERROR,
+        category: LogCategory.API,
+        message: 'API request failed',
+        details: JSON.stringify({ endpoint: '/api/data', status: 500, error: 'Internal Server Error' }),
+        source: 'server/routes.ts',
+        endpoint: '/api/data',
+        statusCode: 500
+      },
+      {
+        id: this.currentLogId++,
+        timestamp: new Date(Date.now() - 180000), // 3 minutes ago
+        level: LogLevel.WARNING,
+        category: LogCategory.DATABASE,
+        message: 'Database query exceeded time threshold',
+        details: JSON.stringify({ query: 'SELECT * FROM projects', duration: 3500 }),
+        source: 'server/storage.ts',
+        duration: 3500
+      },
+      {
+        id: this.currentLogId++,
+        timestamp: new Date(Date.now() - 240000), // 4 minutes ago
+        level: LogLevel.DEBUG,
+        category: LogCategory.PERFORMANCE,
+        message: 'API performance metrics',
+        details: JSON.stringify({ route: '/api/projects', avgResponseTime: 120 }),
+        source: 'server/middleware/performance.middleware.ts',
+        duration: 120
+      },
+      {
+        id: this.currentLogId++,
+        timestamp: new Date(Date.now() - 300000), // 5 minutes ago
+        level: LogLevel.INFO,
+        category: LogCategory.AI,
+        message: 'AI model inference completed',
+        details: JSON.stringify({ modelId: 'gpt-4', promptTokens: 500, completionTokens: 350 }),
+        source: 'server/services/openai.service.ts',
+        duration: 2340
+      }
+    ];
+    
+    // Add sample logs to the map
+    for (const log of sampleLogs) {
+      this.logsData.set(log.id, log);
+    }
   }
 
   // User methods
@@ -343,6 +413,241 @@ export class MemStorage implements IStorage {
     };
     this.feedbackItems.set(id, updatedFeedback);
     return updatedFeedback;
+  }
+
+  // Logging methods
+  async getLogs(options?: {
+    level?: LogLevel | LogLevel[];
+    category?: LogCategory | LogCategory[];
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+    projectId?: number;
+    userId?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<LogEntry[]> {
+    let logs = Array.from(this.logsData.values());
+    
+    // Apply filters
+    if (options) {
+      // Filter by level
+      if (options.level) {
+        const levels = Array.isArray(options.level) ? options.level : [options.level];
+        logs = logs.filter(log => levels.includes(log.level as LogLevel));
+      }
+      
+      // Filter by category
+      if (options.category) {
+        const categories = Array.isArray(options.category) ? options.category : [options.category];
+        logs = logs.filter(log => categories.includes(log.category as LogCategory));
+      }
+      
+      // Filter by date range
+      if (options.startDate) {
+        logs = logs.filter(log => new Date(log.timestamp) >= options.startDate!);
+      }
+      if (options.endDate) {
+        logs = logs.filter(log => new Date(log.timestamp) <= options.endDate!);
+      }
+      
+      // Filter by projectId
+      if (options.projectId !== undefined) {
+        logs = logs.filter(log => log.projectId === options.projectId);
+      }
+      
+      // Filter by userId
+      if (options.userId !== undefined) {
+        logs = logs.filter(log => log.userId === options.userId);
+      }
+      
+      // Filter by search text
+      if (options.search) {
+        const searchLower = options.search.toLowerCase();
+        logs = logs.filter(log => 
+          log.message.toLowerCase().includes(searchLower) || 
+          (log.source && log.source.toLowerCase().includes(searchLower)) ||
+          (log.endpoint && log.endpoint.toLowerCase().includes(searchLower))
+        );
+      }
+      
+      // Apply sorting
+      if (options.sortBy) {
+        const sortField = options.sortBy as keyof Log;
+        const sortOrder = options.sortOrder === 'desc' ? -1 : 1;
+        logs.sort((a, b) => {
+          if (a[sortField] < b[sortField]) return -1 * sortOrder;
+          if (a[sortField] > b[sortField]) return 1 * sortOrder;
+          return 0;
+        });
+      } else {
+        // Default sort by timestamp (newest first)
+        logs.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+      }
+      
+      // Apply pagination
+      if (options.offset !== undefined) {
+        logs = logs.slice(options.offset);
+      }
+      if (options.limit !== undefined) {
+        logs = logs.slice(0, options.limit);
+      }
+    }
+    
+    // Convert to LogEntry type with UI-specific properties
+    return logs.map(log => ({
+      ...log,
+      // Add formatting based on level
+      color: this.getColorForLogLevel(log.level as LogLevel),
+      expanded: false
+    }));
+  }
+  
+  async createLog(log: InsertLog): Promise<Log> {
+    const id = this.currentLogId++;
+    const newLog: Log = {
+      ...log,
+      id,
+      timestamp: log.timestamp || new Date()
+    };
+    this.logsData.set(id, newLog);
+    return newLog;
+  }
+  
+  async getLogById(id: number): Promise<Log | undefined> {
+    return this.logsData.get(id);
+  }
+  
+  async getLogsByCategory(category: LogCategory): Promise<Log[]> {
+    return Array.from(this.logsData.values())
+      .filter(log => log.category === category)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+  }
+  
+  async getLogStats(): Promise<{ 
+    totalCount: number; 
+    countByLevel: Record<LogLevel, number>;
+    countByCategory: Record<LogCategory, number>;
+    recentErrors: Log[];
+    performanceAverage: number | null;
+  }> {
+    const logs = Array.from(this.logsData.values());
+    
+    // Initialize counts
+    const countByLevel: Record<LogLevel, number> = {
+      [LogLevel.DEBUG]: 0,
+      [LogLevel.INFO]: 0,
+      [LogLevel.WARNING]: 0,
+      [LogLevel.ERROR]: 0,
+      [LogLevel.CRITICAL]: 0
+    };
+    
+    const countByCategory: Record<LogCategory, number> = {
+      [LogCategory.SYSTEM]: 0,
+      [LogCategory.USER]: 0,
+      [LogCategory.API]: 0,
+      [LogCategory.DATABASE]: 0,
+      [LogCategory.SECURITY]: 0,
+      [LogCategory.PERFORMANCE]: 0,
+      [LogCategory.AI]: 0
+    };
+    
+    // Count logs by level and category
+    for (const log of logs) {
+      if (log.level in countByLevel) {
+        countByLevel[log.level as LogLevel]++;
+      }
+      
+      if (log.category in countByCategory) {
+        countByCategory[log.category as LogCategory]++;
+      }
+    }
+    
+    // Get recent errors
+    const recentErrors = logs
+      .filter(log => log.level === LogLevel.ERROR || log.level === LogLevel.CRITICAL)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 5);
+    
+    // Calculate performance average (if performance logs exist)
+    const performanceLogs = logs.filter(log => log.category === LogCategory.PERFORMANCE && log.duration);
+    const performanceAverage = performanceLogs.length > 0
+      ? performanceLogs.reduce((sum, log) => sum + (log.duration || 0), 0) / performanceLogs.length
+      : null;
+    
+    return {
+      totalCount: logs.length,
+      countByLevel,
+      countByCategory,
+      recentErrors,
+      performanceAverage
+    };
+  }
+  
+  async deleteLogById(id: number): Promise<boolean> {
+    const exists = this.logsData.has(id);
+    if (exists) {
+      this.logsData.delete(id);
+      return true;
+    }
+    return false;
+  }
+  
+  async clearLogs(options?: { 
+    olderThan?: Date; 
+    level?: LogLevel;
+    category?: LogCategory;
+  }): Promise<number> {
+    const logs = Array.from(this.logsData.entries());
+    let deletedCount = 0;
+    
+    for (const [id, log] of logs) {
+      let shouldDelete = true;
+      
+      if (options) {
+        // Keep if not older than the specified date
+        if (options.olderThan && new Date(log.timestamp) > options.olderThan) {
+          shouldDelete = false;
+        }
+        
+        // Keep if not of the specified level
+        if (options.level && log.level !== options.level) {
+          shouldDelete = false;
+        }
+        
+        // Keep if not of the specified category
+        if (options.category && log.category !== options.category) {
+          shouldDelete = false;
+        }
+      }
+      
+      if (shouldDelete) {
+        this.logsData.delete(id);
+        deletedCount++;
+      }
+    }
+    
+    return deletedCount;
+  }
+  
+  // Helper function to determine color based on log level
+  private getColorForLogLevel(level: LogLevel): string {
+    switch (level) {
+      case LogLevel.DEBUG:
+        return '#6c757d'; // Gray
+      case LogLevel.INFO:
+        return '#0d6efd'; // Blue
+      case LogLevel.WARNING:
+        return '#ffc107'; // Yellow
+      case LogLevel.ERROR:
+        return '#dc3545'; // Red
+      case LogLevel.CRITICAL:
+        return '#721c24'; // Dark Red
+      default:
+        return '#6c757d'; // Default Gray
+    }
   }
 }
 

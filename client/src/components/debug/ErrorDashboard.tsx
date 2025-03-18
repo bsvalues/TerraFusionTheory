@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, RefreshCw, AlertTriangle, Terminal, ChevronDown, ChevronUp, MessageSquare, CheckCircle, Activity } from 'lucide-react';
+import { X, RefreshCw, AlertTriangle, Terminal, ChevronDown, ChevronUp, MessageSquare, CheckCircle, Activity, BarChart } from 'lucide-react';
 import { useErrors, ErrorSource } from '@/hooks/useErrors';
 import { useFeedback } from '@/hooks/useFeedback';
+import { LoggingDashboard } from '@/components/logging/LoggingDashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const ErrorDashboard: React.FC = () => {

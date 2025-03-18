@@ -171,6 +171,100 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Logging routes
+  app.get("/api/logs", async (req, res) => {
+    try {
+      const { 
+        level, category, startDate, endDate, limit, offset, 
+        projectId, userId, search, sortBy, sortOrder 
+      } = req.query;
+      
+      // Convert query parameters to appropriate types
+      const options: any = {};
+      
+      if (level) options.level = level;
+      if (category) options.category = category;
+      if (startDate) options.startDate = new Date(startDate as string);
+      if (endDate) options.endDate = new Date(endDate as string);
+      if (limit) options.limit = parseInt(limit as string);
+      if (offset) options.offset = parseInt(offset as string);
+      if (projectId) options.projectId = parseInt(projectId as string);
+      if (userId) options.userId = parseInt(userId as string);
+      if (search) options.search = search;
+      if (sortBy) options.sortBy = sortBy;
+      if (sortOrder) options.sortOrder = sortOrder;
+      
+      const logs = await storage.getLogs(options);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching logs:", error);
+      res.status(500).json({ error: "Failed to fetch logs" });
+    }
+  });
+  
+  app.post("/api/logs", async (req, res) => {
+    try {
+      const log = await storage.createLog(req.body);
+      res.status(201).json(log);
+    } catch (error) {
+      console.error("Error creating log:", error);
+      res.status(500).json({ error: "Failed to create log" });
+    }
+  });
+  
+  app.get("/api/logs/stats", async (req, res) => {
+    try {
+      const stats = await storage.getLogStats();
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching log stats:", error);
+      res.status(500).json({ error: "Failed to fetch log statistics" });
+    }
+  });
+  
+  app.get("/api/logs/:id", async (req, res) => {
+    try {
+      const log = await storage.getLogById(parseInt(req.params.id));
+      if (!log) {
+        return res.status(404).json({ error: "Log not found" });
+      }
+      res.json(log);
+    } catch (error) {
+      console.error("Error fetching log:", error);
+      res.status(500).json({ error: "Failed to fetch log" });
+    }
+  });
+  
+  app.delete("/api/logs/:id", async (req, res) => {
+    try {
+      const deleted = await storage.deleteLogById(parseInt(req.params.id));
+      if (!deleted) {
+        return res.status(404).json({ error: "Log not found" });
+      }
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error deleting log:", error);
+      res.status(500).json({ error: "Failed to delete log" });
+    }
+  });
+  
+  app.delete("/api/logs", async (req, res) => {
+    try {
+      const { olderThan, level, category } = req.query;
+      
+      const options: any = {};
+      if (olderThan) options.olderThan = new Date(olderThan as string);
+      if (level) options.level = level;
+      if (category) options.category = category;
+      
+      const count = await storage.clearLogs(options);
+      res.json({ deleted: count });
+    } catch (error) {
+      console.error("Error clearing logs:", error);
+      res.status(500).json({ error: "Failed to clear logs" });
+    }
+  });
+  
   // AI routes
   app.post("/api/ai/message", openaiController.handleMessage);
   app.post("/api/ai/analyze", openaiController.analyzeRequirements);
