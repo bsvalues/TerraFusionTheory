@@ -67,6 +67,53 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Feedback routes
+  app.get("/api/feedback", async (req, res) => {
+    try {
+      const feedback = await storage.getFeedback();
+      res.json(feedback);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get feedback items" });
+    }
+  });
+  
+  app.post("/api/feedback", async (req, res) => {
+    try {
+      const { message } = req.body;
+      if (!message) {
+        return res.status(400).json({ error: "Message is required" });
+      }
+      
+      const feedbackItem = await storage.saveFeedback({
+        message,
+        timestamp: new Date().toISOString()
+      });
+      
+      res.status(201).json(feedbackItem);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to save feedback" });
+    }
+  });
+  
+  app.patch("/api/feedback/:id", async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const { resolved } = req.body;
+      
+      if (resolved === undefined) {
+        return res.status(400).json({ error: "Resolved status is required" });
+      }
+      
+      const updatedFeedback = await storage.updateFeedbackStatus(id, resolved);
+      res.json(updatedFeedback);
+    } catch (error) {
+      if (error.message && error.message.includes("not found")) {
+        return res.status(404).json({ error: error.message });
+      }
+      res.status(500).json({ error: "Failed to update feedback status" });
+    }
+  });
+  
   // AI routes
   app.post("/api/ai/message", openaiController.handleMessage);
   app.post("/api/ai/analyze", openaiController.analyzeRequirements);

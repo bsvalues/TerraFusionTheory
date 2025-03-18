@@ -3,7 +3,8 @@ import {
   projects, type Project, type InsertProject,
   conversations, type Conversation, type InsertConversation,
   analysis, type Analysis, type InsertAnalysis,
-  type Message
+  type Message,
+  type FeedbackItem
 } from "@shared/schema";
 
 // Complete storage interface with all CRUD methods needed
@@ -42,22 +43,26 @@ export class MemStorage implements IStorage {
   private projects: Map<number, Project>;
   private conversations: Map<number, Conversation>;
   private analysisData: Map<number, Analysis>;
+  private feedbackItems: Map<number, FeedbackItem>;
   
   private currentUserId: number;
   private currentProjectId: number;
   private currentConversationId: number;
   private currentAnalysisId: number;
+  private currentFeedbackId: number;
 
   constructor() {
     this.users = new Map();
     this.projects = new Map();
     this.conversations = new Map();
     this.analysisData = new Map();
+    this.feedbackItems = new Map();
     
     this.currentUserId = 1;
     this.currentProjectId = 1;
     this.currentConversationId = 1;
     this.currentAnalysisId = 1;
+    this.currentFeedbackId = 1;
     
     // Initialize with sample project
     const sampleProject: Project = {
@@ -131,6 +136,16 @@ export class MemStorage implements IStorage {
       updatedAt: new Date()
     };
     this.conversations.set(this.currentConversationId, sampleConversation);
+    
+    // Initialize with sample feedback data
+    const sampleFeedback: FeedbackItem = {
+      id: this.currentFeedbackId,
+      message: 'The AI agent sometimes misinterprets complex requirements.',
+      timestamp: new Date().toISOString(),
+      resolved: false
+    };
+    this.feedbackItems.set(this.currentFeedbackId, sampleFeedback);
+    this.currentFeedbackId++;
   }
 
   // User methods
@@ -262,6 +277,37 @@ export class MemStorage implements IStorage {
     };
     this.analysisData.set(analysis.id, updatedAnalysis);
     return updatedAnalysis;
+  }
+
+  // Feedback methods
+  async getFeedback(): Promise<FeedbackItem[]> {
+    return Array.from(this.feedbackItems.values());
+  }
+
+  async saveFeedback(feedback: { message: string; timestamp: string }): Promise<FeedbackItem> {
+    const id = this.currentFeedbackId++;
+    const feedbackItem: FeedbackItem = {
+      id,
+      message: feedback.message,
+      timestamp: feedback.timestamp,
+      resolved: false
+    };
+    this.feedbackItems.set(id, feedbackItem);
+    return feedbackItem;
+  }
+
+  async updateFeedbackStatus(id: number, resolved: boolean): Promise<FeedbackItem> {
+    const feedbackItem = this.feedbackItems.get(id);
+    if (!feedbackItem) {
+      throw new Error(`Feedback with id ${id} not found`);
+    }
+    
+    const updatedFeedback: FeedbackItem = {
+      ...feedbackItem,
+      resolved
+    };
+    this.feedbackItems.set(id, updatedFeedback);
+    return updatedFeedback;
   }
 }
 
