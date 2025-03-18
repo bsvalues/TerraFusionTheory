@@ -2,6 +2,26 @@ import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizz
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
+// LogLevel enum for consistent log level typing
+export enum LogLevel {
+  DEBUG = "debug",
+  INFO = "info",
+  WARNING = "warning",
+  ERROR = "error",
+  CRITICAL = "critical"
+}
+
+// LogCategory enum for categorizing logs
+export enum LogCategory {
+  SYSTEM = "system",
+  USER = "user",
+  API = "api",
+  DATABASE = "database",
+  SECURITY = "security",
+  PERFORMANCE = "performance",
+  AI = "ai"
+}
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -41,6 +61,23 @@ export const analysis = pgTable("analysis", {
   updatedAt: timestamp("updated_at").defaultNow(),
 });
 
+export const logs = pgTable("logs", {
+  id: serial("id").primaryKey(),
+  timestamp: timestamp("timestamp").defaultNow().notNull(),
+  level: text("level").notNull(),
+  category: text("category").notNull(),
+  message: text("message").notNull(),
+  details: jsonb("details").default({}),
+  source: text("source"),
+  userId: integer("user_id"),
+  projectId: integer("project_id"),
+  sessionId: text("session_id"),
+  duration: integer("duration"), // for performance logs
+  statusCode: integer("status_code"), // for API logs
+  endpoint: text("endpoint"), // for API logs
+  tags: text("tags").array(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -70,6 +107,22 @@ export const insertAnalysisSchema = createInsertSchema(analysis).pick({
   nextSteps: true,
 });
 
+export const insertLogSchema = createInsertSchema(logs).pick({
+  timestamp: true,
+  level: true,
+  category: true,
+  message: true,
+  details: true,
+  source: true,
+  userId: true,
+  projectId: true,
+  sessionId: true,
+  duration: true,
+  statusCode: true,
+  endpoint: true,
+  tags: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -81,6 +134,16 @@ export type Conversation = typeof conversations.$inferSelect;
 
 export type InsertAnalysis = z.infer<typeof insertAnalysisSchema>;
 export type Analysis = typeof analysis.$inferSelect;
+
+export type InsertLog = z.infer<typeof insertLogSchema>;
+export type Log = typeof logs.$inferSelect;
+
+// Extended LogEntry type with additional frontend context
+export type LogEntry = Log & {
+  formatted?: string; // Optional preformatted message for display
+  color?: string; // Optional color code for UI display
+  expanded?: boolean; // UI state for expandable log entries
+};
 
 export type Message = {
   role: 'user' | 'assistant';

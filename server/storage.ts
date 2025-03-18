@@ -3,6 +3,8 @@ import {
   projects, type Project, type InsertProject,
   conversations, type Conversation, type InsertConversation,
   analysis, type Analysis, type InsertAnalysis,
+  logs, type Log, type InsertLog, type LogEntry,
+  LogLevel, LogCategory,
   type Message,
   type FeedbackItem
 } from "@shared/schema";
@@ -36,6 +38,37 @@ export interface IStorage {
   getFeedback(): Promise<FeedbackItem[]>;
   saveFeedback(feedback: { message: string; timestamp: string }): Promise<FeedbackItem>;
   updateFeedbackStatus(id: number, resolved: boolean): Promise<FeedbackItem>;
+  
+  // Logging methods
+  getLogs(options?: {
+    level?: LogLevel | LogLevel[];
+    category?: LogCategory | LogCategory[];
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+    projectId?: number;
+    userId?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<LogEntry[]>;
+  createLog(log: InsertLog): Promise<Log>;
+  getLogById(id: number): Promise<Log | undefined>;
+  getLogsByCategory(category: LogCategory): Promise<Log[]>;
+  getLogStats(): Promise<{ 
+    totalCount: number; 
+    countByLevel: Record<LogLevel, number>;
+    countByCategory: Record<LogCategory, number>;
+    recentErrors: Log[];
+    performanceAverage: number | null;
+  }>;
+  deleteLogById(id: number): Promise<boolean>;
+  clearLogs(options?: { 
+    olderThan?: Date; 
+    level?: LogLevel;
+    category?: LogCategory;
+  }): Promise<number>;
 }
 
 export class MemStorage implements IStorage {
@@ -44,12 +77,14 @@ export class MemStorage implements IStorage {
   private conversations: Map<number, Conversation>;
   private analysisData: Map<number, Analysis>;
   private feedbackItems: Map<number, FeedbackItem>;
+  private logsData: Map<number, Log>;
   
   private currentUserId: number;
   private currentProjectId: number;
   private currentConversationId: number;
   private currentAnalysisId: number;
   private currentFeedbackId: number;
+  private currentLogId: number;
 
   constructor() {
     this.users = new Map();
