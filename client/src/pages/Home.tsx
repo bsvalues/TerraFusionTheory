@@ -1,8 +1,11 @@
-import React from 'react';
+import React, { useState } from 'react';
 import Sidebar from '@/components/layout/Sidebar';
 import MainContent from '@/components/layout/MainContent';
+import ErrorDashboard from '@/components/debug/ErrorDashboard';
 import { useConversation } from '@/hooks/useConversation';
 import { useProject } from '@/hooks/useProject';
+import { Activity, AlertTriangle } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 // Temporary: Using a hardcoded project ID until we implement project selection
 const CURRENT_PROJECT_ID = 1;
@@ -24,7 +27,10 @@ const Home: React.FC = () => {
   const isLoading = isProjectLoading || isConversationLoading;
 
   // Mobile menu state
-  const [isMobileMenuOpen, setIsMobileMenuOpen] = React.useState(false);
+  const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  
+  // Error dashboard state
+  const [showErrorDashboard, setShowErrorDashboard] = useState(false);
   
   if (isLoading) {
     // Could add a loading state here
@@ -57,6 +63,18 @@ const Home: React.FC = () => {
           </div>
         </div>
         
+        {/* Desktop Header with Debug/Log Toggle Button */}
+        <div className="hidden md:flex justify-end items-center p-2 border-b">
+          <Button 
+            variant="outline" 
+            className="flex items-center gap-2" 
+            onClick={() => setShowErrorDashboard(true)}
+          >
+            <Activity size={16} />
+            <span>System Monitor</span>
+          </Button>
+        </div>
+        
         {/* Main Content */}
         <MainContent
           project={project}
@@ -65,6 +83,32 @@ const Home: React.FC = () => {
           architecture={architecture}
           onSendMessage={sendMessage}
         />
+        
+        {/* Error Dashboard Modal */}
+        {showErrorDashboard && (
+          <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+            <div className="bg-white rounded-lg w-11/12 max-w-6xl h-5/6 overflow-hidden flex flex-col">
+              <div className="flex justify-between items-center p-4 border-b">
+                <h2 className="text-xl font-semibold flex items-center gap-2">
+                  <AlertTriangle className="text-yellow-500" size={20} />
+                  System Monitor & Logs
+                </h2>
+                <Button 
+                  variant="ghost" 
+                  size="sm" 
+                  onClick={() => setShowErrorDashboard(false)}
+                >
+                  <svg className="h-6 w-6" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </Button>
+              </div>
+              <div className="flex-1 overflow-auto p-4">
+                <ErrorDashboard />
+              </div>
+            </div>
+          </div>
+        )}
       </div>
       
       {/* Mobile menu (off-canvas) */}
