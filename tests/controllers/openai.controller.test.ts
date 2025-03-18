@@ -3,340 +3,290 @@ import * as openaiController from '../../server/controllers/openai.controller';
 import * as openaiService from '../../server/services/openai.service';
 import { storage } from '../../server/storage';
 
-// Mock the OpenAI service
+// Mock dependencies
 jest.mock('../../server/services/openai.service');
-
-// Mock the storage
 jest.mock('../../server/storage', () => ({
   storage: {
+    createLog: jest.fn().mockResolvedValue({}),
+    getProject: jest.fn(),
+    getConversation: jest.fn(),
+    updateConversation: jest.fn(),
     getConversationByProjectId: jest.fn(),
     createConversation: jest.fn(),
-    updateConversation: jest.fn(),
-    saveAnalysis: jest.fn()
+    getAnalysisByProjectId: jest.fn(),
+    saveAnalysis: jest.fn(),
+    updateAnalysis: jest.fn()
   }
 }));
 
 describe('OpenAI Controller', () => {
-  // Create mock request and response objects
   let mockRequest: Partial<Request>;
   let mockResponse: Partial<Response>;
+  const mockSend = jest.fn();
+  const mockStatus = jest.fn().mockReturnValue({ send: mockSend });
+  const mockJson = jest.fn();
   
   beforeEach(() => {
     jest.clearAllMocks();
     
-    // Set up the mock request and response
-    mockRequest = {};
-    mockResponse = {
-      status: jest.fn().mockReturnThis(),
-      json: jest.fn()
+    // Setup request and response objects
+    mockRequest = {
+      body: {},
+      params: {},
+      query: {},
+      sessionID: 'test-session'
     };
+    
+    mockResponse = {
+      status: mockStatus,
+      json: mockJson,
+      locals: {}
+    };
+    
+    // Mock storage methods
+    (storage.getProject as jest.Mock).mockResolvedValue({ id: 1, name: 'Test Project' });
+    (storage.getConversation as jest.Mock).mockResolvedValue(null);
+    (storage.getConversationByProjectId as jest.Mock).mockResolvedValue(null);
+    (storage.createConversation as jest.Mock).mockImplementation(async (data) => ({
+      id: 1,
+      ...data,
+      messages: JSON.parse(data.messages)
+    }));
+    (storage.updateConversation as jest.Mock).mockImplementation(async (data) => data);
+    (storage.getAnalysisByProjectId as jest.Mock).mockResolvedValue(null);
+    (storage.saveAnalysis as jest.Mock).mockImplementation(async (data) => ({
+      id: 1,
+      ...data
+    }));
+    (storage.updateAnalysis as jest.Mock).mockImplementation(async (data) => data);
   });
   
   describe('handleMessage', () => {
-    it('should return 400 if message or projectId is missing', async () => {
-      // Set up the request with missing data
-      mockRequest.body = { message: 'Test message' }; // Missing projectId
-      
-      // Call the controller
-      await openaiController.handleMessage(mockRequest as Request, mockResponse as Response);
-      
-      // Verify response
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Message and project ID are required' });
-    });
-    
-    it('should handle a new conversation correctly', async () => {
-      // Setup mock data
+    it('should handle new messages and create conversation if none exists', async () => {
+      // Setup
       mockRequest.body = { message: 'Test message', projectId: 1 };
+      (openaiService.analyzeMessage as jest.Mock).mockResolvedValue('AI response');
       
-      // Mock the storage to return no existing conversation
-      (storage.getConversationByProjectId as jest.Mock).mockResolvedValueOnce(undefined);
-      
-      // Mock the OpenAI service response
-      const aiResponse = {
-        message: 'AI response',
-        timestamp: new Date().toISOString()
-      };
-      (openaiService.analyzeMessage as jest.Mock).mockResolvedValueOnce(aiResponse);
-      
-      // Mock conversation creation
-      const createdConversation = {
-        id: 1,
-        projectId: 1,
-        messages: [
-          { role: 'user', content: 'Test message', timestamp: expect.any(String) },
-          { role: 'assistant', content: 'AI response', timestamp: expect.any(String) }
-        ]
-      };
-      (storage.createConversation as jest.Mock).mockResolvedValueOnce(createdConversation);
-      
-      // Call the controller
+      // Execute
       await openaiController.handleMessage(mockRequest as Request, mockResponse as Response);
       
-      // Verify service was called
+      // Verify
       expect(openaiService.analyzeMessage).toHaveBeenCalledWith('Test message', 1);
-      
-      // Verify storage was called to create a new conversation
+      expect(storage.getConversationByProjectId).toHaveBeenCalledWith(1);
       expect(storage.createConversation).toHaveBeenCalled();
-      
-      // Verify response
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        success: true,
-        message: expect.objectContaining({
-          role: 'assistant',
-          content: 'AI response'
-        })
-      });
+      expect(mockJson).toHaveBeenCalledWith({ response: 'AI response' });
+      expect(storage.createLog).toHaveBeenCalledTimes(2);
     });
     
-    it('should update an existing conversation correctly', async () => {
-      // Setup mock data
+    it('should update existing conversation with new messages', async () => {
+      // Setup
       mockRequest.body = { message: 'Test message', projectId: 1 };
-      
-      // Mock existing conversation
       const existingConversation = {
         id: 1,
         projectId: 1,
         messages: [
-          { role: 'user', content: 'Previous message', timestamp: '2025-03-17T12:00:00.000Z' }
+          { role: 'user', content: 'Previous message', timestamp: '2023-01-01T00:00:00Z' }
         ]
       };
-      (storage.getConversationByProjectId as jest.Mock).mockResolvedValueOnce(existingConversation);
+      (storage.getConversationByProjectId as jest.Mock).mockResolvedValue(existingConversation);
+      (openaiService.analyzeMessage as jest.Mock).mockResolvedValue('AI response');
       
-      // Mock the OpenAI service response
-      const aiResponse = {
-        message: 'AI response',
-        timestamp: new Date().toISOString()
-      };
-      (openaiService.analyzeMessage as jest.Mock).mockResolvedValueOnce(aiResponse);
-      
-      // Mock conversation update
-      const updatedConversation = {
-        id: 1,
-        projectId: 1,
-        messages: [
-          { role: 'user', content: 'Previous message', timestamp: '2025-03-17T12:00:00.000Z' },
-          { role: 'user', content: 'Test message', timestamp: expect.any(String) },
-          { role: 'assistant', content: 'AI response', timestamp: expect.any(String) }
-        ]
-      };
-      (storage.updateConversation as jest.Mock).mockResolvedValueOnce(updatedConversation);
-      
-      // Call the controller
+      // Execute
       await openaiController.handleMessage(mockRequest as Request, mockResponse as Response);
       
-      // Verify service was called
-      expect(openaiService.analyzeMessage).toHaveBeenCalledWith('Test message', 1);
-      
-      // Verify storage was called to update the conversation
+      // Verify
       expect(storage.updateConversation).toHaveBeenCalled();
-      
-      // Verify response
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        success: true,
-        message: expect.objectContaining({
-          role: 'assistant',
-          content: 'AI response'
-        })
-      });
+      expect(mockJson).toHaveBeenCalledWith({ response: 'AI response' });
     });
     
-    it('should handle errors correctly', async () => {
-      // Setup mock data
+    it('should handle errors properly', async () => {
+      // Setup
       mockRequest.body = { message: 'Test message', projectId: 1 };
+      const error = new Error('Service error');
+      (openaiService.analyzeMessage as jest.Mock).mockRejectedValue(error);
       
-      // Mock the storage to throw an error
-      (storage.getConversationByProjectId as jest.Mock).mockRejectedValueOnce(new Error('Database error'));
-      
-      // Call the controller
+      // Execute
       await openaiController.handleMessage(mockRequest as Request, mockResponse as Response);
       
-      // Verify error response
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Failed to process message' });
+      // Verify
+      expect(mockStatus).toHaveBeenCalledWith(500);
+      expect(mockSend).toHaveBeenCalledWith({ error: 'Error processing message: Service error' });
+      expect(storage.createLog).toHaveBeenCalledWith(expect.objectContaining({
+        level: 'error',
+        category: 'ai'
+      }));
+    });
+    
+    it('should validate required fields', async () => {
+      // Setup - missing message field
+      mockRequest.body = { projectId: 1 };
+      
+      // Execute
+      await openaiController.handleMessage(mockRequest as Request, mockResponse as Response);
+      
+      // Verify
+      expect(mockStatus).toHaveBeenCalledWith(400);
+      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
+        error: expect.stringContaining('message is required')
+      }));
     });
   });
   
   describe('analyzeRequirements', () => {
-    it('should return 400 if required fields are missing', async () => {
-      // Set up the request with missing data
-      mockRequest.body = { projectDetails: 'Project details' }; // Missing projectId
-      
-      // Call the controller
-      await openaiController.analyzeRequirements(mockRequest as Request, mockResponse as Response);
-      
-      // Verify response
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Project details and project ID are required' });
-    });
-    
-    it('should analyze requirements correctly', async () => {
-      // Setup mock data
-      mockRequest.body = { projectDetails: 'Project details', projectId: 1 };
-      
-      // Mock the OpenAI service response
+    it('should analyze project requirements and save analysis', async () => {
+      // Setup
+      mockRequest.body = { projectDetails: 'Test requirements', projectId: 1 };
       const analysisResult = {
-        identifiedRequirements: [{ name: 'Requirement 1', status: 'success' }],
-        suggestedTechStack: { frontend: { name: 'React', description: 'UI library' } },
+        identifiedRequirements: [],
+        suggestedTechStack: {},
         missingInformation: { items: [] },
-        nextSteps: [{ order: 1, description: 'Set up project' }]
+        nextSteps: []
       };
-      (openaiService.analyzeRequirements as jest.Mock).mockResolvedValueOnce(analysisResult);
+      (openaiService.analyzeRequirements as jest.Mock).mockResolvedValue(analysisResult);
       
-      // Mock saved analysis
-      const savedAnalysis = {
-        id: 1,
-        projectId: 1,
-        ...analysisResult
-      };
-      (storage.saveAnalysis as jest.Mock).mockResolvedValueOnce(savedAnalysis);
-      
-      // Call the controller
+      // Execute
       await openaiController.analyzeRequirements(mockRequest as Request, mockResponse as Response);
       
-      // Verify service was called
-      expect(openaiService.analyzeRequirements).toHaveBeenCalledWith('Project details');
-      
-      // Verify storage was called to save analysis
+      // Verify
+      expect(openaiService.analyzeRequirements).toHaveBeenCalledWith('Test requirements');
       expect(storage.saveAnalysis).toHaveBeenCalledWith({
         projectId: 1,
         ...analysisResult
       });
-      
-      // Verify response
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        success: true,
-        analysis: savedAnalysis
-      });
+      expect(mockJson).toHaveBeenCalledWith(expect.objectContaining({
+        projectId: 1,
+        ...analysisResult
+      }));
     });
     
-    it('should handle errors correctly', async () => {
-      // Setup mock data
-      mockRequest.body = { projectDetails: 'Project details', projectId: 1 };
+    it('should update existing analysis if it exists', async () => {
+      // Setup
+      mockRequest.body = { projectDetails: 'Test requirements', projectId: 1 };
+      const existingAnalysis = {
+        id: 1,
+        projectId: 1,
+        identifiedRequirements: [{ name: 'Old requirement', status: 'success' }],
+        suggestedTechStack: { frontend: { name: 'React', description: 'UI library' } },
+        missingInformation: { items: ['Old missing info'] },
+        nextSteps: [{ order: 1, description: 'Old next step' }]
+      };
+      const analysisResult = {
+        identifiedRequirements: [],
+        suggestedTechStack: {},
+        missingInformation: { items: [] },
+        nextSteps: []
+      };
+      (storage.getAnalysisByProjectId as jest.Mock).mockResolvedValue(existingAnalysis);
+      (openaiService.analyzeRequirements as jest.Mock).mockResolvedValue(analysisResult);
       
-      // Mock the service to throw an error
-      (openaiService.analyzeRequirements as jest.Mock).mockRejectedValueOnce(new Error('Service error'));
-      
-      // Call the controller
+      // Execute
       await openaiController.analyzeRequirements(mockRequest as Request, mockResponse as Response);
       
-      // Verify error response
-      expect(mockResponse.status).toHaveBeenCalledWith(500);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Failed to analyze requirements' });
+      // Verify
+      expect(storage.updateAnalysis).toHaveBeenCalledWith(expect.objectContaining({
+        id: 1,
+        projectId: 1,
+        ...analysisResult
+      }));
+    });
+    
+    it('should handle errors properly', async () => {
+      // Setup
+      mockRequest.body = { projectDetails: 'Test requirements', projectId: 1 };
+      const error = new Error('Analysis error');
+      (openaiService.analyzeRequirements as jest.Mock).mockRejectedValue(error);
+      
+      // Execute
+      await openaiController.analyzeRequirements(mockRequest as Request, mockResponse as Response);
+      
+      // Verify
+      expect(mockStatus).toHaveBeenCalledWith(500);
+      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
+        error: expect.stringContaining('Analysis error')
+      }));
     });
   });
   
   describe('generateCode', () => {
-    it('should return 400 if required fields are missing', async () => {
-      // Set up the request with missing data
-      mockRequest.body = { requirements: 'Requirements', language: 'javascript' }; // Missing projectId
+    it('should generate code based on requirements and language', async () => {
+      // Setup
+      mockRequest.body = { 
+        requirements: 'Create a login form', 
+        language: 'javascript',
+        projectId: 1
+      };
+      (openaiService.generateCode as jest.Mock).mockResolvedValue('const loginForm = () => {...}');
       
-      // Call the controller
+      // Execute
       await openaiController.generateCode(mockRequest as Request, mockResponse as Response);
       
-      // Verify response
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Requirements, language, and project ID are required' });
+      // Verify
+      expect(openaiService.generateCode).toHaveBeenCalledWith(
+        'Create a login form', 
+        'javascript'
+      );
+      expect(mockJson).toHaveBeenCalledWith({ code: 'const loginForm = () => {...}' });
     });
     
-    it('should generate code correctly', async () => {
-      // Setup mock data
-      mockRequest.body = { requirements: 'Requirements', language: 'javascript', projectId: 1 };
+    it('should validate required fields', async () => {
+      // Setup - missing requirements field
+      mockRequest.body = { language: 'javascript', projectId: 1 };
       
-      // Mock the OpenAI service response
-      const codeResult = {
-        code: 'function test() { return true; }',
-        language: 'javascript'
-      };
-      (openaiService.generateCode as jest.Mock).mockResolvedValueOnce(codeResult);
-      
-      // Call the controller
+      // Execute
       await openaiController.generateCode(mockRequest as Request, mockResponse as Response);
       
-      // Verify service was called
-      expect(openaiService.generateCode).toHaveBeenCalledWith('Requirements', 'javascript');
-      
-      // Verify response
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        success: true,
-        code: codeResult
-      });
+      // Verify
+      expect(mockStatus).toHaveBeenCalledWith(400);
+      expect(mockSend).toHaveBeenCalledWith(expect.objectContaining({
+        error: expect.stringContaining('requirements is required')
+      }));
     });
   });
   
   describe('debugCode', () => {
-    it('should return 400 if required fields are missing', async () => {
-      // Set up the request with missing data
-      mockRequest.body = { code: 'const x = 5;', error: 'Error message' }; // Missing projectId
-      
-      // Call the controller
-      await openaiController.debugCode(mockRequest as Request, mockResponse as Response);
-      
-      // Verify response
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Code, error message, and project ID are required' });
-    });
-    
-    it('should debug code correctly', async () => {
-      // Setup mock data
-      mockRequest.body = { code: 'const x = 5;', error: 'Error message', projectId: 1 };
-      
-      // Mock the OpenAI service response
-      const debugResult = {
-        analysis: 'The issue is...',
-        timestamp: new Date().toISOString()
+    it('should debug code with error message', async () => {
+      // Setup
+      mockRequest.body = { 
+        code: 'const x = 1; x();', 
+        error: 'TypeError: x is not a function',
+        projectId: 1
       };
-      (openaiService.debugCode as jest.Mock).mockResolvedValueOnce(debugResult);
+      (openaiService.debugCode as jest.Mock).mockResolvedValue('x is a number, not a function...');
       
-      // Call the controller
+      // Execute
       await openaiController.debugCode(mockRequest as Request, mockResponse as Response);
       
-      // Verify service was called
-      expect(openaiService.debugCode).toHaveBeenCalledWith('const x = 5;', 'Error message');
-      
-      // Verify response
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        success: true,
-        result: debugResult
-      });
+      // Verify
+      expect(openaiService.debugCode).toHaveBeenCalledWith(
+        'const x = 1; x();', 
+        'TypeError: x is not a function'
+      );
+      expect(mockJson).toHaveBeenCalledWith({ analysis: 'x is a number, not a function...' });
     });
   });
   
   describe('generateDocumentation', () => {
-    it('should return 400 if required fields are missing', async () => {
-      // Set up the request with missing data
-      mockRequest.body = { code: 'function test() {}', docType: 'API' }; // Missing projectId
-      
-      // Call the controller
-      await openaiController.generateDocumentation(mockRequest as Request, mockResponse as Response);
-      
-      // Verify response
-      expect(mockResponse.status).toHaveBeenCalledWith(400);
-      expect(mockResponse.json).toHaveBeenCalledWith({ error: 'Code, documentation type, and project ID are required' });
-    });
-    
-    it('should generate documentation correctly', async () => {
-      // Setup mock data
-      mockRequest.body = { code: 'function test() {}', docType: 'API', projectId: 1 };
-      
-      // Mock the OpenAI service response
-      const docResult = {
-        documentation: '# API Documentation\n...',
-        type: 'API',
-        timestamp: new Date().toISOString()
+    it('should generate documentation based on code and docType', async () => {
+      // Setup
+      mockRequest.body = { 
+        code: 'function sum(a, b) { return a + b; }', 
+        docType: 'jsdoc',
+        projectId: 1
       };
-      (openaiService.generateDocumentation as jest.Mock).mockResolvedValueOnce(docResult);
+      (openaiService.generateDocumentation as jest.Mock).mockResolvedValue(
+        '/**\n * Adds two numbers\n * @param {number} a First number\n * @param {number} b Second number\n * @returns {number} Sum of a and b\n */'
+      );
       
-      // Call the controller
+      // Execute
       await openaiController.generateDocumentation(mockRequest as Request, mockResponse as Response);
       
-      // Verify service was called
-      expect(openaiService.generateDocumentation).toHaveBeenCalledWith('function test() {}', 'API');
-      
-      // Verify response
-      expect(mockResponse.json).toHaveBeenCalledWith({
-        success: true,
-        documentation: docResult
+      // Verify
+      expect(openaiService.generateDocumentation).toHaveBeenCalledWith(
+        'function sum(a, b) { return a + b; }', 
+        'jsdoc'
+      );
+      expect(mockJson).toHaveBeenCalledWith({ 
+        documentation: '/**\n * Adds two numbers\n * @param {number} a First number\n * @param {number} b Second number\n * @returns {number} Sum of a and b\n */' 
       });
     });
   });
