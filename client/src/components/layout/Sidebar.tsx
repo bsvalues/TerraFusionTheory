@@ -53,26 +53,28 @@ const NavItemComponent = ({ item }: { item: NavItem }) => {
   const isActive = location === item.href;
 
   return (
-    <Link href={item.href}>
-      <a
-        className={`flex items-center px-2 py-2 text-sm font-medium rounded-md ${
-          isActive
-            ? 'bg-primary text-white'
-            : 'text-gray-700 hover:bg-gray-100'
-        }`}
-      >
-        <svg
-          className={`mr-3 h-5 w-5 ${isActive ? '' : 'text-gray-500'}`}
-          xmlns="http://www.w3.org/2000/svg"
-          fill="none"
-          viewBox="0 0 24 24"
-          stroke="currentColor"
+    <div className="w-full">
+      <Link href={item.href}>
+        <div
+          className={`flex items-center px-2 py-2 text-sm font-medium rounded-md cursor-pointer ${
+            isActive
+              ? 'bg-primary text-white'
+              : 'text-gray-700 hover:bg-gray-100'
+          }`}
         >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
-        </svg>
-        {item.label}
-      </a>
-    </Link>
+          <svg
+            className={`mr-3 h-5 w-5 ${isActive ? '' : 'text-gray-500'}`}
+            xmlns="http://www.w3.org/2000/svg"
+            fill="none"
+            viewBox="0 0 24 24"
+            stroke="currentColor"
+          >
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d={item.icon} />
+          </svg>
+          {item.label}
+        </div>
+      </Link>
+    </div>
   );
 };
 
