@@ -87,3 +87,10 @@ export type Message = {
   content: string;
   timestamp: string;
 };
+
+export type FeedbackItem = {
+  id: number;
+  message: string;
+  timestamp: string;
+  resolved: boolean;
+};

@@ -30,6 +30,11 @@ export interface IStorage {
   getAnalysisByProjectId(projectId: number): Promise<Analysis | undefined>;
   saveAnalysis(analysis: Partial<Analysis> & { projectId: number }): Promise<Analysis>;
   updateAnalysis(analysis: Analysis): Promise<Analysis>;
+  
+  // Feedback methods
+  getFeedback(): Promise<FeedbackItem[]>;
+  saveFeedback(feedback: { message: string; timestamp: string }): Promise<FeedbackItem>;
+  updateFeedbackStatus(id: number, resolved: boolean): Promise<FeedbackItem>;
 }
 
 export class MemStorage implements IStorage {
