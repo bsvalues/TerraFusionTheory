@@ -96,6 +96,10 @@ const ErrorDashboard: React.FC = () => {
               <MessageSquare className="h-4 w-4 mr-2" />
               Feedback {feedbackItems.length > 0 && `(${feedbackItems.length})`}
             </TabsTrigger>
+            <TabsTrigger value="logs" className="flex items-center">
+              <BarChart className="h-4 w-4 mr-2" />
+              Logs
+            </TabsTrigger>
           </TabsList>
           
           {/* Errors Tab */}
@@ -262,6 +266,13 @@ const ErrorDashboard: React.FC = () => {
                   ))}
                 </div>
               )}
+            </div>
+          </TabsContent>
+          
+          {/* Logs Tab */}
+          <TabsContent value="logs" className="flex-1 flex flex-col overflow-hidden">
+            <div className="px-4 py-2 overflow-auto">
+              <LoggingDashboard />
             </div>
           </TabsContent>
         </Tabs>

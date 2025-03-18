@@ -153,9 +153,9 @@ const LogItem = ({ log, onDelete }: LogItemProps) => {
       
       {showDetails && (
         <div className="mt-2 ml-6 p-2 bg-gray-100 rounded text-xs font-mono whitespace-pre-wrap text-gray-800 max-h-40 overflow-y-auto">
-          {typeof log.details === 'string' ? 
-            JSON.stringify(JSON.parse(log.details), null, 2) : 
-            JSON.stringify(log.details, null, 2)
+          {typeof log.details === 'string' 
+            ? log.details
+            : JSON.stringify(log.details, null, 2)
           }
         </div>
       )}
