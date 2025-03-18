@@ -3,16 +3,13 @@ import { apiRequest } from './queryClient';
 // Function to send a user message to the OpenAI API via our backend
 export async function sendMessageToAI(message: string, projectId: number) {
   try {
-    const response = await apiRequest(
-      'POST',
-      '/api/ai/message',
-      {
+    return await apiRequest<{response: string; timestamp: string}>('/api/ai/message', {
+      method: 'POST',
+      body: JSON.stringify({
         message,
         projectId
-      }
-    );
-    
-    return await response.json();
+      })
+    });
   } catch (error) {
     console.error('Error sending message to AI:', error);
     throw error;
@@ -22,16 +19,13 @@ export async function sendMessageToAI(message: string, projectId: number) {
 // Function to analyze project requirements
 export async function analyzeRequirements(projectDetails: string, projectId: number) {
   try {
-    const response = await apiRequest(
-      'POST',
-      '/api/ai/analyze',
-      {
+    return await apiRequest<{analysis: any}>('/api/ai/analyze', {
+      method: 'POST',
+      body: JSON.stringify({
         projectDetails,
         projectId
-      }
-    );
-    
-    return await response.json();
+      })
+    });
   } catch (error) {
     console.error('Error analyzing requirements:', error);
     throw error;
@@ -41,17 +35,14 @@ export async function analyzeRequirements(projectDetails: string, projectId: num
 // Function to generate code based on requirements
 export async function generateCode(requirements: string, language: string, projectId: number) {
   try {
-    const response = await apiRequest(
-      'POST',
-      '/api/ai/generate-code',
-      {
+    return await apiRequest<{code: string; explanation: string}>('/api/ai/generate-code', {
+      method: 'POST',
+      body: JSON.stringify({
         requirements,
         language,
         projectId
-      }
-    );
-    
-    return await response.json();
+      })
+    });
   } catch (error) {
     console.error('Error generating code:', error);
     throw error;
@@ -59,19 +50,16 @@ export async function generateCode(requirements: string, language: string, proje
 }
 
 // Function to debug code
-export async function debugCode(code: string, error: string, projectId: number) {
+export async function debugCode(code: string, errorMsg: string, projectId: number) {
   try {
-    const response = await apiRequest(
-      'POST',
-      '/api/ai/debug',
-      {
+    return await apiRequest<{fixedCode: string; explanation: string}>('/api/ai/debug', {
+      method: 'POST',
+      body: JSON.stringify({
         code,
-        error,
+        error: errorMsg,
         projectId
-      }
-    );
-    
-    return await response.json();
+      })
+    });
   } catch (error) {
     console.error('Error debugging code:', error);
     throw error;
@@ -81,17 +69,14 @@ export async function debugCode(code: string, error: string, projectId: number) 
 // Function to generate documentation
 export async function generateDocumentation(code: string, docType: string, projectId: number) {
   try {
-    const response = await apiRequest(
-      'POST',
-      '/api/ai/documentation',
-      {
+    return await apiRequest<{documentation: string}>('/api/ai/documentation', {
+      method: 'POST',
+      body: JSON.stringify({
         code,
         docType,
         projectId
-      }
-    );
-    
-    return await response.json();
+      })
+    });
   } catch (error) {
     console.error('Error generating documentation:', error);
     throw error;

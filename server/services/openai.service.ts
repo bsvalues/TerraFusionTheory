@@ -1,7 +1,16 @@
 import OpenAI from "openai";
+import { log } from "../vite";
 
 // the newest OpenAI model is "gpt-4o" which was released May 13, 2024. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY || "your-api-key" });
+// Initialize OpenAI with API key from environment variables
+const openai = new OpenAI({ 
+  apiKey: process.env.OPENAI_API_KEY 
+});
+
+// Verify that we have an API key
+if (!process.env.OPENAI_API_KEY) {
+  log("WARNING: OPENAI_API_KEY environment variable is not set. OpenAI API calls will fail.", "openai");
+}
 
 export async function analyzeMessage(message: string, projectId: number) {
   try {

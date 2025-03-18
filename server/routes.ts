@@ -67,6 +67,63 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
+  // Architecture routes
+  app.get("/api/projects/:id/architecture", async (req, res) => {
+    try {
+      // Placeholder for architecture data
+      // In future, this would be stored and retrieved from the database
+      const architecture = {
+        layers: [
+          {
+            name: "User Interface Layer",
+            components: [
+              { name: "Property Assessment Dashboard", type: "ui" },
+              { name: "Data Entry Forms", type: "ui" },
+              { name: "Report Generator", type: "ui" },
+              { name: "User Authentication", type: "ui" }
+            ]
+          },
+          {
+            name: "API Layer",
+            components: [
+              { name: "REST API Endpoints", type: "api" },
+              { name: "Authentication Service", type: "api" },
+              { name: "Data Validation", type: "api" }
+            ]
+          },
+          {
+            name: "Business Logic Layer",
+            components: [
+              { name: "Assessment Calculator", type: "business" },
+              { name: "Report Generator", type: "business" },
+              { name: "Workflow Manager", type: "business" }
+            ]
+          },
+          {
+            name: "Data Layer",
+            components: [
+              { name: "Property Database", type: "data" },
+              { name: "User Management", type: "data" },
+              { name: "Assessment History", type: "data" }
+            ]
+          },
+          {
+            name: "External Integrations",
+            components: [
+              { name: "County Systems Connector", type: "external" },
+              { name: "GIS Integration", type: "external" },
+              { name: "Document Management", type: "external" }
+            ]
+          }
+        ]
+      };
+      
+      res.json(architecture);
+    } catch (error) {
+      res.status(500).json({ error: "Failed to get architecture" });
+    }
+  });
+  
   // Feedback routes
   app.get("/api/feedback", async (req, res) => {
     try {
