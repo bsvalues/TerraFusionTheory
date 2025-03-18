@@ -1,5 +1,5 @@
 import { apiRequest } from "./queryClient";
-import { ErrorLog } from "@/hooks/useErrors";
+import { ErrorLog, ErrorSource } from "@/hooks/useErrors";
 import { Analysis } from "@shared/schema";
 
 /**
@@ -10,16 +10,15 @@ import { Analysis } from "@shared/schema";
  */
 export async function sendMessageToAI(message: string, projectId: number) {
   try {
-    const response = await apiRequest({
-      url: "/api/ai/message",
+    const response = await apiRequest<{ response: string }>(`/api/ai/message`, {
       method: "POST",
-      body: { message, projectId },
+      body: JSON.stringify({ message, projectId })
     });
     
-    return response;
+    return response.response;
   } catch (error) {
     console.error("Error sending message to AI:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to send message to AI");
+    throw error;
   }
 }
 
@@ -31,16 +30,15 @@ export async function sendMessageToAI(message: string, projectId: number) {
  */
 export async function analyzeRequirements(projectDetails: string, projectId: number): Promise<Analysis> {
   try {
-    const response = await apiRequest<Analysis>({
-      url: "/api/ai/analyze-requirements",
+    const response = await apiRequest<Analysis>(`/api/ai/analyze`, {
       method: "POST",
-      body: { projectDetails, projectId },
+      body: JSON.stringify({ projectDetails, projectId })
     });
     
     return response;
   } catch (error) {
     console.error("Error analyzing requirements:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to analyze requirements");
+    throw error;
   }
 }
 
@@ -53,16 +51,15 @@ export async function analyzeRequirements(projectDetails: string, projectId: num
  */
 export async function generateCode(requirements: string, language: string, projectId: number) {
   try {
-    const response = await apiRequest({
-      url: "/api/ai/generate-code",
+    const response = await apiRequest<{ code: string }>(`/api/ai/generate-code`, {
       method: "POST",
-      body: { requirements, language, projectId },
+      body: JSON.stringify({ requirements, language, projectId })
     });
     
-    return response;
+    return response.code;
   } catch (error) {
     console.error("Error generating code:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to generate code");
+    throw error;
   }
 }
 
@@ -75,16 +72,15 @@ export async function generateCode(requirements: string, language: string, proje
  */
 export async function debugCode(code: string, errorMsg: string, projectId: number) {
   try {
-    const response = await apiRequest({
-      url: "/api/ai/debug-code",
+    const response = await apiRequest<{ analysis: string }>(`/api/ai/debug`, {
       method: "POST",
-      body: { code, errorMsg, projectId },
+      body: JSON.stringify({ code, error: errorMsg, projectId })
     });
     
-    return response;
+    return response.analysis;
   } catch (error) {
     console.error("Error debugging code:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to debug code");
+    throw error;
   }
 }
 
@@ -97,32 +93,31 @@ export async function debugCode(code: string, errorMsg: string, projectId: numbe
  */
 export async function generateDocumentation(code: string, docType: string, projectId: number) {
   try {
-    const response = await apiRequest({
-      url: "/api/ai/generate-documentation",
+    const response = await apiRequest<{ documentation: string }>(`/api/ai/documentation`, {
       method: "POST",
-      body: { code, docType, projectId },
+      body: JSON.stringify({ code, docType, projectId })
     });
     
-    return response;
+    return response.documentation;
   } catch (error) {
     console.error("Error generating documentation:", error);
-    throw new Error(error instanceof Error ? error.message : "Failed to generate documentation");
+    throw error;
   }
 }
 
 /**
  * Formats error log data for the logging system
  * @param error The error to log
- * @param source The source of the error
+ * @param source The source of the error as a valid ErrorSource value
  * @returns Formatted error log object
  */
-export function formatErrorLog(error: any, source: string): ErrorLog {
+export function formatErrorLog(error: any, source: ErrorSource): ErrorLog {
   return {
-    id: Math.random().toString(36).substring(2, 12),
+    id: Date.now().toString(),
     timestamp: new Date().toISOString(),
-    message: error instanceof Error ? error.message : String(error),
-    source: source as any,
-    details: error.details || JSON.stringify(error, null, 2),
-    stack: error instanceof Error ? error.stack : undefined,
+    message: error.message || "Unknown error",
+    source: source,
+    details: typeof error === 'object' ? JSON.stringify(error, null, 2) : String(error),
+    stack: error.stack
   };
 }

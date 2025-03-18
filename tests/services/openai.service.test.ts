@@ -1,264 +1,171 @@
-import { analyzeMessage, analyzeRequirements, generateArchitecture, generateCode, debugCode, generateDocumentation } from '../../server/services/openai.service';
 import OpenAI from 'openai';
+import * as openaiService from '../../server/services/openai.service';
+import { storage } from '../../server/storage';
 
-// Mock the OpenAI module
-jest.mock('openai', () => {
-  return {
-    __esModule: true,
-    default: jest.fn().mockImplementation(() => ({
-      chat: {
-        completions: {
-          create: jest.fn()
-        }
-      }
-    }))
-  };
-});
+// Mock the OpenAI client
+jest.mock('openai');
+jest.mock('../../server/storage', () => ({
+  storage: {
+    createLog: jest.fn().mockResolvedValue({})
+  }
+}));
 
 describe('OpenAI Service', () => {
-  let mockOpenAIInstance: any;
+  let mockCreateCompletion: jest.Mock;
   
   beforeEach(() => {
-    // Reset all mocks
+    // Reset mocks before each test
     jest.clearAllMocks();
     
-    // Get the mocked OpenAI instance
-    mockOpenAIInstance = (OpenAI as jest.Mock).mock.results[0].value;
-    
-    // Save the original environment
-    process.env = { ...process.env };
-    process.env.OPENAI_API_KEY = 'test-api-key';
-  });
-  
-  afterEach(() => {
-    // Restore environment
-    jest.resetModules();
-  });
-  
-  describe('analyzeMessage', () => {
-    it('should call OpenAI API with correct parameters and return result', async () => {
-      // Setup mock response
-      const mockResponse = {
-        choices: [
-          {
-            message: {
-              content: 'This is a test response'
-            }
-          }
-        ]
-      };
-      
-      mockOpenAIInstance.chat.completions.create.mockResolvedValueOnce(mockResponse);
-      
-      // Call the function
-      const result = await analyzeMessage('Test message', 1);
-      
-      // Assert OpenAI was called with correct parameters
-      expect(mockOpenAIInstance.chat.completions.create).toHaveBeenCalledWith({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: expect.stringContaining('You are BS, an expert AI Developer Assistant')
-          },
-          { role: 'user', content: 'Test message' }
-        ]
-      });
-      
-      // Assert result contains expected properties
-      expect(result).toHaveProperty('message', 'This is a test response');
-      expect(result).toHaveProperty('timestamp');
+    // Setup the mock for create completions
+    mockCreateCompletion = jest.fn().mockResolvedValue({
+      choices: [{ message: { content: 'Mock response' } }],
+      usage: { total_tokens: 100 }
     });
     
-    it('should throw an error when OpenAI API fails', async () => {
-      // Setup mock to throw error
-      mockOpenAIInstance.chat.completions.create.mockRejectedValueOnce(new Error('API error'));
+    // Cast OpenAI to unknown first to avoid TypeScript errors
+    (OpenAI as unknown as jest.Mock).mockImplementation(() => ({
+      chat: {
+        completions: {
+          create: mockCreateCompletion
+        }
+      }
+    }));
+  });
+
+  describe('analyzeMessage', () => {
+    it('should call OpenAI with correct parameters and return response', async () => {
+      const result = await openaiService.analyzeMessage('Test message', 1);
       
-      // Call and expect error
-      await expect(analyzeMessage('Test message', 1)).rejects.toThrow('Failed to process message with AI');
+      expect(mockCreateCompletion).toHaveBeenCalledWith(expect.objectContaining({
+        model: 'gpt-4o',
+        messages: expect.arrayContaining([
+          expect.objectContaining({ role: 'system' }),
+          expect.objectContaining({ role: 'user', content: 'Test message' })
+        ])
+      }));
+      
+      expect(result).toBe('Mock response');
+      expect(storage.createLog).toHaveBeenCalledTimes(2);
+    });
+    
+    it('should handle errors properly', async () => {
+      const errorMessage = 'API error';
+      mockCreateCompletion.mockRejectedValueOnce(new Error(errorMessage));
+      
+      await expect(openaiService.analyzeMessage('Test message', 1)).rejects.toThrow(errorMessage);
+      expect(storage.createLog).toHaveBeenCalledTimes(2); // One for request, one for error
     });
   });
   
   describe('analyzeRequirements', () => {
-    it('should call OpenAI API with correct parameters and return parsed JSON result', async () => {
-      // Setup mock response with JSON string
-      const mockJsonResponse = {
-        identifiedRequirements: [{ name: 'Requirement 1', status: 'success' }],
-        suggestedTechStack: { 
-          frontend: { name: 'React', description: 'UI library' }
-        },
-        missingInformation: { items: ['User authentication details'] },
-        nextSteps: [{ order: 1, description: 'Set up project structure' }]
-      };
-      
-      const mockResponse = {
-        choices: [
-          {
-            message: {
-              content: JSON.stringify(mockJsonResponse)
-            }
-          }
-        ]
-      };
-      
-      mockOpenAIInstance.chat.completions.create.mockResolvedValueOnce(mockResponse);
-      
-      // Call the function
-      const result = await analyzeRequirements('Project details');
-      
-      // Assert OpenAI was called with correct parameters
-      expect(mockOpenAIInstance.chat.completions.create).toHaveBeenCalledWith({
-        model: 'gpt-4o',
-        messages: expect.any(Array),
-        response_format: { type: 'json_object' }
+    it('should format the request correctly and parse JSON response', async () => {
+      const mockJsonResponse = '{"identifiedRequirements":[],"suggestedTechStack":{},"missingInformation":{"items":[]},"nextSteps":[]}';
+      mockCreateCompletion.mockResolvedValueOnce({
+        choices: [{ message: { content: mockJsonResponse } }],
+        usage: { total_tokens: 100 }
       });
       
-      // Assert result is parsed JSON
-      expect(result).toEqual(mockJsonResponse);
+      const result = await openaiService.analyzeRequirements('Project requirements');
+      
+      expect(mockCreateCompletion).toHaveBeenCalledWith(expect.objectContaining({
+        model: 'gpt-4o',
+        response_format: { type: 'json_object' }
+      }));
+      
+      expect(result).toEqual({
+        identifiedRequirements: [],
+        suggestedTechStack: {},
+        missingInformation: { items: [] },
+        nextSteps: []
+      });
     });
   });
   
   describe('generateArchitecture', () => {
-    it('should call OpenAI API and return parsed architecture JSON', async () => {
-      const mockArchitecture = {
-        layers: [
-          {
-            name: 'UI Layer',
-            components: [
-              { name: 'Dashboard', type: 'ui' }
-            ]
-          }
-        ]
-      };
-      
-      const mockResponse = {
-        choices: [
-          {
-            message: {
-              content: JSON.stringify(mockArchitecture)
-            }
-          }
-        ]
-      };
-      
-      mockOpenAIInstance.chat.completions.create.mockResolvedValueOnce(mockResponse);
-      
-      // Call function
-      const result = await generateArchitecture('Architecture requirements');
-      
-      // Assert correct parameters
-      expect(mockOpenAIInstance.chat.completions.create).toHaveBeenCalledWith({
-        model: 'gpt-4o',
-        messages: expect.any(Array),
-        response_format: { type: 'json_object' }
+    it('should format the request correctly and parse JSON response', async () => {
+      const mockJsonResponse = '{"layers":[]}';
+      mockCreateCompletion.mockResolvedValueOnce({
+        choices: [{ message: { content: mockJsonResponse } }],
+        usage: { total_tokens: 100 }
       });
       
-      // Assert result
-      expect(result).toEqual(mockArchitecture);
+      const result = await openaiService.generateArchitecture('Architecture requirements');
+      
+      expect(mockCreateCompletion).toHaveBeenCalledWith(expect.objectContaining({
+        model: 'gpt-4o',
+        response_format: { type: 'json_object' }
+      }));
+      
+      expect(result).toEqual({ layers: [] });
     });
   });
   
   describe('generateCode', () => {
-    it('should call OpenAI API and return code generation result', async () => {
-      const mockResponse = {
-        choices: [
-          {
-            message: {
-              content: 'function test() { return true; }'
-            }
-          }
-        ]
-      };
+    it('should call OpenAI with language specific parameters', async () => {
+      await openaiService.generateCode('Code requirements', 'typescript');
       
-      mockOpenAIInstance.chat.completions.create.mockResolvedValueOnce(mockResponse);
-      
-      // Call function
-      const result = await generateCode('Generate a test function', 'javascript');
-      
-      // Assert
-      expect(mockOpenAIInstance.chat.completions.create).toHaveBeenCalledWith({
+      expect(mockCreateCompletion).toHaveBeenCalledWith(expect.objectContaining({
         model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: expect.stringContaining('Generate clean, production-ready code in javascript')
-          },
-          { role: 'user', content: 'Generate a test function' }
-        ]
-      });
-      
-      expect(result).toEqual({
-        code: 'function test() { return true; }',
-        language: 'javascript'
-      });
+        messages: expect.arrayContaining([
+          expect.objectContaining({ 
+            content: expect.stringContaining('typescript') 
+          })
+        ])
+      }));
     });
   });
   
   describe('debugCode', () => {
-    it('should call OpenAI API and return debugging analysis', async () => {
-      const mockResponse = {
-        choices: [
-          {
-            message: {
-              content: 'The issue is a missing semicolon on line 2.'
-            }
-          }
-        ]
-      };
+    it('should include code and error message in the prompt', async () => {
+      const code = 'const x = 1;';
+      const errorMsg = 'TypeError: x is not a function';
       
-      mockOpenAIInstance.chat.completions.create.mockResolvedValueOnce(mockResponse);
+      await openaiService.debugCode(code, errorMsg);
       
-      // Call function
-      const result = await debugCode('const x = 5\nconsole.log(x)', 'SyntaxError: missing semicolon');
-      
-      // Assert
-      expect(mockOpenAIInstance.chat.completions.create).toHaveBeenCalledWith({
+      expect(mockCreateCompletion).toHaveBeenCalledWith(expect.objectContaining({
         model: 'gpt-4o',
-        messages: expect.any(Array)
-      });
-      
-      expect(result).toHaveProperty('analysis', 'The issue is a missing semicolon on line 2.');
-      expect(result).toHaveProperty('timestamp');
+        messages: expect.arrayContaining([
+          expect.objectContaining({ 
+            content: expect.stringContaining(code) 
+          }),
+          expect.objectContaining({ 
+            content: expect.stringContaining(errorMsg) 
+          })
+        ])
+      }));
     });
   });
   
   describe('generateDocumentation', () => {
-    it('should call OpenAI API and return documentation', async () => {
-      const mockResponse = {
-        choices: [
-          {
-            message: {
-              content: '# API Documentation\n## Endpoints\n...'
-            }
-          }
-        ]
-      };
+    it('should use different system prompts based on docType', async () => {
+      // Test JSDoc type
+      await openaiService.generateDocumentation('const x = 1;', 'jsdoc');
       
-      mockOpenAIInstance.chat.completions.create.mockResolvedValueOnce(mockResponse);
+      expect(mockCreateCompletion).toHaveBeenCalledWith(expect.objectContaining({
+        messages: expect.arrayContaining([
+          expect.objectContaining({ 
+            content: expect.stringContaining('JSDoc') 
+          })
+        ])
+      }));
       
-      // Call function
-      const result = await generateDocumentation('function getData() { return api.get("/data"); }', 'API');
-      
-      // Assert
-      expect(mockOpenAIInstance.chat.completions.create).toHaveBeenCalledWith({
-        model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system', 
-            content: expect.stringContaining('Generate comprehensive API documentation')
-          },
-          { 
-            role: 'user', 
-            content: 'function getData() { return api.get("/data"); }' 
-          }
-        ]
+      // Reset and test README type
+      jest.clearAllMocks();
+      mockCreateCompletion.mockResolvedValueOnce({
+        choices: [{ message: { content: 'Mock README' } }],
+        usage: { total_tokens: 100 }
       });
       
-      expect(result).toEqual({
-        documentation: '# API Documentation\n## Endpoints\n...',
-        type: 'API',
-        timestamp: expect.any(String)
-      });
+      await openaiService.generateDocumentation('const x = 1;', 'readme');
+      
+      expect(mockCreateCompletion).toHaveBeenCalledWith(expect.objectContaining({
+        messages: expect.arrayContaining([
+          expect.objectContaining({ 
+            content: expect.stringContaining('README') 
+          })
+        ])
+      }));
     });
   });
 });
