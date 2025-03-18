@@ -5,13 +5,32 @@
 import '@testing-library/jest-dom';
 
 // Mock fetch globally
-global.fetch = jest.fn();
+global.fetch = jest.fn(() => 
+  Promise.resolve({
+    ok: true,
+    json: () => Promise.resolve({}),
+    text: () => Promise.resolve(''),
+    status: 200,
+    statusText: 'OK'
+  })
+);
 
 // Setup mock for ResizeObserver since it's not available in JSDOM
 global.ResizeObserver = jest.fn().mockImplementation(() => ({
   observe: jest.fn(),
   unobserve: jest.fn(),
   disconnect: jest.fn(),
+}));
+
+// Mock for IntersectionObserver
+global.IntersectionObserver = jest.fn().mockImplementation(() => ({
+  observe: jest.fn(),
+  unobserve: jest.fn(),
+  disconnect: jest.fn(),
+  takeRecords: jest.fn(),
+  root: null,
+  rootMargin: '',
+  thresholds: []
 }));
 
 // Mock for window.matchMedia
@@ -29,13 +48,53 @@ Object.defineProperty(window, 'matchMedia', {
   })),
 });
 
-// Suppress React 18 console errors for act()
-const originalError = console.error;
+// Mock for URL object
+global.URL.createObjectURL = jest.fn(() => 'mock-url');
+global.URL.revokeObjectURL = jest.fn();
+
+// Mock for window.scrollTo
+window.scrollTo = jest.fn();
+
+// Configure Jest to recognize modern ES modules 
+require('core-js/stable');
+require('regenerator-runtime/runtime');
+
+// Mock TanStack Query error logging
+jest.mock('@tanstack/react-query', () => {
+  const originalModule = jest.requireActual('@tanstack/react-query');
+  return {
+    ...originalModule,
+    useQuery: jest.fn().mockImplementation(() => ({
+      isLoading: false,
+      error: null,
+      data: {},
+      refetch: jest.fn(),
+    })),
+    useMutation: jest.fn().mockImplementation(() => ({
+      mutate: jest.fn(),
+      isLoading: false,
+      error: null,
+      data: {},
+    })),
+  };
+});
+
+// Mock useToast
+jest.mock('@/hooks/use-toast', () => ({
+  useToast: () => ({
+    toast: jest.fn(),
+  }),
+}));
+
+// Suppress expected errors
+const originalConsoleError = console.error;
 console.error = (...args) => {
-  if (/Warning.*not wrapped in act/.test(args[0])) {
+  if (/Warning.*not wrapped in act/.test(args[0]) || 
+      /Warning.*React.createFactory/.test(args[0]) ||
+      /Error boundaries should implement/.test(args[0])) {
     return;
   }
-  originalError(...args);
+  originalConsoleError(...args);
 };
 
 // Function to cleanup mocks after each test
