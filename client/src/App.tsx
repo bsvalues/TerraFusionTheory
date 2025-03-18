@@ -4,6 +4,9 @@ import { QueryClientProvider } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
+import { ErrorProvider } from "@/hooks/useErrors";
+import { FeedbackProvider } from "@/hooks/useFeedback";
+import ErrorDashboard from "@/components/debug/ErrorDashboard";
 
 function Router() {
   return (
@@ -19,8 +22,13 @@ function Router() {
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <Router />
-      <Toaster />
+      <ErrorProvider>
+        <FeedbackProvider>
+          <Router />
+          <ErrorDashboard />
+          <Toaster />
+        </FeedbackProvider>
+      </ErrorProvider>
     </QueryClientProvider>
   );
 }

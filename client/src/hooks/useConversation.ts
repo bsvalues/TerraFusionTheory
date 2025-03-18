@@ -32,13 +32,10 @@ export const useConversation = (projectId: number) => {
         timestamp: new Date().toISOString(),
       };
       
-      const response = await apiRequest(
-        'POST',
-        `/api/projects/${projectId}/messages`,
-        { message }
-      );
-      
-      return response.json();
+      return apiRequest<Conversation>(`/api/projects/${projectId}/messages`, {
+        method: 'POST',
+        body: JSON.stringify({ message })
+      });
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: [`/api/projects/${projectId}/conversation`] });
