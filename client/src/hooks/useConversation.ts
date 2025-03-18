@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { Conversation, Message } from '@/types';
 import { apiRequest } from '@/lib/queryClient';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
@@ -7,9 +7,21 @@ export const useConversation = (projectId: number) => {
   const queryClient = useQueryClient();
   
   // Fetch conversation data
-  const { data: conversation, isLoading, error } = useQuery({
+  const { data: rawConversation, isLoading, error } = useQuery({
     queryKey: [`/api/projects/${projectId}/conversation`],
   });
+  
+  // Parse conversation messages
+  const conversation = useMemo(() => {
+    if (!rawConversation) return null;
+    
+    return {
+      ...rawConversation,
+      messages: typeof rawConversation.messages === 'string' 
+        ? JSON.parse(rawConversation.messages) 
+        : (rawConversation.messages || [])
+    };
+  }, [rawConversation]);
   
   // Add message mutation
   const addMessageMutation = useMutation({

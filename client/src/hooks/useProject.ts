@@ -1,24 +1,57 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { ProjectInfo, Analysis, Architecture } from '@/types';
 
 export const useProject = (projectId: number) => {
   // Fetch project data
-  const { data: project, isLoading: isProjectLoading, error: projectError } = useQuery({
+  const { data: rawProject, isLoading: isProjectLoading, error: projectError } = useQuery({
     queryKey: [`/api/projects/${projectId}`],
   });
   
   // Fetch analysis data
-  const { data: analysis, isLoading: isAnalysisLoading, error: analysisError } = useQuery({
+  const { data: rawAnalysis, isLoading: isAnalysisLoading, error: analysisError } = useQuery({
     queryKey: [`/api/projects/${projectId}/analysis`],
   });
 
   // Fetch architecture data
-  const { data: architecture, isLoading: isArchitectureLoading, error: architectureError } = useQuery({
+  const { data: rawArchitecture, isLoading: isArchitectureLoading, error: architectureError } = useQuery({
     queryKey: [`/api/projects/${projectId}/architecture`],
   });
 
-  // Return mock data if real data is loading
+  // Parse project data
+  const project = useMemo(() => {
+    if (!rawProject) return null;
+    
+    return {
+      ...rawProject,
+      technologyStack: typeof rawProject.technologyStack === 'string' 
+        ? JSON.parse(rawProject.technologyStack) 
+        : rawProject.technologyStack
+    };
+  }, [rawProject]);
+
+  // Parse analysis data
+  const analysis = useMemo(() => {
+    if (!rawAnalysis) return null;
+    
+    return {
+      ...rawAnalysis,
+      identifiedRequirements: typeof rawAnalysis.identifiedRequirements === 'string' 
+        ? JSON.parse(rawAnalysis.identifiedRequirements) 
+        : rawAnalysis.identifiedRequirements,
+      suggestedTechStack: typeof rawAnalysis.suggestedTechStack === 'string' 
+        ? JSON.parse(rawAnalysis.suggestedTechStack) 
+        : rawAnalysis.suggestedTechStack,
+      missingInformation: typeof rawAnalysis.missingInformation === 'string' 
+        ? JSON.parse(rawAnalysis.missingInformation) 
+        : rawAnalysis.missingInformation,
+      nextSteps: typeof rawAnalysis.nextSteps === 'string' 
+        ? JSON.parse(rawAnalysis.nextSteps) 
+        : rawAnalysis.nextSteps
+    };
+  }, [rawAnalysis]);
+
+  // Return default data if real data is loading or unavailable
   // This ensures the UI can render immediately
   const defaultProject: ProjectInfo = {
     id: projectId,
@@ -71,7 +104,7 @@ export const useProject = (projectId: number) => {
   return {
     project: project || defaultProject,
     analysis: analysis || defaultAnalysis,
-    architecture: architecture || defaultArchitecture,
+    architecture: rawArchitecture || defaultArchitecture,
     isLoading: isProjectLoading || isAnalysisLoading || isArchitectureLoading,
     error: projectError || analysisError || architectureError,
   };

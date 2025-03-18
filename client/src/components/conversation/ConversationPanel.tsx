@@ -59,7 +59,7 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
       <div className="px-4 py-4 h-96 overflow-y-auto">
         {/* Message Thread */}
         <div className="space-y-4">
-          {conversation.messages.map((msg, idx) => (
+          {Array.isArray(conversation.messages) ? conversation.messages.map((msg, idx) => (
             <div key={idx} className="flex items-start">
               <div className="flex-shrink-0">
                 <span className={`inline-flex h-8 w-8 rounded-full ${
@@ -86,7 +86,7 @@ const ConversationPanel: React.FC<ConversationPanelProps> = ({
                 <div className="mt-1 text-xs text-gray-500">{formatTime(msg.timestamp)}</div>
               </div>
             </div>
-          ))}
+          )) : null}
           <div ref={messagesEndRef} />
         </div>
       </div>

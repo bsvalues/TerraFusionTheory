@@ -26,7 +26,7 @@ const ProjectInfoCard: React.FC<ProjectInfoCardProps> = ({ project }) => {
           <div className="sm:col-span-3">
             <label className="block text-sm font-medium text-gray-700">Technology Stack</label>
             <div className="mt-1 text-sm text-gray-900">
-              {project.technologyStack.map((tech, index) => (
+              {Array.isArray(project.technologyStack) ? project.technologyStack.map((tech, index) => (
                 <Badge
                   key={index}
                   variant={
@@ -39,7 +39,7 @@ const ProjectInfoCard: React.FC<ProjectInfoCardProps> = ({ project }) => {
                 >
                   {tech}
                 </Badge>
-              ))}
+              )) : null}
             </div>
           </div>
           <div className="sm:col-span-3">
