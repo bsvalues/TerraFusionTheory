@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
-import { X, RefreshCw, AlertTriangle, Terminal, ChevronDown, ChevronUp, MessageSquare } from 'lucide-react';
+import { X, RefreshCw, AlertTriangle, Terminal, ChevronDown, ChevronUp, MessageSquare, CheckCircle, Activity } from 'lucide-react';
 import { useErrors, ErrorSource } from '@/hooks/useErrors';
-import { apiRequest } from '@/lib/queryClient';
+import { useFeedback } from '@/hooks/useFeedback';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 const ErrorDashboard: React.FC = () => {
   const { errors, clearErrors } = useErrors();
@@ -19,11 +20,13 @@ const ErrorDashboard: React.FC = () => {
     ? errors 
     : errors.filter(error => error.source === filter);
 
+  const { submitFeedback, feedbackItems, markAsResolved, refresh: refreshFeedback } = useFeedback();
+
   const handleSubmitFeedback = async () => {
     if (feedback.trim()) {
       try {
-        // Send feedback to the server
-        await apiRequest('POST', '/api/feedback', { message: feedback, timestamp: new Date().toISOString() });
+        // Send feedback using the hook
+        await submitFeedback(feedback);
         
         setFeedbackSubmitted(true);
         setTimeout(() => {

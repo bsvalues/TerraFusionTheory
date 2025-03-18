@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, ReactNode, useEffect } from 'react';
 import { FeedbackItem } from '@shared/schema';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
@@ -24,8 +24,8 @@ export const FeedbackProvider: React.FC<{ children: ReactNode }> = ({ children }
     setLoading(true);
     setError(null);
     try {
-      const response = await apiRequest<FeedbackItem[]>('/api/feedback', { method: 'GET' });
-      setFeedbackItems(response);
+      const data = await apiRequest<FeedbackItem[]>('/api/feedback', { method: 'GET' });
+      setFeedbackItems(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to fetch feedback';
       setError(errorMessage);
@@ -48,11 +48,11 @@ export const FeedbackProvider: React.FC<{ children: ReactNode }> = ({ children }
     setLoading(true);
     setError(null);
     try {
-      const response = await apiRequest<FeedbackItem>('/api/feedback', {
+      const data = await apiRequest<FeedbackItem>('/api/feedback', {
         method: 'POST',
-        body: JSON.stringify({ message }),
+        body: JSON.stringify({ message })
       });
-      setFeedbackItems((prev) => [...prev, response]);
+      setFeedbackItems((prev) => [...prev, data]);
       toast({
         title: 'Feedback Submitted',
         description: 'Your feedback has been recorded successfully',
@@ -74,13 +74,13 @@ export const FeedbackProvider: React.FC<{ children: ReactNode }> = ({ children }
     setLoading(true);
     setError(null);
     try {
-      const response = await apiRequest<FeedbackItem>(`/api/feedback/${id}`, {
+      const data = await apiRequest<FeedbackItem>(`/api/feedback/${id}`, {
         method: 'PATCH',
         body: JSON.stringify({ resolved: true }),
       });
       
       setFeedbackItems((prev) => 
-        prev.map((item) => (item.id === id ? response : item))
+        prev.map((item) => (item.id === id ? data : item))
       );
       
       toast({
