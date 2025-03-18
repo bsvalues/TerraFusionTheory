@@ -10,22 +10,22 @@ export class AppError extends Error {
 
   constructor(
     message: string,
-    statusCode = 500,
-    errorCode = 'INTERNAL_ERROR',
-    isOperational = true,
+    statusCode: number = 500,
+    errorCode: string = 'INTERNAL_SERVER_ERROR',
+    isOperational: boolean = true,
     context?: Record<string, any>
   ) {
     super(message);
+    this.name = this.constructor.name;
     this.statusCode = statusCode;
-    this.isOperational = isOperational; // Indicates if this is an operational error that we anticipated
+    this.isOperational = isOperational;
     this.errorCode = errorCode;
     this.context = context;
     
-    // Capture stack trace
-    Error.captureStackTrace(this, this.constructor);
-    
-    // Set prototype explicitly for proper instanceof checks
-    Object.setPrototypeOf(this, AppError.prototype);
+    // Capture stack trace (only available in V8 engines)
+    if (Error.captureStackTrace) {
+      Error.captureStackTrace(this, this.constructor);
+    }
   }
 }
 
@@ -34,15 +34,7 @@ export class AppError extends Error {
  */
 export class ValidationError extends AppError {
   constructor(message: string, context?: Record<string, any>) {
-    super(
-      message,
-      400,
-      'VALIDATION_ERROR',
-      true,
-      context
-    );
-    
-    Object.setPrototypeOf(this, ValidationError.prototype);
+    super(message, 400, 'VALIDATION_ERROR', true, context);
   }
 }
 
@@ -51,14 +43,7 @@ export class ValidationError extends AppError {
  */
 export class AuthenticationError extends AppError {
   constructor(message: string = 'Unauthorized access') {
-    super(
-      message,
-      401,
-      'AUTHENTICATION_ERROR',
-      true
-    );
-    
-    Object.setPrototypeOf(this, AuthenticationError.prototype);
+    super(message, 401, 'AUTHENTICATION_ERROR', true);
   }
 }
 
@@ -67,14 +52,7 @@ export class AuthenticationError extends AppError {
  */
 export class AuthorizationError extends AppError {
   constructor(message: string = 'Forbidden access') {
-    super(
-      message,
-      403,
-      'AUTHORIZATION_ERROR',
-      true
-    );
-    
-    Object.setPrototypeOf(this, AuthorizationError.prototype);
+    super(message, 403, 'AUTHORIZATION_ERROR', true);
   }
 }
 
@@ -83,22 +61,10 @@ export class AuthorizationError extends AppError {
  */
 export class NotFoundError extends AppError {
   constructor(
-    resource: string = 'Resource',
-    id?: string | number
+    message: string = 'Resource not found',
+    context?: Record<string, any>
   ) {
-    const message = id 
-      ? `${resource} with ID ${id} not found`
-      : `${resource} not found`;
-      
-    super(
-      message,
-      404,
-      'NOT_FOUND_ERROR',
-      true,
-      { resource, id }
-    );
-    
-    Object.setPrototypeOf(this, NotFoundError.prototype);
+    super(message, 404, 'NOT_FOUND_ERROR', true, context);
   }
 }
 
@@ -107,19 +73,10 @@ export class NotFoundError extends AppError {
  */
 export class ExternalServiceError extends AppError {
   constructor(
-    service: string,
-    message: string = 'External service error',
+    message: string,
     context?: Record<string, any>
   ) {
-    super(
-      message,
-      502,
-      'EXTERNAL_SERVICE_ERROR',
-      true,
-      { ...context, service }
-    );
-    
-    Object.setPrototypeOf(this, ExternalServiceError.prototype);
+    super(message, 502, 'EXTERNAL_SERVICE_ERROR', true, context);
   }
 }
 
@@ -128,13 +85,7 @@ export class ExternalServiceError extends AppError {
  */
 export class OpenAIServiceError extends ExternalServiceError {
   constructor(message: string, context?: Record<string, any>) {
-    super(
-      'OpenAI',
-      message,
-      context
-    );
-    
-    Object.setPrototypeOf(this, OpenAIServiceError.prototype);
+    super(message, { service: 'OpenAI', ...context });
   }
 }
 
@@ -143,15 +94,7 @@ export class OpenAIServiceError extends ExternalServiceError {
  */
 export class DatabaseError extends AppError {
   constructor(message: string, context?: Record<string, any>) {
-    super(
-      message,
-      500,
-      'DATABASE_ERROR',
-      true,
-      context
-    );
-    
-    Object.setPrototypeOf(this, DatabaseError.prototype);
+    super(message, 500, 'DATABASE_ERROR', true, context);
   }
 }
 
@@ -168,10 +111,8 @@ export class RateLimitError extends AppError {
       429,
       'RATE_LIMIT_ERROR',
       true,
-      { retryAfter }
+      retryAfter ? { retryAfter } : undefined
     );
-    
-    Object.setPrototypeOf(this, RateLimitError.prototype);
   }
 }
 
@@ -180,22 +121,10 @@ export class RateLimitError extends AppError {
  */
 export class TimeoutError extends AppError {
   constructor(
-    operation: string = 'Operation',
-    timeout?: number
+    message: string = 'Request timed out',
+    context?: Record<string, any>
   ) {
-    const message = timeout 
-      ? `${operation} timed out after ${timeout}ms`
-      : `${operation} timed out`;
-      
-    super(
-      message,
-      504,
-      'TIMEOUT_ERROR',
-      true,
-      { operation, timeout }
-    );
-    
-    Object.setPrototypeOf(this, TimeoutError.prototype);
+    super(message, 504, 'TIMEOUT_ERROR', true, context);
   }
 }
 
@@ -214,27 +143,39 @@ export function toAppError(error: any): AppError {
     return error;
   }
   
-  // Handle axios errors
-  if (error?.isAxiosError) {
-    const statusCode = error.response?.status || 500;
-    const message = error.response?.data?.message || error.message || 'External service error';
-    return new ExternalServiceError(
-      error.config?.url || 'Unknown',
+  // Handle native Error objects
+  if (error instanceof Error) {
+    // Check for common error types and convert accordingly
+    const message = error.message || 'Unknown error occurred';
+    
+    if (error.name === 'SyntaxError') {
+      return new ValidationError(`Syntax error: ${message}`, { originalError: error });
+    }
+    
+    if (error.name === 'TypeError') {
+      return new AppError(`Type error: ${message}`, 500, 'TYPE_ERROR', false, { originalError: error });
+    }
+    
+    // If the error has a status code (like from libraries like axios)
+    const statusCode = (error as any).statusCode || (error as any).status || 500;
+    
+    return new AppError(
       message,
-      {
-        status: statusCode,
-        data: error.response?.data,
-        headers: error.response?.headers
-      }
+      statusCode,
+      `UNCATEGORIZED_ERROR`,
+      statusCode < 500, // Assume client errors are operational
+      { originalError: error }
     );
   }
   
-  // Handle standard errors
+  // For non-Error objects
+  const message = typeof error === 'string' ? error : 'Unknown error occurred';
+  
   return new AppError(
-    error?.message || 'Unknown error occurred',
+    message,
     500,
-    'INTERNAL_ERROR',
-    false, // Non-operational since we didn't anticipate it
-    { originalError: error }
+    'UNKNOWN_ERROR',
+    false,
+    typeof error === 'object' ? { originalError: error } : undefined
   );
 }

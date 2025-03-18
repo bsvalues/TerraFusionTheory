@@ -2,6 +2,8 @@ import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import * as openaiController from "./controllers/openai.controller";
+import * as aiController from "./controllers/ai.controller";
+import { asyncHandler } from "./middleware/errorHandler";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // API routes - prefix all routes with /api
@@ -163,8 +165,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const updatedFeedback = await storage.updateFeedbackStatus(id, resolved);
       res.json(updatedFeedback);
-    } catch (error) {
-      if (error.message && error.message.includes("not found")) {
+    } catch (error: unknown) {
+      if (error instanceof Error && error.message.includes("not found")) {
         return res.status(404).json({ error: error.message });
       }
       res.status(500).json({ error: "Failed to update feedback status" });
@@ -265,12 +267,31 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
   
-  // AI routes
-  app.post("/api/ai/message", openaiController.handleMessage);
-  app.post("/api/ai/analyze", openaiController.analyzeRequirements);
-  app.post("/api/ai/generate-code", openaiController.generateCode);
-  app.post("/api/ai/debug", openaiController.debugCode);
-  app.post("/api/ai/documentation", openaiController.generateDocumentation);
+  // Legacy OpenAI routes (kept for backward compatibility)
+  app.post("/api/ai/message", asyncHandler(async (req, res) => openaiController.handleMessage(req, res)));
+  app.post("/api/ai/analyze", asyncHandler(async (req, res) => openaiController.analyzeRequirements(req, res)));
+  app.post("/api/ai/generate-code", asyncHandler(async (req, res) => openaiController.generateCode(req, res)));
+  app.post("/api/ai/debug", asyncHandler(async (req, res) => openaiController.debugCode(req, res)));
+  app.post("/api/ai/documentation", asyncHandler(async (req, res) => openaiController.generateDocumentation(req, res)));
+  
+  // Enhanced multi-provider AI routes
+  app.post("/api/v2/ai/message", aiController.handleMessage);
+  app.post("/api/v2/ai/analyze", aiController.analyzeRequirements);
+  app.post("/api/v2/ai/architecture", aiController.generateArchitecture);
+  app.post("/api/v2/ai/code", aiController.generateCode);
+  app.post("/api/v2/ai/debug", aiController.debugCode);
+  app.post("/api/v2/ai/documentation", aiController.generateDocumentation);
+  app.get("/api/v2/ai/providers", aiController.getProviders);
+  
+  // Update the project messages route to use the new AI controller
+  app.post("/api/v2/projects/:id/messages", async (req, res, next) => {
+    const projectId = parseInt(req.params.id);
+    const { message, provider } = req.body;
+    
+    // Forward to the message handler in the new AI controller
+    req.body.projectId = projectId;
+    return aiController.handleMessage(req, res, next);
+  });
 
   const httpServer = createServer(app);
 
