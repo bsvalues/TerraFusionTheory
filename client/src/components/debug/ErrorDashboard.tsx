@@ -4,6 +4,7 @@ import { useErrors, ErrorSource } from '@/hooks/useErrors';
 import { useFeedback } from '@/hooks/useFeedback';
 import { LoggingDashboard } from '@/components/logging/LoggingDashboard';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import LogTester from '@/components/debug/LogTester';
 
 const ErrorDashboard: React.FC = () => {
   const { errors, clearErrors } = useErrors();
@@ -272,7 +273,14 @@ const ErrorDashboard: React.FC = () => {
           {/* Logs Tab */}
           <TabsContent value="logs" className="flex-1 flex flex-col overflow-hidden">
             <div className="px-4 py-2 overflow-auto">
-              <LoggingDashboard />
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2">
+                  <LoggingDashboard />
+                </div>
+                <div className="lg:col-span-1">
+                  <LogTester />
+                </div>
+              </div>
             </div>
           </TabsContent>
         </Tabs>
