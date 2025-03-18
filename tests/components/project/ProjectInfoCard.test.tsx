@@ -1,4 +1,5 @@
-import { screen, render } from '@testing-library/react';
+import React from 'react';
+import { screen, render } from '../../../tests/utils/test-utils';
 import ProjectInfoCard from '@/components/project/ProjectInfoCard';
 import { ProjectInfo } from '@/types';
 

@@ -1,6 +1,8 @@
-import React, { ReactElement } from 'react';
+import React, { ReactElement, ReactNode } from 'react';
 import { render, RenderOptions } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { ErrorProvider } from '@/hooks/useErrors';
+import { FeedbackProvider } from '@/hooks/useFeedback';
 
 // Create a custom query client for testing
 const createTestQueryClient = () => new QueryClient({
@@ -10,12 +12,28 @@ const createTestQueryClient = () => new QueryClient({
       gcTime: 0,
     },
   },
+  // Using a more compatible logger configuration for Jest
   logger: {
     log: console.log,
     warn: console.warn,
-    error: () => {},
+    error: console.error,
   },
 });
+
+// All-in-one wrapper with all providers needed for testing
+export function AllTheProviders({ children }: { children: ReactNode }) {
+  const testQueryClient = createTestQueryClient();
+  
+  return (
+    <QueryClientProvider client={testQueryClient}>
+      <ErrorProvider>
+        <FeedbackProvider>
+          {children}
+        </FeedbackProvider>
+      </ErrorProvider>
+    </QueryClientProvider>
+  );
+}
 
 // Wrapper with QueryClientProvider for testing components that use react-query
 export function renderWithQueryClient(
@@ -23,7 +41,7 @@ export function renderWithQueryClient(
   options?: Omit<RenderOptions, 'wrapper'>,
 ) {
   const testQueryClient = createTestQueryClient();
-  const wrapper = ({ children }: { children: React.ReactNode }) => (
+  const wrapper = ({ children }: { children: ReactNode }) => (
     <QueryClientProvider client={testQueryClient}>
       {children}
     </QueryClientProvider>
@@ -35,16 +53,22 @@ export function renderWithQueryClient(
   };
 }
 
-// Mock the useToast hook
-jest.mock('@/hooks/use-toast', () => ({
-  useToast: () => ({
-    toast: jest.fn(),
-  }),
-}));
+// Render with all providers
+export function renderWithAllProviders(
+  ui: ReactElement,
+  options?: Omit<RenderOptions, 'wrapper'>,
+) {
+  return {
+    ...render(ui, { wrapper: AllTheProviders, ...options }),
+  };
+}
 
-// Mock the API request function
-jest.mock('@/lib/queryClient', () => ({
-  apiRequest: jest.fn(),
-  getQueryFn: jest.fn(),
-  queryClient: createTestQueryClient(),
-}));
+// Export a customized render method with all providers
+export const customRender = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) =>
+  render(ui, { wrapper: AllTheProviders, ...options });
+
+// Re-export everything from testing-library
+export * from '@testing-library/react';
+
+// Override the render method
+export { customRender as render };
