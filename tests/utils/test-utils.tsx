@@ -1,74 +1,72 @@
-import React, { ReactElement, ReactNode } from 'react';
-import { render, RenderOptions } from '@testing-library/react';
+import React, { ReactNode } from 'react';
+import { render, RenderOptions, RenderResult } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { ErrorProvider } from '@/hooks/useErrors';
 import { FeedbackProvider } from '@/hooks/useFeedback';
 
-// Create a custom query client for testing
-const createTestQueryClient = () => new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-      gcTime: 0,
+// Create a custom QueryClient for testing
+export function createTestQueryClient() {
+  return new QueryClient({
+    defaultOptions: {
+      queries: {
+        retry: false,
+        cacheTime: 0,
+      },
+      mutations: {
+        retry: false,
+      },
     },
-  },
-  // Using a more compatible logger configuration for Jest
-  logger: {
-    log: console.log,
-    warn: console.warn,
-    error: console.error,
-  },
-});
-
-// All-in-one wrapper with all providers needed for testing
-export function AllTheProviders({ children }: { children: ReactNode }) {
-  const testQueryClient = createTestQueryClient();
-  
-  return (
-    <QueryClientProvider client={testQueryClient}>
-      <ErrorProvider>
-        <FeedbackProvider>
-          {children}
-        </FeedbackProvider>
-      </ErrorProvider>
-    </QueryClientProvider>
-  );
+    logger: {
+      log: console.log,
+      warn: console.warn,
+      error: () => {},
+    },
+  });
 }
 
-// Wrapper with QueryClientProvider for testing components that use react-query
+// Wrapper with QueryClientProvider
 export function renderWithQueryClient(
-  ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>,
-) {
-  const testQueryClient = createTestQueryClient();
+  ui: React.ReactElement,
+  client?: QueryClient,
+): RenderResult {
+  const queryClient = client ?? createTestQueryClient();
+  
   const wrapper = ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={testQueryClient}>
+    <QueryClientProvider client={queryClient}>
       {children}
     </QueryClientProvider>
   );
-
-  return {
-    ...render(ui, { wrapper, ...options }),
-    queryClient: testQueryClient,
-  };
+  
+  return render(ui, { wrapper });
 }
 
-// Render with all providers
+// Wrapper with all providers
 export function renderWithAllProviders(
-  ui: ReactElement,
-  options?: Omit<RenderOptions, 'wrapper'>,
-) {
-  return {
-    ...render(ui, { wrapper: AllTheProviders, ...options }),
+  ui: React.ReactElement,
+  client?: QueryClient,
+): RenderResult {
+  const queryClient = client ?? createTestQueryClient();
+  
+  const AllTheProviders = ({ children }: { children: ReactNode }) => {
+    return (
+      <QueryClientProvider client={queryClient}>
+        <ErrorProvider>
+          <FeedbackProvider>
+            {children}
+          </FeedbackProvider>
+        </ErrorProvider>
+      </QueryClientProvider>
+    );
   };
+  
+  return render(ui, { wrapper: AllTheProviders });
 }
-
-// Export a customized render method with all providers
-export const customRender = (ui: ReactElement, options?: Omit<RenderOptions, 'wrapper'>) =>
-  render(ui, { wrapper: AllTheProviders, ...options });
 
 // Re-export everything from testing-library
 export * from '@testing-library/react';
 
-// Override the render method
+// Override render method
+export const customRender = (ui: React.ReactElement, options?: Omit<RenderOptions, 'wrapper'>) =>
+  render(ui, { ...options });
+
 export { customRender as render };
