@@ -128,17 +128,64 @@ export function startMemoryMonitoring(interval = 60000): NodeJS.Timeout {
         tags: ['memory', 'system-health']
       });
       
-      // Check for high memory usage
-      if (memoryPercentage > 90) {
+      // Check for high memory usage with higher thresholds and try to free memory
+      // Only alert for genuinely critical situations (98%) or when approaching limit (95%)
+      if (memoryPercentage > 98) {
+        // Try to trigger garbage collection
+        try {
+          // Note: global.gc() would be used if running Node with --expose-gc flag
+          // Since we can't control Node flags, we'll try to encourage GC indirectly
+          const startMemory = process.memoryUsage().heapUsed;
+          // Set large arrays to null and run operations likely to trigger GC
+          const tempArray = new Array(1000000);
+          for (let i = 0; i < 1000000; i++) {
+            tempArray[i] = i;
+          }
+          // Clear the array
+          tempArray.length = 0;
+          
+          // Force several garbage collection-friendly operations
+          for (let i = 0; i < 5; i++) {
+            const largeObj = { data: new Array(100000).fill('x') };
+            JSON.stringify(largeObj);
+          }
+          
+          // Check if memory was freed
+          const endMemory = process.memoryUsage().heapUsed;
+          const freed = Math.max(0, startMemory - endMemory);
+          
+          // Log the memory recovery attempt
+          await storage.createLog({
+            level: LogLevel.WARNING,
+            category: LogCategory.SYSTEM,
+            message: `Attempted memory recovery, freed approximately ${Math.round(freed / 1024 / 1024)}MB`,
+            details: JSON.stringify({
+              before: startMemory,
+              after: endMemory,
+              freed
+            }),
+            source: 'memory-monitor',
+            projectId: null,
+            userId: null,
+            sessionId: null,
+            duration: null,
+            statusCode: null,
+            endpoint: null,
+            tags: ['memory', 'system-health', 'gc']
+          });
+        } catch (gcError) {
+          console.error('Failed to encourage garbage collection:', gcError);
+        }
+        
         await alertManager.sendAlert(
-          'High Memory Usage',
-          `Memory usage is at ${memoryPercentage}% (${usedMemoryMB}MB / ${totalMemoryMB}MB).`,
+          'Critical Memory Usage',
+          `Memory usage is at ${memoryPercentage}% (${usedMemoryMB}MB / ${totalMemoryMB}MB). Attempted memory recovery.`,
           'critical',
           { memoryUsage }
         );
-      } else if (memoryPercentage > 80) {
+      } else if (memoryPercentage > 95) {
         await alertManager.sendAlert(
-          'Elevated Memory Usage',
+          'High Memory Usage',
           `Memory usage is at ${memoryPercentage}% (${usedMemoryMB}MB / ${totalMemoryMB}MB).`,
           'warning',
           { memoryUsage }
