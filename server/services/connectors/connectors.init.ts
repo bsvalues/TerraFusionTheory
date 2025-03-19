@@ -1,59 +1,65 @@
 import { connectorFactory } from './connector.factory';
+import { CAMAConnectorConfig } from './cama.connector';
+import { GISConnectorConfig } from './gis.connector';
+import { MarketDataConnectorConfig } from './market.connector';
+import { PDFConnectorConfig } from './pdf.connector';
 import { LogLevel, LogCategory } from '@shared/schema';
 import { storage } from '../../storage';
 
 /**
  * Default CAMA connector configurations
  */
-const defaultCAMAConnectors = [
-  // These would typically come from environment variables or configuration files
+const defaultCAMAConnectors: { name: string; config: CAMAConnectorConfig }[] = [
   {
     name: 'demo-cama',
-    baseUrl: process.env.DEMO_CAMA_URL || 'https://api.example.com/cama',
-    apiKey: process.env.DEMO_CAMA_KEY || 'demo-key',
-    county: 'Demo County',
-    state: 'DS',
-    timeout: 30000
+    config: {
+      baseUrl: 'https://api.example.com/cama',
+      apiKey: 'demo-key',
+      county: 'Yakima',
+      state: 'WA',
+      useAdvancedFiltering: true
+    }
   }
 ];
 
 /**
  * Default GIS connector configurations
  */
-const defaultGISConnectors = [
-  // These would typically come from environment variables or configuration files
+const defaultGISConnectors: { name: string; config: GISConnectorConfig }[] = [
   {
     name: 'demo-gis',
-    baseUrl: process.env.DEMO_GIS_URL || 'https://services7.arcgis.com/NURlY7V8UHl6XumF/arcgis/rest/services',
-    serviceType: 'arcgis' as const,
-    apiKey: process.env.DEMO_GIS_KEY || '',
-    featureUrl: 'Addresses/FeatureServer/0/query', // Using Addresses feature service with layer ID 0
-    timeout: 30000
+    config: {
+      baseUrl: 'https://api.example.com/gis',
+      apiKey: 'demo-key',
+      serviceType: 'arcgis',
+      county: 'Yakima',
+      state: 'WA'
+    }
   }
 ];
 
 /**
  * Default Market Data connector configurations
  */
-const defaultMarketConnectors = [
+const defaultMarketDataConnectors: { name: string; config: MarketDataConnectorConfig }[] = [
   {
     name: 'grandview-market',
-    dataDirectory: process.env.MARKET_DATA_DIR || './attached_assets',
-    defaultFormat: 'csv' as const,
-    fileEncoding: 'utf8',
-    timeout: 30000
+    config: {
+      dataDirectory: './attached_assets',
+      defaultFormat: 'csv'
+    }
   }
 ];
 
 /**
  * Default PDF connector configurations
  */
-const defaultPDFConnectors = [
+const defaultPDFConnectors: { name: string; config: PDFConnectorConfig }[] = [
   {
     name: 'grandview-property-docs',
-    dataDirectory: process.env.PDF_DATA_DIR || './attached_assets',
-    fileEncoding: 'utf8',
-    timeout: 30000
+    config: {
+      dataDirectory: './attached_assets'
+    }
   }
 ];
 
@@ -62,166 +68,55 @@ const defaultPDFConnectors = [
  */
 export async function initializeConnectors(): Promise<void> {
   try {
-    // Create and register CAMA connectors
-    for (const config of defaultCAMAConnectors) {
-      try {
-        // For demo purposes, we'll register the connector even with demo key
-        // But in production, you would want to skip registration if the API key is not valid
-        if (config.apiKey === 'demo-key') {
-          console.log(`Registering demo CAMA connector: ${config.name}`);
-        }
-        
-        const connector = connectorFactory.createCAMAConnector(config.name, config);
-        console.log(`Registered CAMA connector: ${connector.getName()}`);
-      } catch (error) {
-        console.error(`Failed to register CAMA connector ${config.name}:`, error);
-        await storage.createLog({
-          level: LogLevel.ERROR,
-          category: LogCategory.SYSTEM,
-          message: `Failed to register CAMA connector ${config.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          details: JSON.stringify({
-            connectorName: config.name,
-            error: error instanceof Error ? {
-              name: error.name,
-              message: error.message,
-              stack: error.stack
-            } : error
-          }),
-          source: 'connector-init',
-          projectId: null,
-          userId: null,
-          sessionId: null,
-          duration: null,
-          statusCode: null,
-          endpoint: null,
-          tags: ['connector', 'initialization', 'error', 'cama']
-        });
-      }
+    // Register CAMA connectors
+    for (const { name, config } of defaultCAMAConnectors) {
+      console.log(`Registering demo CAMA connector: ${name}`);
+      connectorFactory.createCAMAConnector(name, config);
+      console.log(`Registered CAMA connector: ${name}`);
     }
     
-    // Create and register GIS connectors
-    for (const config of defaultGISConnectors) {
-      try {
-        // For demo purposes, we'll register the connector even with demo key
-        // But in production, you would want to skip registration if the API key is not valid
-        if (config.apiKey === 'demo-key') {
-          console.log(`Registering demo GIS connector: ${config.name}`);
-        }
-        
-        const connector = connectorFactory.createGISConnector(config.name, config);
-        console.log(`Registered GIS connector: ${connector.getName()}`);
-      } catch (error) {
-        console.error(`Failed to register GIS connector ${config.name}:`, error);
-        await storage.createLog({
-          level: LogLevel.ERROR,
-          category: LogCategory.SYSTEM,
-          message: `Failed to register GIS connector ${config.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          details: JSON.stringify({
-            connectorName: config.name,
-            error: error instanceof Error ? {
-              name: error.name,
-              message: error.message,
-              stack: error.stack
-            } : error
-          }),
-          source: 'connector-init',
-          projectId: null,
-          userId: null,
-          sessionId: null,
-          duration: null,
-          statusCode: null,
-          endpoint: null,
-          tags: ['connector', 'initialization', 'error', 'gis']
-        });
-      }
+    // Register GIS connectors
+    for (const { name, config } of defaultGISConnectors) {
+      connectorFactory.createGISConnector(name, config);
+      console.log(`Registered GIS connector: ${name}`);
     }
     
-    // Create and register Market Data connectors
-    for (const config of defaultMarketConnectors) {
-      try {
-        const connector = connectorFactory.createMarketDataConnector(config.name, config);
-        console.log(`Registered Market Data connector: ${connector.getName()}`);
-      } catch (error) {
-        console.error(`Failed to register Market Data connector ${config.name}:`, error);
-        await storage.createLog({
-          level: LogLevel.ERROR,
-          category: LogCategory.SYSTEM,
-          message: `Failed to register Market Data connector ${config.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          details: JSON.stringify({
-            connectorName: config.name,
-            error: error instanceof Error ? {
-              name: error.name,
-              message: error.message,
-              stack: error.stack
-            } : error
-          }),
-          source: 'connector-init',
-          projectId: null,
-          userId: null,
-          sessionId: null,
-          duration: null,
-          statusCode: null,
-          endpoint: null,
-          tags: ['connector', 'initialization', 'error', 'market']
-        });
-      }
+    // Register Market Data connectors
+    for (const { name, config } of defaultMarketDataConnectors) {
+      connectorFactory.createMarketDataConnector(name, config);
+      console.log(`Registered Market Data connector: ${name}`);
     }
     
-    // Create and register PDF connectors
-    for (const config of defaultPDFConnectors) {
-      try {
-        const connector = connectorFactory.createPDFConnector(config.name, config);
-        console.log(`Registered PDF connector: ${connector.getName()}`);
-      } catch (error) {
-        console.error(`Failed to register PDF connector ${config.name}:`, error);
-        await storage.createLog({
-          level: LogLevel.ERROR,
-          category: LogCategory.SYSTEM,
-          message: `Failed to register PDF connector ${config.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
-          details: JSON.stringify({
-            connectorName: config.name,
-            error: error instanceof Error ? {
-              name: error.name,
-              message: error.message,
-              stack: error.stack
-            } : error
-          }),
-          source: 'connector-init',
-          projectId: null,
-          userId: null,
-          sessionId: null,
-          duration: null,
-          statusCode: null,
-          endpoint: null,
-          tags: ['connector', 'initialization', 'error', 'pdf']
-        });
-      }
+    // Register PDF connectors
+    for (const { name, config } of defaultPDFConnectors) {
+      connectorFactory.createPDFConnector(name, config);
+      console.log(`Registered PDF connector: ${name}`);
     }
     
-    // Log successful initialization
+    console.log('Connectors initialization completed');
+
     await storage.createLog({
       level: LogLevel.INFO,
       category: LogCategory.SYSTEM,
-      message: `Initialized default connectors`,
+      message: 'Connectors initialized successfully',
       details: JSON.stringify({
-        camaCount: defaultCAMAConnectors.length,
-        gisCount: defaultGISConnectors.length,
-        marketCount: defaultMarketConnectors.length,
-        pdfCount: defaultPDFConnectors.length
+        camaConnectors: defaultCAMAConnectors.map(c => c.name),
+        gisConnectors: defaultGISConnectors.map(c => c.name),
+        marketConnectors: defaultMarketDataConnectors.map(c => c.name),
+        pdfConnectors: defaultPDFConnectors.map(c => c.name)
       }),
-      source: 'connector-init',
+      source: 'connectors-init',
       projectId: null,
       userId: null,
       sessionId: null,
       duration: null,
       statusCode: null,
       endpoint: null,
-      tags: ['connector', 'initialization']
+      tags: ['initialization', 'connectors']
     });
-    
-    console.log(`Connectors initialization completed`);
   } catch (error) {
-    console.error('Failed to initialize connectors:', error);
+    console.error('Error initializing connectors:', error);
+    
     await storage.createLog({
       level: LogLevel.ERROR,
       category: LogCategory.SYSTEM,
@@ -233,14 +128,16 @@ export async function initializeConnectors(): Promise<void> {
           stack: error.stack
         } : error
       }),
-      source: 'connector-init',
+      source: 'connectors-init',
       projectId: null,
       userId: null,
       sessionId: null,
       duration: null,
       statusCode: null,
       endpoint: null,
-      tags: ['connector', 'initialization', 'error']
+      tags: ['initialization', 'connectors', 'error']
     });
+    
+    throw error;
   }
 }

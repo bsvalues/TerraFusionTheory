@@ -1,6 +1,5 @@
+import { LogLevel, LogCategory } from '@shared/schema';
 import { storage } from '../storage';
-import { LogCategory, LogLevel } from '@shared/schema';
-import { monitorOpenAIUsage, monitorApiResponseTimes, monitorErrorRates } from './monitoring.service';
 
 /**
  * Interface for a scheduled job
@@ -22,79 +21,36 @@ export class Scheduler {
   private isStarted = false;
   
   constructor() {
-    // Initialize with default monitoring jobs
-    this.addJob('OpenAI Usage Monitor', 60, monitorOpenAIUsage);
-    this.addJob('API Response Time Monitor', 5, monitorApiResponseTimes);
-    this.addJob('Error Rate Monitor', 15, monitorErrorRates);
-    
-    // Add cleanup job that runs daily to remove old logs
-    this.addJob('Log Cleanup', 1440, async () => {
-      // Keep logs for 30 days
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      try {
-        // Delete logs older than 30 days
-        const deletedCount = await storage.clearLogs({ olderThan: thirtyDaysAgo });
-        
-        // Log the cleanup
-        await storage.createLog({
-          level: LogLevel.INFO,
-          category: LogCategory.SYSTEM,
-          message: `Scheduled log cleanup completed`,
-          details: JSON.stringify({
-            deletedCount,
-            olderThan: thirtyDaysAgo.toISOString()
-          }),
-          source: 'scheduler',
-          projectId: null,
-          userId: null,
-          sessionId: null,
-          duration: null,
-          statusCode: null,
-          endpoint: null,
-          tags: ['scheduler', 'cleanup', 'logs']
-        });
-      } catch (error) {
-        // Log failure
-        await storage.createLog({
-          level: LogLevel.ERROR,
-          category: LogCategory.SYSTEM,
-          message: `Scheduled log cleanup failed`,
-          details: JSON.stringify({
-            error: error instanceof Error ? error.message : String(error),
-            stack: error instanceof Error ? error.stack : undefined
-          }),
-          source: 'scheduler',
-          projectId: null,
-          userId: null,
-          sessionId: null,
-          duration: null,
-          statusCode: null,
-          endpoint: null,
-          tags: ['scheduler', 'cleanup', 'logs', 'error']
-        });
-      }
-    });
-    
-    // Register process exit handler to clean up timers
-    process.on('exit', () => this.stop());
+    // Initialize with empty job list
   }
   
   /**
    * Add a new job to the scheduler
    */
   addJob(name: string, intervalMinutes: number, task: () => Promise<void>): void {
-    this.jobs.push({
-      name,
-      intervalMinutes,
-      task,
-      isRunning: false
-    });
+    // Check if job already exists
+    const existingJob = this.jobs.find(job => job.name === name);
     
-    // Start the job if scheduler is already running
+    if (existingJob) {
+      // Update existing job
+      existingJob.intervalMinutes = intervalMinutes;
+      existingJob.task = task;
+    } else {
+      // Add new job
+      this.jobs.push({
+        name,
+        intervalMinutes,
+        task,
+        isRunning: false
+      });
+    }
+    
+    // If scheduler is already running, start this job
     if (this.isStarted) {
-      this.startJob(this.jobs[this.jobs.length - 1]);
+      const job = this.jobs.find(j => j.name === name);
+      if (job) {
+        this.startJob(job);
+      }
     }
   }
   
@@ -108,11 +64,16 @@ export class Scheduler {
     
     this.isStarted = true;
     
+    // Start all jobs
+    for (const job of this.jobs) {
+      this.startJob(job);
+    }
+    
     // Log scheduler start
     storage.createLog({
       level: LogLevel.INFO,
       category: LogCategory.SYSTEM,
-      message: 'Task scheduler started',
+      message: `Scheduler started with ${this.jobs.length} jobs`,
       details: JSON.stringify({
         jobs: this.jobs.map(job => ({
           name: job.name,
@@ -126,11 +87,10 @@ export class Scheduler {
       duration: null,
       statusCode: null,
       endpoint: null,
-      tags: ['scheduler', 'startup']
-    }).catch(console.error);
-    
-    // Start all jobs
-    this.jobs.forEach(job => this.startJob(job));
+      tags: ['scheduler', 'start']
+    }).catch(error => {
+      console.error('Failed to log scheduler start:', error);
+    });
   }
   
   /**
@@ -142,17 +102,19 @@ export class Scheduler {
     }
     
     // Clear all timers
-    this.timers.forEach(timer => clearTimeout(timer));
-    this.timers = [];
+    for (const timer of this.timers) {
+      clearTimeout(timer);
+    }
     
+    this.timers = [];
     this.isStarted = false;
     
     // Log scheduler stop
     storage.createLog({
       level: LogLevel.INFO,
       category: LogCategory.SYSTEM,
-      message: 'Task scheduler stopped',
-      details: '',
+      message: 'Scheduler stopped',
+      details: JSON.stringify({}),
       source: 'scheduler',
       projectId: null,
       userId: null,
@@ -160,8 +122,10 @@ export class Scheduler {
       duration: null,
       statusCode: null,
       endpoint: null,
-      tags: ['scheduler', 'shutdown']
-    }).catch(console.error);
+      tags: ['scheduler', 'stop']
+    }).catch(error => {
+      console.error('Failed to log scheduler stop:', error);
+    });
   }
   
   /**
@@ -171,85 +135,40 @@ export class Scheduler {
     // Convert minutes to milliseconds
     const intervalMs = job.intervalMinutes * 60 * 1000;
     
-    const scheduleNextRun = () => {
-      const timer = setTimeout(async () => {
-        await this.runJob(job);
-        
-        // Schedule the next run if the scheduler is still running
-        if (this.isStarted) {
-          scheduleNextRun();
-        }
-      }, intervalMs);
+    // Schedule the job
+    const timer = setTimeout(async () => {
+      await this.runJob(job);
       
-      // Store the timer so we can clear it if needed
-      this.timers.push(timer);
-    };
+      // Re-schedule job after it completes
+      this.startJob(job);
+    }, intervalMs);
     
-    // Run the job immediately and then schedule next runs
-    this.runJob(job).finally(scheduleNextRun);
+    // Store the timer reference for cleanup
+    this.timers.push(timer);
   }
   
   /**
    * Run a specific job
    */
   private async runJob(job: ScheduledJob): Promise<void> {
-    // Skip if the job is already running
     if (job.isRunning) {
+      // Job is already running, skip this execution
       return;
     }
     
-    // Set running flag and update last run time
     job.isRunning = true;
-    job.lastRun = new Date();
+    const startTime = Date.now();
     
     try {
       // Log job start
       await storage.createLog({
-        level: LogLevel.DEBUG,
+        level: LogLevel.INFO,
         category: LogCategory.SYSTEM,
-        message: `Scheduled job "${job.name}" started`,
-        details: '',
-        source: 'scheduler',
-        projectId: null,
-        userId: null,
-        sessionId: null,
-        duration: null,
-        statusCode: null,
-        endpoint: null,
-        tags: ['scheduler', 'job-start', job.name.toLowerCase().replace(/[^a-z0-9]/g, '-')]
-      });
-      
-      const startTime = Date.now();
-      
-      // Run the job
-      await job.task();
-      
-      const duration = Date.now() - startTime;
-      
-      // Log job completion
-      await storage.createLog({
-        level: LogLevel.DEBUG,
-        category: LogCategory.SYSTEM,
-        message: `Scheduled job "${job.name}" completed`,
-        details: JSON.stringify({ duration }),
-        source: 'scheduler',
-        projectId: null,
-        userId: null,
-        sessionId: null,
-        duration,
-        statusCode: null,
-        endpoint: null,
-        tags: ['scheduler', 'job-complete', job.name.toLowerCase().replace(/[^a-z0-9]/g, '-')]
-      });
-    } catch (error) {
-      // Log job error
-      await storage.createLog({
-        level: LogLevel.ERROR,
-        category: LogCategory.SYSTEM,
-        message: `Scheduled job "${job.name}" failed`,
+        message: `Starting scheduled job: ${job.name}`,
         details: JSON.stringify({
-          error: error instanceof Error ? error.message : String(error),
-          stack: error instanceof Error ? error.stack : undefined
+          name: job.name,
+          intervalMinutes: job.intervalMinutes,
+          lastRun: job.lastRun?.toISOString()
         }),
         source: 'scheduler',
         projectId: null,
@@ -258,10 +177,61 @@ export class Scheduler {
         duration: null,
         statusCode: null,
         endpoint: null,
-        tags: ['scheduler', 'job-error', job.name.toLowerCase().replace(/[^a-z0-9]/g, '-')]
+        tags: ['scheduler', 'job-start', job.name]
+      });
+      
+      // Execute the job
+      await job.task();
+      
+      // Update last run time
+      job.lastRun = new Date();
+      
+      // Log job completion
+      const duration = Date.now() - startTime;
+      
+      await storage.createLog({
+        level: LogLevel.INFO,
+        category: LogCategory.SYSTEM,
+        message: `Completed scheduled job: ${job.name}`,
+        details: JSON.stringify({
+          name: job.name,
+          durationMs: duration,
+          lastRun: job.lastRun.toISOString()
+        }),
+        source: 'scheduler',
+        projectId: null,
+        userId: null,
+        sessionId: null,
+        duration,
+        statusCode: null,
+        endpoint: null,
+        tags: ['scheduler', 'job-complete', job.name]
+      });
+    } catch (error) {
+      // Log job error
+      await storage.createLog({
+        level: LogLevel.ERROR,
+        category: LogCategory.SYSTEM,
+        message: `Error in scheduled job ${job.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        details: JSON.stringify({
+          name: job.name,
+          error: error instanceof Error ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          } : error
+        }),
+        source: 'scheduler',
+        projectId: null,
+        userId: null,
+        sessionId: null,
+        duration: Date.now() - startTime,
+        statusCode: null,
+        endpoint: null,
+        tags: ['scheduler', 'job-error', job.name]
       });
     } finally {
-      // Reset running flag
+      // Mark job as not running
       job.isRunning = false;
     }
   }
@@ -277,10 +247,11 @@ export class Scheduler {
     nextRun?: Date;
   }> {
     return this.jobs.map(job => {
-      let nextRun: Date | undefined;
+      // Calculate the next run time based on the interval and last run
+      let nextRun: Date | undefined = undefined;
       
       if (job.lastRun) {
-        nextRun = new Date(job.lastRun.getTime());
+        nextRun = new Date(job.lastRun);
         nextRun.setMinutes(nextRun.getMinutes() + job.intervalMinutes);
       }
       
@@ -295,5 +266,5 @@ export class Scheduler {
   }
 }
 
-// Create a singleton instance
+// Export singleton instance
 export const scheduler = new Scheduler();

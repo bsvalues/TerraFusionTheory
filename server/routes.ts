@@ -5,9 +5,11 @@ import * as openaiController from "./controllers/openai.controller";
 import * as aiController from "./controllers/ai.controller";
 import * as connectorsController from "./controllers/connectors.controller";
 import * as marketController from "./controllers/market.controller";
+import * as analyticsController from "./controllers/analytics.controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
+import { realEstateAnalyticsService } from "./services/real-estate-analytics.service";
 
 // Track the memory monitor timer globally to allow proper cleanup
 let memoryMonitorTimer: NodeJS.Timeout | null = null;
@@ -342,6 +344,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/market/listings", asyncHandler(marketController.getMarketListings));
   app.get("/api/market/listings/:mlsNumber", asyncHandler(marketController.getMarketListingByMLS));
   app.get("/api/market/stats", asyncHandler(marketController.getMarketStats));
+
+  // Enhanced Analytics API routes
+  app.get("/api/analytics/market/:area?", asyncHandler(analyticsController.getMarketSnapshot));
+  app.get("/api/analytics/properties", asyncHandler(analyticsController.getPropertyListings));
+  app.get("/api/analytics/geojson", asyncHandler(analyticsController.getGeoJsonData));
+  app.get("/api/analytics/neighborhoods/:area?", asyncHandler(analyticsController.getNeighborhoodTrends));
+  app.get("/api/analytics/alerts", asyncHandler(analyticsController.getMarketAlerts));
+  app.get("/api/analytics/predict/:area?", asyncHandler(analyticsController.getMarketPrediction));
+  app.get("/api/analytics/spatial/:area?", asyncHandler(analyticsController.getPropertySpatialRelationships));
+  app.get("/api/analytics/documents/:fileName", asyncHandler(analyticsController.getPropertyDocument));
+  app.post("/api/analytics/refresh", asyncHandler(analyticsController.refreshAllData));
+
+  // Initialize the real estate analytics service during startup
+  try {
+    realEstateAnalyticsService.initialize().catch(error => {
+      console.error("Failed to initialize real estate analytics service:", error);
+    });
+  } catch (error) {
+    console.error("Error during real estate analytics service initialization:", error);
+  }
 
   // Alert system routes
   app.get("/api/alerts", asyncHandler(async (req, res) => {
