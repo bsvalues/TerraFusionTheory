@@ -3,9 +3,18 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import * as openaiController from "./controllers/openai.controller";
 import * as aiController from "./controllers/ai.controller";
+import * as connectorsController from "./controllers/connectors.controller";
 import { asyncHandler } from "./middleware/errorHandler";
+import { performanceLogger, startMemoryMonitoring } from "./middleware/performanceLogger";
+import { alertManager, AlertSeverity } from "./services/alert";
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Apply performance logging middleware to all routes
+  app.use(performanceLogger);
+  
+  // Start memory monitoring
+  const memoryMonitorTimer = startMemoryMonitoring(60000); // Check every minute
+  
   // API routes - prefix all routes with /api
   
   // Project routes
@@ -292,6 +301,163 @@ export async function registerRoutes(app: Express): Promise<Server> {
     req.body.projectId = projectId;
     return aiController.handleMessage(req, res, next);
   });
+  
+  // External data connectors API routes
+  app.get("/api/connectors", asyncHandler(connectorsController.getAllConnectors));
+  app.get("/api/connectors/type/:type", asyncHandler(connectorsController.getConnectorsByType));
+  app.get("/api/connectors/:name", asyncHandler(connectorsController.getConnector));
+  app.post("/api/connectors/:name/test", asyncHandler(connectorsController.testConnectorConnection));
+  app.get("/api/connectors/:name/models", asyncHandler(connectorsController.getConnectorModels));
+  app.get("/api/connectors/:name/models/:model", asyncHandler(connectorsController.getConnectorModelSchema));
+  app.post("/api/connectors/:name/query/cama", asyncHandler(connectorsController.queryCAMAData));
+  app.post("/api/connectors/:name/query/gis", asyncHandler(connectorsController.queryGISData));
+
+  // Alert system routes
+  app.get("/api/alerts", asyncHandler(async (req, res) => {
+    try {
+      const alerts = alertManager.getAlerts();
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching alerts:", error);
+      res.status(500).json({ error: "Failed to fetch alerts" });
+    }
+  }));
+
+  app.get("/api/alerts/unacknowledged", asyncHandler(async (req, res) => {
+    try {
+      const alerts = alertManager.getUnacknowledgedAlerts();
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching unacknowledged alerts:", error);
+      res.status(500).json({ error: "Failed to fetch unacknowledged alerts" });
+    }
+  }));
+
+  app.get("/api/alerts/severity/:severity", asyncHandler(async (req, res) => {
+    try {
+      const severity = req.params.severity as AlertSeverity;
+      if (!['info', 'warning', 'critical'].includes(severity)) {
+        return res.status(400).json({ error: "Invalid severity level" });
+      }
+      const alerts = alertManager.getAlertsBySeverity(severity);
+      res.json(alerts);
+    } catch (error) {
+      console.error("Error fetching alerts by severity:", error);
+      res.status(500).json({ error: "Failed to fetch alerts by severity" });
+    }
+  }));
+
+  app.post("/api/alerts", asyncHandler(async (req, res) => {
+    try {
+      const { title, message, severity, details } = req.body;
+      
+      if (!title || !message || !severity) {
+        return res.status(400).json({ error: "Title, message and severity are required" });
+      }
+      
+      if (!['info', 'warning', 'critical'].includes(severity)) {
+        return res.status(400).json({ error: "Invalid severity level" });
+      }
+      
+      const alertId = await alertManager.sendAlert(title, message, severity as AlertSeverity, details);
+      
+      res.status(201).json({ alertId });
+    } catch (error) {
+      console.error("Error creating alert:", error);
+      res.status(500).json({ error: "Failed to create alert" });
+    }
+  }));
+
+  app.patch("/api/alerts/:id/acknowledge", asyncHandler(async (req, res) => {
+    try {
+      const alertId = req.params.id;
+      const acknowledged = alertManager.acknowledgeAlert(alertId);
+      
+      if (!acknowledged) {
+        return res.status(404).json({ error: "Alert not found" });
+      }
+      
+      res.json({ acknowledged: true });
+    } catch (error) {
+      console.error("Error acknowledging alert:", error);
+      res.status(500).json({ error: "Failed to acknowledge alert" });
+    }
+  }));
+
+  app.delete("/api/alerts/acknowledged", asyncHandler(async (req, res) => {
+    try {
+      alertManager.clearAcknowledgedAlerts();
+      res.status(204).send();
+    } catch (error) {
+      console.error("Error clearing acknowledged alerts:", error);
+      res.status(500).json({ error: "Failed to clear acknowledged alerts" });
+    }
+  }));
+
+  app.get("/api/alerts/channels", asyncHandler(async (req, res) => {
+    try {
+      const channels = alertManager.getChannels().map(channel => ({
+        name: channel.name(),
+        enabled: channel.isEnabled()
+      }));
+      
+      res.json(channels);
+    } catch (error) {
+      console.error("Error fetching alert channels:", error);
+      res.status(500).json({ error: "Failed to fetch alert channels" });
+    }
+  }));
+
+  app.patch("/api/alerts/channels/:name", asyncHandler(async (req, res) => {
+    try {
+      const { enabled } = req.body;
+      const channelName = req.params.name;
+      
+      if (enabled === undefined) {
+        return res.status(400).json({ error: "Enabled status is required" });
+      }
+      
+      if (enabled) {
+        alertManager.enableChannel(channelName);
+      } else {
+        alertManager.disableChannel(channelName);
+      }
+      
+      res.json({ 
+        name: channelName, 
+        enabled: alertManager.getChannel(channelName)?.isEnabled() || false 
+      });
+    } catch (error) {
+      console.error("Error updating alert channel:", error);
+      res.status(500).json({ error: "Failed to update alert channel" });
+    }
+  }));
+
+  // System monitoring test endpoint
+  app.post("/api/system/test-alert", asyncHandler(async (req, res) => {
+    try {
+      const { severity = 'info' } = req.body;
+      
+      if (!['info', 'warning', 'critical'].includes(severity)) {
+        return res.status(400).json({ error: "Invalid severity level" });
+      }
+      
+      const alertId = await alertManager.sendAlert(
+        "Test Alert",
+        `This is a test ${severity} alert triggered manually.`,
+        severity as AlertSeverity,
+        { source: "manual-test", timestamp: new Date().toISOString() }
+      );
+      
+      res.status(201).json({ 
+        message: "Test alert sent successfully", 
+        alertId 
+      });
+    } catch (error) {
+      console.error("Error sending test alert:", error);
+      res.status(500).json({ error: "Failed to send test alert" });
+    }
+  }));
 
   const httpServer = createServer(app);
 

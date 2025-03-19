@@ -6,6 +6,7 @@ import { errorHandler, notFoundHandler, asyncHandler } from "./middleware/errorH
 import { storage } from "./storage";
 import { LogCategory, LogLevel } from "@shared/schema";
 import { scheduler } from "./services/scheduler.service";
+import { initializeConnectors } from "./services/connectors";
 
 // Declare session data type
 declare module 'express-session' {
@@ -140,6 +141,11 @@ app.use((req, res, next) => {
       scheduler.start();
       
       log('Background task scheduler started');
+      
+      // Initialize default connectors
+      initializeConnectors()
+        .then(() => log('Default connectors initialized'))
+        .catch(err => console.error('Failed to initialize connectors:', err));
     });
     
     // Handle graceful shutdown
