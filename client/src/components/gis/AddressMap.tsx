@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
-import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import { MapContainer, TileLayer, Marker, Popup, Circle, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 
@@ -53,6 +53,9 @@ const AddressMap: React.FC = () => {
     parseFloat(searchParams.latitude), 
     parseFloat(searchParams.longitude)
   ]);
+  
+  // Track the selected address for highlighting on map
+  const [selectedAddressId, setSelectedAddressId] = useState<number | string | null>(null);
   
   // Fix for missing Leaflet icon
   useEffect(() => {
@@ -133,6 +136,20 @@ const AddressMap: React.FC = () => {
       description: error.message,
       variant: 'destructive'
     });
+  };
+  
+  // Reset the selected address and refocus the map to the search center
+  const resetSelection = () => {
+    setSelectedAddressId(null);
+  };
+  
+  // Focus map on selected address
+  const focusOnAddress = (feature: any) => {
+    if (feature.geometry && feature.geometry.x && feature.geometry.y) {
+      const featureId = feature.id || feature.attributes.OBJECTID;
+      setSelectedAddressId(featureId);
+      setMapCenter([feature.geometry.y, feature.geometry.x]);
+    }
   };
 
   return (
@@ -277,13 +294,38 @@ const AddressMap: React.FC = () => {
                 />
                 <MapCenterUpdater center={[parseFloat(searchParams.latitude), parseFloat(searchParams.longitude)]} />
                 
+                {/* Display search radius circle for point queries */}
+                {searchParams.queryType === 'point' && (
+                  <Circle 
+                    center={[parseFloat(searchParams.latitude), parseFloat(searchParams.longitude)]}
+                    radius={parseInt(searchParams.distance)}
+                    pathOptions={{ color: 'blue', fillColor: 'blue', fillOpacity: 0.1 }}
+                  />
+                )}
+                
                 {data && data.features && data.features.map((feature: any) => {
                   // Check if geometry contains valid coordinates
                   if (feature.geometry && feature.geometry.x && feature.geometry.y) {
+                    const featureId = feature.id || feature.attributes.OBJECTID;
+                    const isSelected = selectedAddressId === featureId;
+                    
                     return (
                       <Marker 
-                        key={feature.id || feature.attributes.OBJECTID}
+                        key={featureId}
                         position={[feature.geometry.y, feature.geometry.x]}
+                        icon={isSelected 
+                          ? new L.Icon({
+                              iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+                              iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+                              shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png',
+                              iconSize: [25, 41],
+                              iconAnchor: [12, 41],
+                              popupAnchor: [1, -34],
+                              shadowSize: [41, 41],
+                              className: 'selected-marker' // We'll add a CSS class for visual indication
+                            })
+                          : undefined
+                        }
                       >
                         <Popup>
                           <div>
@@ -309,28 +351,47 @@ const AddressMap: React.FC = () => {
 
         {data && (
           <Card className="w-full shadow-md">
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle>Results ({data.features?.length || 0} addresses found)</CardTitle>
+              {selectedAddressId && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={resetSelection}
+                  className="h-8 px-2"
+                >
+                  Clear Selection
+                </Button>
+              )}
             </CardHeader>
             <CardContent>
               <ScrollArea className="h-[200px] rounded-md border p-4">
                 {data.features?.length > 0 ? (
                   <ul className="space-y-4">
-                    {data.features.map((feature: any) => (
-                      <li key={feature.id || feature.attributes.OBJECTID} className="p-3 bg-gray-50 rounded-md">
-                        <p className="font-medium">
-                          {feature.properties?.Address || feature.attributes?.Address || 'Unnamed Address'}
-                        </p>
-                        <p className="text-sm text-gray-600">
-                          {feature.properties?.City || feature.attributes?.City}{', '}
-                          {feature.properties?.State || feature.attributes?.State}{' '}
-                          {feature.properties?.ZIP || feature.attributes?.ZIP}
-                        </p>
-                        <p className="text-xs text-gray-500 mt-1">
-                          Coordinates: {feature.geometry?.x || 'N/A'}, {feature.geometry?.y || 'N/A'}
-                        </p>
-                      </li>
-                    ))}
+                    {data.features.map((feature: any) => {
+                      const featureId = feature.id || feature.attributes.OBJECTID;
+                      const isSelected = selectedAddressId === featureId;
+                      
+                      return (
+                        <li 
+                          key={featureId} 
+                          className={`p-3 ${isSelected ? 'bg-blue-50 border-blue-300 border' : 'bg-gray-50'} rounded-md hover:bg-blue-50 cursor-pointer transition-colors`}
+                          onClick={() => focusOnAddress(feature)}
+                        >
+                          <p className="font-medium">
+                            {feature.properties?.Address || feature.attributes?.Address || 'Unnamed Address'}
+                          </p>
+                          <p className="text-sm text-gray-600">
+                            {feature.properties?.City || feature.attributes?.City}{', '}
+                            {feature.properties?.State || feature.attributes?.State}{' '}
+                            {feature.properties?.ZIP || feature.attributes?.ZIP}
+                          </p>
+                          <p className="text-xs text-gray-500 mt-1">
+                            Coordinates: {feature.geometry?.x || 'N/A'}, {feature.geometry?.y || 'N/A'}
+                          </p>
+                        </li>
+                      );
+                    })}
                   </ul>
                 ) : (
                   <p className="text-gray-500 text-center py-6">No addresses found. Try adjusting your search parameters.</p>
