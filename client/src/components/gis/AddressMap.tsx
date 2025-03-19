@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -7,6 +7,9 @@ import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
+import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
 
 interface Address {
   attributes: {
@@ -23,6 +26,15 @@ interface Address {
   };
 }
 
+// Component to update map center when coordinates change
+function MapCenterUpdater({ center }: { center: [number, number] }) {
+  const map = useMap();
+  useEffect(() => {
+    map.setView(center, map.getZoom());
+  }, [center, map]);
+  return null;
+}
+
 const AddressMap: React.FC = () => {
   const { toast } = useToast();
   const [searchParams, setSearchParams] = useState({
@@ -36,10 +48,38 @@ const AddressMap: React.FC = () => {
     maxY: '30.27',
     limit: '10'
   });
+  
+  const [mapCenter, setMapCenter] = useState<[number, number]>([
+    parseFloat(searchParams.latitude), 
+    parseFloat(searchParams.longitude)
+  ]);
+  
+  // Fix for missing Leaflet icon
+  useEffect(() => {
+    // Fix icon issues with webpack
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon-2x.png',
+      iconUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-icon.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png'
+    });
+  }, []);
 
   const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
     setSearchParams(prev => ({ ...prev, [name]: value }));
+    
+    // Update map center if lat/lon changes
+    if (name === 'latitude' || name === 'longitude') {
+      const newCenter: [number, number] = [
+        name === 'latitude' ? parseFloat(value) : parseFloat(searchParams.latitude),
+        name === 'longitude' ? parseFloat(value) : parseFloat(searchParams.longitude)
+      ];
+      if (!isNaN(newCenter[0]) && !isNaN(newCenter[1])) {
+        setMapCenter(newCenter);
+      }
+    }
   };
 
   const getQueryParams = () => {
@@ -96,156 +136,211 @@ const AddressMap: React.FC = () => {
   };
 
   return (
-    <Card className="w-full shadow-md">
-      <CardHeader>
-        <CardTitle>Address Search</CardTitle>
-      </CardHeader>
-      <CardContent>
-        <Tabs defaultValue="point" onValueChange={(value) => setSearchParams(prev => ({ ...prev, queryType: value }))}>
-          <TabsList className="grid w-full grid-cols-2">
-            <TabsTrigger value="point">Point &amp; Distance</TabsTrigger>
-            <TabsTrigger value="bbox">Bounding Box</TabsTrigger>
-          </TabsList>
-          
-          <TabsContent value="point" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="longitude">Longitude</Label>
-                <Input
-                  id="longitude"
-                  name="longitude"
-                  value={searchParams.longitude}
-                  onChange={handleInputChange}
-                  placeholder="-97.7431"
-                />
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card className="w-full shadow-md">
+        <CardHeader>
+          <CardTitle>Address Search</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Tabs defaultValue="point" onValueChange={(value) => setSearchParams(prev => ({ ...prev, queryType: value }))}>
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="point">Point &amp; Distance</TabsTrigger>
+              <TabsTrigger value="bbox">Bounding Box</TabsTrigger>
+            </TabsList>
+            
+            <TabsContent value="point" className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="longitude">Longitude</Label>
+                  <Input
+                    id="longitude"
+                    name="longitude"
+                    value={searchParams.longitude}
+                    onChange={handleInputChange}
+                    placeholder="-97.7431"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="latitude">Latitude</Label>
+                  <Input
+                    id="latitude"
+                    name="latitude"
+                    value={searchParams.latitude}
+                    onChange={handleInputChange}
+                    placeholder="30.2672"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label htmlFor="latitude">Latitude</Label>
+                <Label htmlFor="distance">Distance (meters)</Label>
                 <Input
-                  id="latitude"
-                  name="latitude"
-                  value={searchParams.latitude}
+                  id="distance"
+                  name="distance"
+                  value={searchParams.distance}
                   onChange={handleInputChange}
-                  placeholder="30.2672"
+                  placeholder="1000"
                 />
               </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="distance">Distance (meters)</Label>
+            </TabsContent>
+            
+            <TabsContent value="bbox" className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="minX">Min X (West)</Label>
+                  <Input
+                    id="minX"
+                    name="minX"
+                    value={searchParams.minX}
+                    onChange={handleInputChange}
+                    placeholder="-97.75"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="minY">Min Y (South)</Label>
+                  <Input
+                    id="minY"
+                    name="minY"
+                    value={searchParams.minY}
+                    onChange={handleInputChange}
+                    placeholder="30.25"
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="maxX">Max X (East)</Label>
+                  <Input
+                    id="maxX"
+                    name="maxX"
+                    value={searchParams.maxX}
+                    onChange={handleInputChange}
+                    placeholder="-97.73"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="maxY">Max Y (North)</Label>
+                  <Input
+                    id="maxY"
+                    name="maxY"
+                    value={searchParams.maxY}
+                    onChange={handleInputChange}
+                    placeholder="30.27"
+                  />
+                </div>
+              </div>
+            </TabsContent>
+            
+            <div className="mt-4 space-y-2">
+              <Label htmlFor="limit">Result Limit</Label>
               <Input
-                id="distance"
-                name="distance"
-                value={searchParams.distance}
+                id="limit"
+                name="limit"
+                value={searchParams.limit}
                 onChange={handleInputChange}
-                placeholder="1000"
+                placeholder="10"
               />
             </div>
-          </TabsContent>
-          
-          <TabsContent value="bbox" className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="minX">Min X (West)</Label>
-                <Input
-                  id="minX"
-                  name="minX"
-                  value={searchParams.minX}
-                  onChange={handleInputChange}
-                  placeholder="-97.75"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="minY">Min Y (South)</Label>
-                <Input
-                  id="minY"
-                  name="minY"
-                  value={searchParams.minY}
-                  onChange={handleInputChange}
-                  placeholder="30.25"
-                />
-              </div>
-            </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="maxX">Max X (East)</Label>
-                <Input
-                  id="maxX"
-                  name="maxX"
-                  value={searchParams.maxX}
-                  onChange={handleInputChange}
-                  placeholder="-97.73"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="maxY">Max Y (North)</Label>
-                <Input
-                  id="maxY"
-                  name="maxY"
-                  value={searchParams.maxY}
-                  onChange={handleInputChange}
-                  placeholder="30.27"
-                />
-              </div>
-            </div>
-          </TabsContent>
-          
-          <div className="mt-4 space-y-2">
-            <Label htmlFor="limit">Result Limit</Label>
-            <Input
-              id="limit"
-              name="limit"
-              value={searchParams.limit}
-              onChange={handleInputChange}
-              placeholder="10"
-            />
-          </div>
-          
-          <Button 
-            className="w-full mt-4" 
-            onClick={handleSearch}
-            disabled={isLoading}
-          >
-            {isLoading ? 'Searching...' : 'Search Addresses'}
-          </Button>
-        </Tabs>
+            
+            <Button 
+              className="w-full mt-4" 
+              onClick={handleSearch}
+              disabled={isLoading}
+            >
+              {isLoading ? 'Searching...' : 'Search Addresses'}
+            </Button>
+          </Tabs>
 
-        {isError && (
-          <div className="mt-4 p-4 bg-red-50 text-red-800 rounded-md">
-            <p className="font-semibold">Error:</p>
-            <p>{(error as Error).message}</p>
-          </div>
-        )}
+          {isError && (
+            <div className="mt-4 p-4 bg-red-50 text-red-800 rounded-md">
+              <p className="font-semibold">Error:</p>
+              <p>{(error as Error).message}</p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+
+      <div className="flex flex-col">
+        <Card className="w-full shadow-md mb-4">
+          <CardHeader>
+            <CardTitle>Map View</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="h-[400px] rounded-md overflow-hidden border">
+              <MapContainer 
+                center={[parseFloat(searchParams.latitude), parseFloat(searchParams.longitude)]} 
+                zoom={13} 
+                style={{ height: '100%', width: '100%' }}
+              >
+                <TileLayer
+                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                />
+                <MapCenterUpdater center={[parseFloat(searchParams.latitude), parseFloat(searchParams.longitude)]} />
+                
+                {data && data.features && data.features.map((feature: any) => {
+                  // Check if geometry contains valid coordinates
+                  if (feature.geometry && feature.geometry.x && feature.geometry.y) {
+                    return (
+                      <Marker 
+                        key={feature.id || feature.attributes.OBJECTID}
+                        position={[feature.geometry.y, feature.geometry.x]}
+                      >
+                        <Popup>
+                          <div>
+                            <h3 className="font-medium">
+                              {feature.properties?.Address || feature.attributes?.Address || 'Unnamed Address'}
+                            </h3>
+                            <p className="text-sm">
+                              {feature.properties?.City || feature.attributes?.City}{', '}
+                              {feature.properties?.State || feature.attributes?.State}{' '}
+                              {feature.properties?.ZIP || feature.attributes?.ZIP}
+                            </p>
+                          </div>
+                        </Popup>
+                      </Marker>
+                    );
+                  }
+                  return null;
+                })}
+              </MapContainer>
+            </div>
+          </CardContent>
+        </Card>
 
         {data && (
-          <div className="mt-6">
-            <h3 className="text-lg font-semibold mb-2">Results ({data.features?.length || 0} addresses found)</h3>
-            <ScrollArea className="h-[300px] rounded-md border p-4">
-              {data.features?.length > 0 ? (
-                <ul className="space-y-4">
-                  {data.features.map((feature: any) => (
-                    <li key={feature.id || feature.attributes.OBJECTID} className="p-3 bg-gray-50 rounded-md">
-                      <p className="font-medium">
-                        {feature.properties?.Address || feature.attributes?.Address || 'Unnamed Address'}
-                      </p>
-                      <p className="text-sm text-gray-600">
-                        {feature.properties?.City || feature.attributes?.City}{', '}
-                        {feature.properties?.State || feature.attributes?.State}{' '}
-                        {feature.properties?.ZIP || feature.attributes?.ZIP}
-                      </p>
-                      <p className="text-xs text-gray-500 mt-1">
-                        Coordinates: {feature.geometry?.x || 'N/A'}, {feature.geometry?.y || 'N/A'}
-                      </p>
-                    </li>
-                  ))}
-                </ul>
-              ) : (
-                <p className="text-gray-500 text-center py-6">No addresses found. Try adjusting your search parameters.</p>
-              )}
-            </ScrollArea>
-          </div>
+          <Card className="w-full shadow-md">
+            <CardHeader>
+              <CardTitle>Results ({data.features?.length || 0} addresses found)</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ScrollArea className="h-[200px] rounded-md border p-4">
+                {data.features?.length > 0 ? (
+                  <ul className="space-y-4">
+                    {data.features.map((feature: any) => (
+                      <li key={feature.id || feature.attributes.OBJECTID} className="p-3 bg-gray-50 rounded-md">
+                        <p className="font-medium">
+                          {feature.properties?.Address || feature.attributes?.Address || 'Unnamed Address'}
+                        </p>
+                        <p className="text-sm text-gray-600">
+                          {feature.properties?.City || feature.attributes?.City}{', '}
+                          {feature.properties?.State || feature.attributes?.State}{' '}
+                          {feature.properties?.ZIP || feature.attributes?.ZIP}
+                        </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Coordinates: {feature.geometry?.x || 'N/A'}, {feature.geometry?.y || 'N/A'}
+                        </p>
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="text-gray-500 text-center py-6">No addresses found. Try adjusting your search parameters.</p>
+                )}
+              </ScrollArea>
+            </CardContent>
+          </Card>
         )}
-      </CardContent>
-    </Card>
+      </div>
+    </div>
   );
 };
 
