@@ -4,8 +4,9 @@ import MainContent from '@/components/layout/MainContent';
 import ErrorDashboard from '@/components/debug/ErrorDashboard';
 import { useConversation } from '@/hooks/useConversation';
 import { useProject } from '@/hooks/useProject';
-import { Activity, AlertTriangle } from 'lucide-react';
+import { Activity, AlertTriangle, Map } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Link } from 'wouter';
 
 // Temporary: Using a hardcoded project ID until we implement project selection
 const CURRENT_PROJECT_ID = 1;
@@ -63,8 +64,19 @@ const Home: React.FC = () => {
           </div>
         </div>
         
-        {/* Desktop Header with Debug/Log Toggle Button */}
-        <div className="hidden md:flex justify-end items-center p-2 border-b">
+        {/* Desktop Header with Links */}
+        <div className="hidden md:flex justify-between items-center p-2 border-b">
+          <div className="flex items-center gap-2">
+            <Link href="/gis-demo">
+              <Button 
+                variant="outline" 
+                className="flex items-center gap-2"
+              >
+                <Map size={16} />
+                <span>GIS Demo</span>
+              </Button>
+            </Link>
+          </div>
           <Button 
             variant="outline" 
             className="flex items-center gap-2" 
@@ -143,6 +155,10 @@ const Home: React.FC = () => {
                 <a href="#" className="flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-700 hover:bg-gray-100">
                   Design & Architecture
                 </a>
+                <Link href="/gis-demo" className="flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-700 hover:bg-gray-100">
+                  <Map className="mr-2 h-5 w-5" />
+                  GIS Demo
+                </Link>
                 <a href="#" className="flex items-center px-2 py-2 text-base font-medium rounded-md text-gray-700 hover:bg-gray-100">
                   Code Generation
                 </a>

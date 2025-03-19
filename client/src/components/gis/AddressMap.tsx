@@ -1,231 +1,252 @@
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import React, { useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Separator } from '@/components/ui/separator';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from '@/hooks/use-toast';
 
-interface AddressFeature {
-  id: number;
-  geometry: {
-    type: string;
-    coordinates: number[];
-  };
-  properties: {
-    ADD_FULL: string;
-    STRT_NUM: string;
-    STRT_NAM: string;
-    RdType: string;
-    PostalArea: string;
+interface Address {
+  attributes: {
+    OBJECTID: number;
+    Address: string;
+    City: string;
+    State: string;
     ZIP: string;
     [key: string]: any;
   };
-}
-
-interface QueryResponse {
-  name: string;
-  type: string;
-  query: any;
-  data: {
-    type: string;
-    features: AddressFeature[];
-    properties?: {
-      exceededTransferLimit?: boolean;
-    };
+  geometry: {
+    x: number;
+    y: number;
   };
 }
 
-export default function AddressMap() {
-  const [addresses, setAddresses] = useState<AddressFeature[]>([]);
-  const [loading, setLoading] = useState(false);
-  const [searchType, setSearchType] = useState<'bbox' | 'point' | 'where'>('where');
-  const [longitude, setLongitude] = useState<string>('-119.463');
-  const [latitude, setLatitude] = useState<string>('46.268');
-  const [distance, setDistance] = useState<string>('1000');
-  const [searchText, setSearchText] = useState<string>('');
-  const [limitCount, setLimitCount] = useState<string>('5');
+const AddressMap: React.FC = () => {
   const { toast } = useToast();
+  const [searchParams, setSearchParams] = useState({
+    queryType: 'point',
+    longitude: '-97.7431',
+    latitude: '30.2672',
+    distance: '1000',
+    minX: '-97.75',
+    minY: '30.25',
+    maxX: '-97.73',
+    maxY: '30.27',
+    limit: '10'
+  });
 
-  // Fetch addresses based on current search parameters
-  const fetchAddresses = async () => {
-    setLoading(true);
-    try {
-      let queryParams: any = { limit: parseInt(limitCount) || 5 };
-      
-      // Build query based on search type
-      if (searchType === 'bbox') {
-        // Simple bounding box around the point
-        const lon = parseFloat(longitude);
-        const lat = parseFloat(latitude);
-        const buffer = 0.01; // approximately 1km at this latitude
-        queryParams.bbox = [lon - buffer, lat - buffer, lon + buffer, lat + buffer];
-      } else if (searchType === 'point') {
-        queryParams.point = [parseFloat(longitude), parseFloat(latitude)];
-        queryParams.distance = parseInt(distance) || 1000;
-      } else {
-        // 'where' type search
-        if (searchText) {
-          queryParams.where = `STRT_NAM LIKE '%${searchText.toUpperCase()}%' OR ADD_FULL LIKE '%${searchText.toUpperCase()}%'`;
-        } else {
-          queryParams.where = '1=1';
-        }
-      }
-      
-      const response = await fetch('/api/connectors/demo-gis/query/gis', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json'
-        },
-        body: JSON.stringify(queryParams)
-      });
-      
-      if (!response.ok) {
-        throw new Error('Failed to fetch addresses');
-      }
-      
-      const result: QueryResponse = await response.json();
-      setAddresses(result.data.features || []);
-      
-      toast({
-        title: 'Success',
-        description: `Found ${result.data.features.length} addresses`,
-        variant: 'default',
-      });
-      
-    } catch (error) {
-      console.error('Error fetching addresses:', error);
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to fetch addresses',
-        variant: 'destructive',
-      });
-      setAddresses([]);
-    } finally {
-      setLoading(false);
+  const handleInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const { name, value } = e.target;
+    setSearchParams(prev => ({ ...prev, [name]: value }));
+  };
+
+  const getQueryParams = () => {
+    if (searchParams.queryType === 'point') {
+      return {
+        point: [parseFloat(searchParams.longitude), parseFloat(searchParams.latitude)],
+        distance: parseInt(searchParams.distance),
+        limit: parseInt(searchParams.limit)
+      };
+    } else if (searchParams.queryType === 'bbox') {
+      return {
+        bbox: [
+          parseFloat(searchParams.minX),
+          parseFloat(searchParams.minY),
+          parseFloat(searchParams.maxX),
+          parseFloat(searchParams.maxY)
+        ],
+        limit: parseInt(searchParams.limit)
+      };
     }
+    return { limit: parseInt(searchParams.limit) };
+  };
+
+  const { data, isLoading, isError, error, refetch } = useQuery({
+    queryKey: ['/api/connectors/gis/query', searchParams],
+    queryFn: async () => {
+      const params = getQueryParams();
+      const response = await fetch('/api/connectors/gis/query?name=demo-gis', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(params)
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Error fetching addresses');
+      }
+
+      return response.json();
+    },
+    enabled: false, // Don't fetch on component mount
+  });
+
+  const handleSearch = () => {
+    refetch();
+  };
+
+  const handleSearchError = (error: Error) => {
+    toast({
+      title: 'Search Error',
+      description: error.message,
+      variant: 'destructive'
+    });
   };
 
   return (
-    <div className="space-y-4">
-      <Card>
-        <CardHeader>
-          <CardTitle>Address Search</CardTitle>
-          <CardDescription>Search for addresses using GIS data</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="searchType">Search Type</Label>
-              <Select
-                value={searchType}
-                onValueChange={(value: 'bbox' | 'point' | 'where') => setSearchType(value)}
-              >
-                <SelectTrigger id="searchType">
-                  <SelectValue placeholder="Select search type" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="where">Text Search</SelectItem>
-                  <SelectItem value="point">Point & Distance</SelectItem>
-                  <SelectItem value="bbox">Bounding Box</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            
-            {searchType === 'where' ? (
+    <Card className="w-full shadow-md">
+      <CardHeader>
+        <CardTitle>Address Search</CardTitle>
+      </CardHeader>
+      <CardContent>
+        <Tabs defaultValue="point" onValueChange={(value) => setSearchParams(prev => ({ ...prev, queryType: value }))}>
+          <TabsList className="grid w-full grid-cols-2">
+            <TabsTrigger value="point">Point &amp; Distance</TabsTrigger>
+            <TabsTrigger value="bbox">Bounding Box</TabsTrigger>
+          </TabsList>
+          
+          <TabsContent value="point" className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="searchText">Street or Address</Label>
+                <Label htmlFor="longitude">Longitude</Label>
                 <Input
-                  id="searchText"
-                  placeholder="e.g. DEMOSS"
-                  value={searchText}
-                  onChange={(e) => setSearchText(e.target.value)}
+                  id="longitude"
+                  name="longitude"
+                  value={searchParams.longitude}
+                  onChange={handleInputChange}
+                  placeholder="-97.7431"
                 />
               </div>
-            ) : (
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="longitude">Longitude</Label>
-                  <Input
-                    id="longitude"
-                    placeholder="-119.463"
-                    value={longitude}
-                    onChange={(e) => setLongitude(e.target.value)}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="latitude">Latitude</Label>
-                  <Input
-                    id="latitude"
-                    placeholder="46.268"
-                    value={latitude}
-                    onChange={(e) => setLatitude(e.target.value)}
-                  />
-                </div>
-                {searchType === 'point' && (
-                  <div className="space-y-2 col-span-2">
-                    <Label htmlFor="distance">Distance (meters)</Label>
-                    <Input
-                      id="distance"
-                      placeholder="1000"
-                      value={distance}
-                      onChange={(e) => setDistance(e.target.value)}
-                    />
-                  </div>
-                )}
+              <div className="space-y-2">
+                <Label htmlFor="latitude">Latitude</Label>
+                <Input
+                  id="latitude"
+                  name="latitude"
+                  value={searchParams.latitude}
+                  onChange={handleInputChange}
+                  placeholder="30.2672"
+                />
               </div>
-            )}
-            
+            </div>
             <div className="space-y-2">
-              <Label htmlFor="limit">Result Limit</Label>
+              <Label htmlFor="distance">Distance (meters)</Label>
               <Input
-                id="limit"
-                placeholder="5"
-                value={limitCount}
-                onChange={(e) => setLimitCount(e.target.value)}
+                id="distance"
+                name="distance"
+                value={searchParams.distance}
+                onChange={handleInputChange}
+                placeholder="1000"
               />
             </div>
+          </TabsContent>
+          
+          <TabsContent value="bbox" className="space-y-4">
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="minX">Min X (West)</Label>
+                <Input
+                  id="minX"
+                  name="minX"
+                  value={searchParams.minX}
+                  onChange={handleInputChange}
+                  placeholder="-97.75"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="minY">Min Y (South)</Label>
+                <Input
+                  id="minY"
+                  name="minY"
+                  value={searchParams.minY}
+                  onChange={handleInputChange}
+                  placeholder="30.25"
+                />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label htmlFor="maxX">Max X (East)</Label>
+                <Input
+                  id="maxX"
+                  name="maxX"
+                  value={searchParams.maxX}
+                  onChange={handleInputChange}
+                  placeholder="-97.73"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="maxY">Max Y (North)</Label>
+                <Input
+                  id="maxY"
+                  name="maxY"
+                  value={searchParams.maxY}
+                  onChange={handleInputChange}
+                  placeholder="30.27"
+                />
+              </div>
+            </div>
+          </TabsContent>
+          
+          <div className="mt-4 space-y-2">
+            <Label htmlFor="limit">Result Limit</Label>
+            <Input
+              id="limit"
+              name="limit"
+              value={searchParams.limit}
+              onChange={handleInputChange}
+              placeholder="10"
+            />
           </div>
-        </CardContent>
-        <CardFooter>
-          <Button onClick={fetchAddresses} disabled={loading}>
-            {loading ? 'Loading...' : 'Search Addresses'}
+          
+          <Button 
+            className="w-full mt-4" 
+            onClick={handleSearch}
+            disabled={isLoading}
+          >
+            {isLoading ? 'Searching...' : 'Search Addresses'}
           </Button>
-        </CardFooter>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Results</CardTitle>
-          <CardDescription>Found {addresses.length} addresses</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {addresses.length === 0 ? (
-            <div className="text-center py-4 text-gray-500">
-              No addresses found. Try a different search.
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {addresses.map((address) => (
-                <div key={address.id} className="p-4 border rounded-md">
-                  <div className="font-medium">{address.properties.ADD_FULL}</div>
-                  <div className="text-sm text-gray-500">
-                    {address.properties.PostalArea}, {address.properties.ZIP}
-                  </div>
-                  <Separator className="my-2" />
-                  <div className="grid grid-cols-2 gap-2 text-sm">
-                    <div>Parcel: {address.properties.PARCEL_NO}</div>
-                    <div>Type: {address.properties.Add_Type}</div>
-                    <div>Long: {address.geometry.coordinates[0].toFixed(6)}</div>
-                    <div>Lat: {address.geometry.coordinates[1].toFixed(6)}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
-    </div>
+        </Tabs>
+
+        {isError && (
+          <div className="mt-4 p-4 bg-red-50 text-red-800 rounded-md">
+            <p className="font-semibold">Error:</p>
+            <p>{(error as Error).message}</p>
+          </div>
+        )}
+
+        {data && (
+          <div className="mt-6">
+            <h3 className="text-lg font-semibold mb-2">Results ({data.features?.length || 0} addresses found)</h3>
+            <ScrollArea className="h-[300px] rounded-md border p-4">
+              {data.features?.length > 0 ? (
+                <ul className="space-y-4">
+                  {data.features.map((feature: any) => (
+                    <li key={feature.id || feature.attributes.OBJECTID} className="p-3 bg-gray-50 rounded-md">
+                      <p className="font-medium">
+                        {feature.properties?.Address || feature.attributes?.Address || 'Unnamed Address'}
+                      </p>
+                      <p className="text-sm text-gray-600">
+                        {feature.properties?.City || feature.attributes?.City}{', '}
+                        {feature.properties?.State || feature.attributes?.State}{' '}
+                        {feature.properties?.ZIP || feature.attributes?.ZIP}
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">
+                        Coordinates: {feature.geometry?.x || 'N/A'}, {feature.geometry?.y || 'N/A'}
+                      </p>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="text-gray-500 text-center py-6">No addresses found. Try adjusting your search parameters.</p>
+              )}
+            </ScrollArea>
+          </div>
+        )}
+      </CardContent>
+    </Card>
   );
-}
+};
+
+export default AddressMap;
