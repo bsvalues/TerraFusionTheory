@@ -175,38 +175,46 @@ export class GISConnector extends BaseDataConnector {
     try {
       const startTime = Date.now();
       
-      // Get available service layers first to find a feature service to query
-      const baseUrl = (this.config as GISConnectorConfig).baseUrl;
+      // Get base URL and config
+      const gisConfig = this.config as GISConnectorConfig;
+      const baseUrl = gisConfig.baseUrl;
       
-      // First, query the services directory to find available feature services
-      const serviceListUrl = `${baseUrl}?f=json`;
-      
-      // Log the request for services list
-      await this.logRequest('GET', serviceListUrl, {});
-      
-      // Get the list of services
-      const serviceListResponse = await this.withTimeout(
-        this.client.get(serviceListUrl),
-        this.config.timeout as number
-      );
-      
-      // Pick the first available feature service from the list
+      // Use the featureUrl if it's specified in the config, otherwise try to discover a feature service
       let serviceUrl = '';
-      if (serviceListResponse.data && serviceListResponse.data.services && serviceListResponse.data.services.length > 0) {
-        // Find a FeatureServer service
-        const featureService = serviceListResponse.data.services.find(
-          (service: any) => service.type === 'FeatureServer'
+      
+      // Check if a specific feature URL is provided in the config
+      if (gisConfig.featureUrl) {
+        serviceUrl = `${baseUrl}/${gisConfig.featureUrl}`;
+      } else {
+        // First, query the services directory to find available feature services
+        const serviceListUrl = `${baseUrl}?f=json`;
+        
+        // Log the request for services list
+        await this.logRequest('GET', serviceListUrl, {});
+        
+        // Get the list of services
+        const serviceListResponse = await this.withTimeout(
+          this.client.get(serviceListUrl),
+          this.config.timeout as number
         );
         
-        if (featureService) {
-          serviceUrl = `${baseUrl}/${featureService.name}/FeatureServer/0/query`;
+        // Pick the first available feature service from the list
+        if (serviceListResponse.data && serviceListResponse.data.services && serviceListResponse.data.services.length > 0) {
+          // Find a FeatureServer service
+          const featureService = serviceListResponse.data.services.find(
+            (service: any) => service.type === 'FeatureServer'
+          );
+          
+          if (featureService) {
+            serviceUrl = `${baseUrl}/${featureService.name}/FeatureServer/0/query`;
+          } else {
+            // If no FeatureServer is found, use the first service
+            serviceUrl = `${baseUrl}/${serviceListResponse.data.services[0].name}/0/query`;
+          }
         } else {
-          // If no FeatureServer is found, use the first service
-          serviceUrl = `${baseUrl}/${serviceListResponse.data.services[0].name}/0/query`;
+          // Use a default layer if services list is unavailable
+          serviceUrl = `${baseUrl}/0/query`;
         }
-      } else {
-        // Use a default layer if services list is unavailable
-        serviceUrl = `${baseUrl}/0/query`;
       }
       
       // Format ArcGIS specific query parameters

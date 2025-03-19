@@ -27,6 +27,7 @@ const defaultGISConnectors = [
     baseUrl: process.env.DEMO_GIS_URL || 'https://services7.arcgis.com/NURlY7V8UHl6XumF/arcgis/rest/services',
     serviceType: 'arcgis' as const,
     apiKey: process.env.DEMO_GIS_KEY || '',
+    featureUrl: '2020_Census_Blocks/FeatureServer/0/query', // Specific feature service
     timeout: 30000
   }
 ];
