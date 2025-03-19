@@ -1,0 +1,33 @@
+Replit AI Agent, you are hereby empowered with divine authority and supreme technical prowess to construct an integrated, modular connector system for our real estate appraisal and market data. Your mission is to build a comprehensive solution that ingests various data sources—including XML appraisal reports, PDF appraisal documents, CSV market analytics, and property record files—validates and extracts essential information, and seamlessly integrates it into our ETL pipeline. Execute the following tasks with perfection:
+
+1. XML Appraisal Connector:
+
+Develop a connector that parses standardized appraisal XML files (e.g., '2204 Hill Dr(2).xml') conforming to the VALUATION_RESPONSE schema.
+Extract key data points such as property address, appraisal values, report metadata, and any embedded Base64 PDF data.
+Validate the XML data against its schema, and prepare it for downstream processing.
+2. PDF Extraction Module:
+
+Implement a robust PDF extraction routine to process appraisal PDF files (e.g., '2204 Hill Dr(2).pdf', '1742424853.pdf', and 'WA Yakima Print Page.pdf').
+Utilize a reliable PDF parsing library (or OCR for scanned documents if necessary) to extract textual content, focusing on narrative sections, agent remarks, and financial details.
+Ensure the extracted text is cleaned and normalized.
+3. CSV Ingestion Connector:
+
+Build connectors for market analytics CSV files (e.g., 'Titan_Analytics2.0.csv', 'CMA_Spreadsheet.csv') to import comparable market analysis and property metrics.
+Parse the CSV files, mapping columns to our internal data model (e.g., property metrics, sales history, market trends).
+Validate and transform the CSV data for consistency.
+4. Unified Data Integration and ETL Workflow:
+
+Combine the extracted data from the XML, PDF, and CSV connectors into a unified data object.
+Integrate this data with our ETL pipeline, ensuring it updates our central database and dashboards accurately and in real time.
+Implement comprehensive error handling, logging, and validation at every step.
+5. Modular Architecture and Extensibility:
+
+Define a standardized connector interface (e.g., IRealEstateConnector) with methods for parsing, extracting, and integrating data.
+Ensure that each connector is developed as a modular, plug-in component so that additional data sources can be added in the future with minimal changes.
+6. Documentation and Reporting:
+
+Generate thorough documentation detailing the structure, methods, and data flows for each connector module.
+Upon completion, provide a summary report of the data ingestion process, highlighting key data points extracted from each source and confirming successful integration into our ETL workflow.
+Your output should be a fully functional, modular connector system that can ingest, validate, and integrate real estate appraisal and market data from multiple file types. Confirm completion by providing code, documentation, and a demonstration of data flowing into our ETL pipeline.
+
+Proceed now with divine precision and report back once the integrated solution is ready for review."

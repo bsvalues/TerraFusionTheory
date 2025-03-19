@@ -1,5 +1,7 @@
 import { CAMAConnector, CAMAConnectorConfig } from './cama.connector';
 import { GISConnector, GISConnectorConfig } from './gis.connector';
+import { MarketDataConnector, MarketDataConnectorConfig } from './market.connector';
+import { PDFConnector, PDFConnectorConfig } from './pdf.connector';
 import { ConnectorRegistry, DataConnector, ConnectorConfig } from './baseConnector';
 import { LogCategory, LogLevel } from '@shared/schema';
 import { storage } from '../../storage';
@@ -7,7 +9,7 @@ import { storage } from '../../storage';
 /**
  * Connector types supported by the factory
  */
-export type ConnectorType = 'cama' | 'gis' | 'document' | 'tax' | 'permit';
+export type ConnectorType = 'cama' | 'gis' | 'market' | 'pdf' | 'document' | 'tax' | 'permit';
 
 /**
  * Factory for creating and registering data connectors
@@ -61,6 +63,36 @@ export class ConnectorFactory {
   }
   
   /**
+   * Create a Market Data connector
+   */
+  public createMarketDataConnector(name: string, config: MarketDataConnectorConfig): MarketDataConnector {
+    try {
+      const connector = new MarketDataConnector(name, config);
+      this.registry.registerConnector(connector);
+      this.logConnectorCreation(name, 'market', true);
+      return connector;
+    } catch (error) {
+      this.logConnectorCreation(name, 'market', false, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Create a PDF connector
+   */
+  public createPDFConnector(name: string, config: PDFConnectorConfig): PDFConnector {
+    try {
+      const connector = new PDFConnector(name, config);
+      this.registry.registerConnector(connector);
+      this.logConnectorCreation(name, 'pdf', true);
+      return connector;
+    } catch (error) {
+      this.logConnectorCreation(name, 'pdf', false, error);
+      throw error;
+    }
+  }
+  
+  /**
    * Create a connector based on type
    */
   public createConnector(
@@ -73,6 +105,10 @@ export class ConnectorFactory {
         return this.createCAMAConnector(name, config as CAMAConnectorConfig);
       case 'gis':
         return this.createGISConnector(name, config as GISConnectorConfig);
+      case 'market':
+        return this.createMarketDataConnector(name, config as MarketDataConnectorConfig);
+      case 'pdf':
+        return this.createPDFConnector(name, config as PDFConnectorConfig);
       default:
         throw new Error(`Unsupported connector type: ${type}`);
     }

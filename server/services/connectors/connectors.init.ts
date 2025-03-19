@@ -33,6 +33,31 @@ const defaultGISConnectors = [
 ];
 
 /**
+ * Default Market Data connector configurations
+ */
+const defaultMarketConnectors = [
+  {
+    name: 'grandview-market',
+    dataDirectory: process.env.MARKET_DATA_DIR || './attached_assets',
+    defaultFormat: 'csv' as const,
+    fileEncoding: 'utf8',
+    timeout: 30000
+  }
+];
+
+/**
+ * Default PDF connector configurations
+ */
+const defaultPDFConnectors = [
+  {
+    name: 'grandview-property-docs',
+    dataDirectory: process.env.PDF_DATA_DIR || './attached_assets',
+    fileEncoding: 'utf8',
+    timeout: 30000
+  }
+];
+
+/**
  * Initialize connectors with default configurations
  */
 export async function initializeConnectors(): Promise<void> {
@@ -111,6 +136,68 @@ export async function initializeConnectors(): Promise<void> {
       }
     }
     
+    // Create and register Market Data connectors
+    for (const config of defaultMarketConnectors) {
+      try {
+        const connector = connectorFactory.createMarketDataConnector(config.name, config);
+        console.log(`Registered Market Data connector: ${connector.getName()}`);
+      } catch (error) {
+        console.error(`Failed to register Market Data connector ${config.name}:`, error);
+        await storage.createLog({
+          level: LogLevel.ERROR,
+          category: LogCategory.SYSTEM,
+          message: `Failed to register Market Data connector ${config.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          details: JSON.stringify({
+            connectorName: config.name,
+            error: error instanceof Error ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack
+            } : error
+          }),
+          source: 'connector-init',
+          projectId: null,
+          userId: null,
+          sessionId: null,
+          duration: null,
+          statusCode: null,
+          endpoint: null,
+          tags: ['connector', 'initialization', 'error', 'market']
+        });
+      }
+    }
+    
+    // Create and register PDF connectors
+    for (const config of defaultPDFConnectors) {
+      try {
+        const connector = connectorFactory.createPDFConnector(config.name, config);
+        console.log(`Registered PDF connector: ${connector.getName()}`);
+      } catch (error) {
+        console.error(`Failed to register PDF connector ${config.name}:`, error);
+        await storage.createLog({
+          level: LogLevel.ERROR,
+          category: LogCategory.SYSTEM,
+          message: `Failed to register PDF connector ${config.name}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+          details: JSON.stringify({
+            connectorName: config.name,
+            error: error instanceof Error ? {
+              name: error.name,
+              message: error.message,
+              stack: error.stack
+            } : error
+          }),
+          source: 'connector-init',
+          projectId: null,
+          userId: null,
+          sessionId: null,
+          duration: null,
+          statusCode: null,
+          endpoint: null,
+          tags: ['connector', 'initialization', 'error', 'pdf']
+        });
+      }
+    }
+    
     // Log successful initialization
     await storage.createLog({
       level: LogLevel.INFO,
@@ -119,6 +206,8 @@ export async function initializeConnectors(): Promise<void> {
       details: JSON.stringify({
         camaCount: defaultCAMAConnectors.length,
         gisCount: defaultGISConnectors.length,
+        marketCount: defaultMarketConnectors.length,
+        pdfCount: defaultPDFConnectors.length
       }),
       source: 'connector-init',
       projectId: null,
