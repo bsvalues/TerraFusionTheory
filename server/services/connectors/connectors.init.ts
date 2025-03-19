@@ -24,9 +24,9 @@ const defaultGISConnectors = [
   // These would typically come from environment variables or configuration files
   {
     name: 'demo-gis',
-    baseUrl: process.env.DEMO_GIS_URL || 'https://api.example.com/gis',
+    baseUrl: process.env.DEMO_GIS_URL || 'https://services7.arcgis.com/NURlY7V8UHl6XumF/arcgis/rest/services',
     serviceType: 'arcgis' as const,
-    apiKey: process.env.DEMO_GIS_KEY || 'demo-key',
+    apiKey: process.env.DEMO_GIS_KEY || '',
     timeout: 30000
   }
 ];

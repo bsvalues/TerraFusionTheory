@@ -175,8 +175,39 @@ export class GISConnector extends BaseDataConnector {
     try {
       const startTime = Date.now();
       
-      // Construct ArcGIS endpoint
-      const featureUrl = (this.config as GISConnectorConfig).featureUrl || '/query';
+      // Get available service layers first to find a feature service to query
+      const baseUrl = (this.config as GISConnectorConfig).baseUrl;
+      
+      // First, query the services directory to find available feature services
+      const serviceListUrl = `${baseUrl}?f=json`;
+      
+      // Log the request for services list
+      await this.logRequest('GET', serviceListUrl, {});
+      
+      // Get the list of services
+      const serviceListResponse = await this.withTimeout(
+        this.client.get(serviceListUrl),
+        this.config.timeout as number
+      );
+      
+      // Pick the first available feature service from the list
+      let serviceUrl = '';
+      if (serviceListResponse.data && serviceListResponse.data.services && serviceListResponse.data.services.length > 0) {
+        // Find a FeatureServer service
+        const featureService = serviceListResponse.data.services.find(
+          (service: any) => service.type === 'FeatureServer'
+        );
+        
+        if (featureService) {
+          serviceUrl = `${baseUrl}/${featureService.name}/FeatureServer/0/query`;
+        } else {
+          // If no FeatureServer is found, use the first service
+          serviceUrl = `${baseUrl}/${serviceListResponse.data.services[0].name}/0/query`;
+        }
+      } else {
+        // Use a default layer if services list is unavailable
+        serviceUrl = `${baseUrl}/0/query`;
+      }
       
       // Format ArcGIS specific query parameters
       const arcGISParams: Record<string, any> = {
@@ -208,7 +239,7 @@ export class GISConnector extends BaseDataConnector {
       }
       
       // Log the request
-      await this.logRequest('GET', featureUrl, arcGISParams);
+      await this.logRequest('GET', serviceUrl, arcGISParams);
       
       // Prepare request configuration
       const config: AxiosRequestConfig = {
@@ -217,19 +248,20 @@ export class GISConnector extends BaseDataConnector {
       
       // Make the request
       const response = await this.withTimeout(
-        this.client.get(featureUrl, config),
+        this.client.get(serviceUrl, config),
         this.config.timeout as number
       );
       
       const duration = Date.now() - startTime;
       
       // Log the response
-      await this.logResponse('GET', featureUrl, arcGISParams, response.data, duration);
+      await this.logResponse('GET', serviceUrl, arcGISParams, response.data, duration);
       
       return response.data;
     } catch (error) {
-      const featureUrl = (this.config as GISConnectorConfig).featureUrl || '/query';
-      await this.logError('GET', featureUrl, query, error);
+      // Use serviceUrl from previous context or fallback to baseUrl
+      const baseUrl = (this.config as GISConnectorConfig).baseUrl;
+      await this.logError('GET', `${baseUrl}/query`, query, error);
       throw error;
     }
   }
