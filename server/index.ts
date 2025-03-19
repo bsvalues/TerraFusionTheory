@@ -99,18 +99,18 @@ app.use((req, res, next) => {
     // Register API routes
     const server = await registerRoutes(app);
     
-    // Register 404 handler (must be after API routes)
-    app.use(notFoundHandler);
-    
-    // Register global error handler
-    app.use(errorHandler);
-
     // Setup Vite for development or serve static files in production
     if (app.get("env") === "development") {
       await setupVite(app, server);
     } else {
       serveStatic(app);
     }
+    
+    // Register 404 handler (must be after API routes and static file handling)
+    app.use(notFoundHandler);
+    
+    // Register global error handler
+    app.use(errorHandler);
 
     // Start the server
     const port = 5000;
