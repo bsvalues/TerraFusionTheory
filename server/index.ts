@@ -1,6 +1,6 @@
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
-import { registerRoutes } from "./routes";
+import { registerRoutes, cleanupRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { errorHandler, notFoundHandler, asyncHandler } from "./middleware/errorHandler";
 import { storage } from "./storage";
@@ -152,6 +152,7 @@ app.use((req, res, next) => {
     const shutdown = async () => {
       log('Shutting down server...');
       scheduler.stop();
+      cleanupRoutes();
       server.close();
       process.exit(0);
     };

@@ -5,15 +5,18 @@ import * as openaiController from "./controllers/openai.controller";
 import * as aiController from "./controllers/ai.controller";
 import * as connectorsController from "./controllers/connectors.controller";
 import { asyncHandler } from "./middleware/errorHandler";
-import { performanceLogger, startMemoryMonitoring } from "./middleware/performanceLogger";
+import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
+
+// Track the memory monitor timer globally to allow proper cleanup
+let memoryMonitorTimer: NodeJS.Timeout | null = null;
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // Apply performance logging middleware to all routes
   app.use(performanceLogger);
   
   // Start memory monitoring
-  const memoryMonitorTimer = startMemoryMonitoring(60000); // Check every minute
+  memoryMonitorTimer = startMemoryMonitoring(60000); // Check every minute
   
   // API routes - prefix all routes with /api
   
@@ -462,4 +465,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
   const httpServer = createServer(app);
 
   return httpServer;
+}
+
+/**
+ * Cleanup function for routes resources
+ * Call this when shutting down the server to properly cleanup resources
+ */
+export function cleanupRoutes() {
+  // Stop memory monitoring if it's running
+  if (memoryMonitorTimer) {
+    stopMemoryMonitoring(memoryMonitorTimer);
+    memoryMonitorTimer = null;
+  }
 }
