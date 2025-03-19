@@ -7,7 +7,7 @@ import {
   LogLevel, LogCategory,
   type Message,
   type FeedbackItem
-} from "@shared/schema";
+} from "../shared/schema";
 
 // Complete storage interface with all CRUD methods needed
 export interface IStorage {

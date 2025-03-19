@@ -1,4 +1,4 @@
-import { LogCategory, LogLevel } from '@shared/schema';
+import { LogCategory, LogLevel } from '../../../shared/schema';
 import { storage } from '../../storage';
 import { ExternalServiceError, TimeoutError } from '../../errors';
 

@@ -29,9 +29,10 @@ export class OpenAIService extends BaseAIService {
   async generateText(prompt: string, options?: AIModelRequestOptions): Promise<AIModelResponse> {
     const model = options?.maxTokens && options.maxTokens > 8192 ? 'gpt-4o-2024-05-13' : this.defaultModel;
     
-    const requestParams = {
+    // Create properly typed request params
+    const requestParams: any = {
       model,
-      messages: [{ role: 'user', content: prompt }],
+      messages: [{ role: 'user' as const, content: prompt }],
       temperature: options?.temperature ?? 0.7,
       max_tokens: options?.maxTokens,
       stop: options?.stopSequences
@@ -52,9 +53,9 @@ export class OpenAIService extends BaseAIService {
       
       const duration = Date.now() - startTime;
       
-      // Prepare the response
+      // Prepare the response with safe property access
       const result: AIModelResponse = {
-        text: response.choices[0]?.message?.content || '',
+        text: response.choices?.[0]?.message?.content || '',
         usage: {
           promptTokens: response.usage?.prompt_tokens,
           completionTokens: response.usage?.completion_tokens,
@@ -62,7 +63,7 @@ export class OpenAIService extends BaseAIService {
         },
         meta: {
           model: response.model,
-          finishReason: response.choices[0]?.finish_reason
+          finishReason: response.choices?.[0]?.finish_reason
         }
       };
       
@@ -70,12 +71,12 @@ export class OpenAIService extends BaseAIService {
       await this.logResponse('text', requestParams, result, duration, options);
       
       return result;
-    } catch (error) {
+    } catch (error: any) {
       // Log the error
       await this.logError('text', requestParams, error, options);
       
       throw new ExternalServiceError(
-        `OpenAI API error: ${error.message || 'Unknown error'}`,
+        `OpenAI API error: ${error?.message || 'Unknown error'}`,
         { originalError: error }
       );
     }
@@ -90,13 +91,29 @@ export class OpenAIService extends BaseAIService {
   ): Promise<AIModelResponse> {
     const model = options?.maxTokens && options.maxTokens > 8192 ? 'gpt-4o-2024-05-13' : this.defaultModel;
     
-    const requestParams = {
+    // Detect if we need JSON response based on system message content
+    const requestForJSON = messages.some(msg => 
+      msg.role === 'system' && 
+      typeof msg.content === 'string' && 
+      (msg.content.includes('Format your response as JSON') || msg.content.includes('format": { "type": "json_object"'))
+    );
+    
+    // Create properly typed request params
+    const requestParams: any = {
       model,
-      messages,
+      messages: messages.map(msg => ({
+        role: msg.role as "user" | "system" | "assistant",
+        content: msg.content
+      })),
       temperature: options?.temperature ?? 0.7,
       max_tokens: options?.maxTokens,
       stop: options?.stopSequences
     };
+    
+    // Add response_format only if JSON is requested
+    if (requestForJSON) {
+      requestParams.response_format = { type: "json_object" };
+    }
     
     try {
       // Log the request
@@ -113,9 +130,12 @@ export class OpenAIService extends BaseAIService {
       
       const duration = Date.now() - startTime;
       
+      // Handle response safely with type checking
+      const content = response.choices?.[0]?.message?.content || '';
+      
       // Prepare the response
       const result: AIModelResponse = {
-        text: response.choices[0]?.message?.content || '',
+        text: content,
         usage: {
           promptTokens: response.usage?.prompt_tokens,
           completionTokens: response.usage?.completion_tokens,
@@ -123,7 +143,7 @@ export class OpenAIService extends BaseAIService {
         },
         meta: {
           model: response.model,
-          finishReason: response.choices[0]?.finish_reason
+          finishReason: response.choices?.[0]?.finish_reason
         }
       };
       
@@ -131,12 +151,12 @@ export class OpenAIService extends BaseAIService {
       await this.logResponse('chat', requestParams, result, duration, options);
       
       return result;
-    } catch (error) {
+    } catch (error: any) {
       // Log the error
       await this.logError('chat', requestParams, error, options);
       
       throw new ExternalServiceError(
-        `OpenAI API error: ${error.message || 'Unknown error'}`,
+        `OpenAI API error: ${error?.message || 'Unknown error'}`,
         { originalError: error }
       );
     }
@@ -150,13 +170,14 @@ export class OpenAIService extends BaseAIService {
     prompt: string,
     options?: AIModelRequestOptions
   ): Promise<AIModelResponse> {
+    // Properly typed message structure for vision requests
     const messages = [
       {
-        role: 'user',
+        role: 'user' as const,
         content: [
-          { type: 'text', text: prompt },
+          { type: 'text' as const, text: prompt },
           {
-            type: 'image_url',
+            type: 'image_url' as const,
             image_url: {
               url: `data:image/jpeg;base64,${base64Image}`
             }
@@ -165,7 +186,8 @@ export class OpenAIService extends BaseAIService {
       }
     ];
     
-    const requestParams = {
+    // Create properly typed request params
+    const requestParams: any = {
       model: this.defaultVisionModel, 
       messages,
       temperature: options?.temperature ?? 0.7,
@@ -193,16 +215,16 @@ export class OpenAIService extends BaseAIService {
       
       // Make the API call with timeout
       const response = await this.withTimeout(
-        this.client.chat.completions.create(requestParams as any),
+        this.client.chat.completions.create(requestParams),
         options?.timeout || this.defaultTimeout * 2, // Double timeout for vision requests
         'OpenAI vision request timed out'
       );
       
       const duration = Date.now() - startTime;
       
-      // Prepare the response
+      // Prepare the response with safe property access
       const result: AIModelResponse = {
-        text: response.choices[0]?.message?.content || '',
+        text: response.choices?.[0]?.message?.content || '',
         usage: {
           promptTokens: response.usage?.prompt_tokens,
           completionTokens: response.usage?.completion_tokens,
@@ -210,7 +232,7 @@ export class OpenAIService extends BaseAIService {
         },
         meta: {
           model: response.model,
-          finishReason: response.choices[0]?.finish_reason
+          finishReason: response.choices?.[0]?.finish_reason
         }
       };
       
@@ -218,7 +240,7 @@ export class OpenAIService extends BaseAIService {
       await this.logResponse('vision', logRequestParams, result, duration, options);
       
       return result;
-    } catch (error) {
+    } catch (error: any) {
       // Log the error
       const logRequestParams = {
         ...requestParams,
@@ -236,7 +258,7 @@ export class OpenAIService extends BaseAIService {
       await this.logError('vision', logRequestParams, error, options);
       
       throw new ExternalServiceError(
-        `OpenAI Vision API error: ${error.message || 'Unknown error'}`,
+        `OpenAI Vision API error: ${error?.message || 'Unknown error'}`,
         { originalError: error }
       );
     }

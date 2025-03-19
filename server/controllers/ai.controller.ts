@@ -12,6 +12,47 @@ import { Message, Conversation } from '../../shared/schema';
 import 'express-session';
 
 /**
+ * Helper function to extract JSON from text that might contain Markdown formatting
+ * @param text The text that might contain JSON, possibly in a Markdown code block
+ * @returns The extracted JSON string
+ */
+function extractJSONFromText(text: string): string {
+  console.log('Original response text:', text);
+  
+  // Try to extract JSON from a markdown code block
+  const jsonBlockRegex = /```(?:json)?\s*([\s\S]*?)\s*```/;
+  const match = text.match(jsonBlockRegex);
+  
+  if (match && match[1]) {
+    const extracted = match[1].trim();
+    console.log('Extracted JSON from markdown:', extracted);
+    return extracted;
+  }
+  
+  // Try to see if the entire text is already JSON
+  try {
+    JSON.parse(text);
+    console.log('Text is already valid JSON');
+    return text.trim();
+  } catch (e) {
+    // Not valid JSON, continue with other extraction methods
+  }
+  
+  // Try to find any JSON-like structure with curly braces
+  const jsonObjectRegex = /\{[\s\S]*\}/;
+  const objectMatch = text.match(jsonObjectRegex);
+  if (objectMatch) {
+    const extracted = objectMatch[0].trim();
+    console.log('Extracted JSON-like structure:', extracted);
+    return extracted;
+  }
+  
+  // If no JSON could be extracted, return the original text
+  console.log('No JSON structure found, returning original text');
+  return text.trim();
+}
+
+/**
  * Handle a message from the user to an AI assistant
  */
 export const handleMessage = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -113,7 +154,9 @@ export const analyzeRequirements = async (req: Request, res: Response, next: Nex
             },
             "missingInformation": {"items": string[]},
             "nextSteps": [{"order": number, "description": string}]
-          }`
+          }
+          
+          IMPORTANT: Return only JSON with no additional text, explanation, or formatting. Your entire response must be valid JSON that can be parsed directly.`
         },
         {
           role: 'user',
@@ -129,9 +172,11 @@ export const analyzeRequirements = async (req: Request, res: Response, next: Nex
       }
     );
     
-    // Parse the response as JSON
+    // Parse the response as JSON, handling potential markdown code blocks
     try {
-      const analysis = JSON.parse(response.text);
+      // Extract JSON from potential markdown code blocks
+      const jsonText = extractJSONFromText(response.text);
+      const analysis = JSON.parse(jsonText);
       res.json({ analysis });
     } catch (error) {
       throw new ValidationError('Failed to parse AI response as JSON', { 
@@ -180,7 +225,9 @@ export const generateArchitecture = async (req: Request, res: Response, next: Ne
                 ]
               }
             ]
-          }`
+          }
+          
+          IMPORTANT: Return only JSON with no additional text, explanation, or formatting. Your entire response must be valid JSON that can be parsed directly.`
         },
         {
           role: 'user',
@@ -196,9 +243,11 @@ export const generateArchitecture = async (req: Request, res: Response, next: Ne
       }
     );
     
-    // Parse the response as JSON
+    // Parse the response as JSON, handling potential markdown code blocks
     try {
-      const architecture = JSON.parse(response.text);
+      // Extract JSON from potential markdown code blocks
+      const jsonText = extractJSONFromText(response.text);
+      const architecture = JSON.parse(jsonText);
       res.json({ architecture });
     } catch (error) {
       throw new ValidationError('Failed to parse AI response as JSON', { 
