@@ -286,7 +286,10 @@ export class MarketDataConnector extends BaseDataConnector {
       const records = parse(content, {
         columns: true,
         skip_empty_lines: true,
-        trim: true
+        trim: true,
+        relax_column_count: true, // Allow varying column counts in the CSV file
+        relax_quotes: true, // Be more flexible with quotes
+        skip_records_with_error: true // Skip rows that can't be properly parsed
       });
 
       return records.map((record: any) => this.mapCSVRecordToPropertyListing(record));
