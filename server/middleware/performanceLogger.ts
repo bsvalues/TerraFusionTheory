@@ -90,6 +90,12 @@ export function performanceLogger(req: Request, res: Response, next: NextFunctio
   next();
 }
 
+// Store last logged memory state to avoid excessive logging
+let lastLoggedMemoryPercentage = 0;
+let lastLogTime = 0;
+const LOG_THRESHOLD_CHANGE = 5; // Only log if memory percentage changed by this amount
+const MIN_LOG_INTERVAL = 900000; // Minimum 15 minutes between routine logs
+
 /**
  * Track memory usage periodically
  * @param interval Interval in milliseconds to check memory usage
@@ -101,32 +107,50 @@ export function startMemoryMonitoring(interval = 60000): NodeJS.Timeout {
       const usedMemoryMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
       const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
       const memoryPercentage = Math.round((usedMemoryMB / totalMemoryMB) * 100);
+      const now = Date.now();
       
-      // Log memory usage
-      await storage.createLog({
-        level: LogLevel.INFO,
-        category: LogCategory.PERFORMANCE,
-        message: `Memory usage: ${usedMemoryMB}MB / ${totalMemoryMB}MB (${memoryPercentage}%)`,
-        details: JSON.stringify({
-          heapUsed: memoryUsage.heapUsed,
-          heapTotal: memoryUsage.heapTotal,
-          external: memoryUsage.external,
-          rss: memoryUsage.rss,
-          arrayBuffers: memoryUsage.arrayBuffers,
-          usedMemoryMB,
-          totalMemoryMB,
-          memoryPercentage,
-          timestamp: new Date().toISOString()
-        }),
-        source: 'memory-monitor',
-        projectId: null,
-        userId: null,
-        sessionId: null,
-        duration: null,
-        statusCode: null,
-        endpoint: null,
-        tags: ['memory', 'system-health']
-      });
+      // Only log memory usage if it changed significantly or enough time has passed
+      const memoryDelta = Math.abs(memoryPercentage - lastLoggedMemoryPercentage);
+      const timeSinceLastLog = now - lastLogTime;
+      const significantChange = memoryDelta >= LOG_THRESHOLD_CHANGE;
+      const timeThresholdMet = timeSinceLastLog >= MIN_LOG_INTERVAL;
+      
+      if (significantChange || timeThresholdMet || memoryPercentage > 90) {
+        // Log memory usage
+        await storage.createLog({
+          level: LogLevel.INFO,
+          category: LogCategory.PERFORMANCE,
+          message: `Memory usage: ${usedMemoryMB}MB / ${totalMemoryMB}MB (${memoryPercentage}%)${
+            memoryDelta > 0 ? ` (${memoryPercentage > lastLoggedMemoryPercentage ? '+' : '-'}${memoryDelta}%)` : ''
+          }`,
+          details: JSON.stringify({
+            heapUsed: memoryUsage.heapUsed,
+            heapTotal: memoryUsage.heapTotal,
+            external: memoryUsage.external,
+            rss: memoryUsage.rss,
+            arrayBuffers: memoryUsage.arrayBuffers,
+            usedMemoryMB,
+            totalMemoryMB,
+            memoryPercentage,
+            change: memoryDelta,
+            timeSinceLastLog,
+            reason: significantChange ? 'significant_change' : timeThresholdMet ? 'time_interval' : 'high_usage',
+            timestamp: new Date().toISOString()
+          }),
+          source: 'memory-monitor',
+          projectId: null,
+          userId: null,
+          sessionId: null,
+          duration: null,
+          statusCode: null,
+          endpoint: null,
+          tags: ['memory', 'system-health']
+        });
+        
+        // Update last logged values
+        lastLoggedMemoryPercentage = memoryPercentage;
+        lastLogTime = now;
+      }
       
       // Check for high memory usage with higher thresholds and try to free memory
       // Only alert for genuinely critical situations (98%) or when approaching limit (95%)

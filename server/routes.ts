@@ -11,12 +11,34 @@ import { alertManager, AlertSeverity } from "./services/alert";
 // Track the memory monitor timer globally to allow proper cleanup
 let memoryMonitorTimer: NodeJS.Timeout | null = null;
 
+// Schedule log cleanup to run every day
+async function scheduledLogCleanup() {
+  try {
+    // Get date 7 days ago
+    const olderThan = new Date();
+    olderThan.setDate(olderThan.getDate() - 7);
+    
+    // Delete logs older than 7 days
+    const count = await storage.clearLogs({ olderThan });
+    
+    console.log(`[Scheduled cleanup] Deleted ${count} logs older than ${olderThan.toISOString()}`);
+  } catch (error) {
+    console.error('Failed to perform scheduled log cleanup:', error);
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Apply performance logging middleware to all routes
   app.use(performanceLogger);
   
   // Start memory monitoring - check every 5 minutes to reduce overhead
   memoryMonitorTimer = startMemoryMonitoring(300000);
+  
+  // Schedule log cleanup to run once a day (24 hours = 86400000 ms)
+  setInterval(scheduledLogCleanup, 86400000);
+  
+  // Run initial log cleanup
+  await scheduledLogCleanup();
   
   // API routes - prefix all routes with /api
   
@@ -436,6 +458,113 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // System health endpoint for monitoring
+  app.get("/api/system/health", asyncHandler(async (req, res) => {
+    try {
+      // Get current memory usage
+      const memoryUsage = process.memoryUsage();
+      const usedMemoryMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
+      const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
+      const memoryPercentage = Math.round((usedMemoryMB / totalMemoryMB) * 100);
+      
+      // Get uptime information
+      const uptime = process.uptime();
+      const uptimeHours = Math.floor(uptime / 3600);
+      const uptimeMinutes = Math.floor((uptime % 3600) / 60);
+      const formattedUptime = `${uptimeHours}h ${uptimeMinutes}m`;
+      
+      // Get log statistics
+      const logStats = await storage.getLogStats();
+      
+      // Get number of active connectors
+      const connectors = connectorsController.getAllConnectors;
+      
+      // Assemble health data
+      const healthData = {
+        status: 'online',
+        uptime: {
+          seconds: uptime,
+          formatted: formattedUptime
+        },
+        memory: {
+          used: usedMemoryMB,
+          total: totalMemoryMB,
+          percentage: memoryPercentage,
+          rss: Math.round(memoryUsage.rss / 1024 / 1024),
+          external: Math.round(memoryUsage.external / 1024 / 1024)
+        },
+        logs: {
+          totalCount: logStats.totalCount,
+          countByLevel: logStats.countByLevel,
+          countByCategory: logStats.countByCategory,
+          recentErrorCount: logStats.recentErrors.length
+        },
+        timestamp: new Date().toISOString()
+      };
+      
+      res.json(healthData);
+    } catch (error) {
+      console.error("Error generating system health data:", error);
+      res.status(500).json({ 
+        status: 'error',
+        error: "Failed to generate system health data",
+        timestamp: new Date().toISOString()
+      });
+    }
+  }));
+  
+  // System memory cleanup endpoint
+  app.post("/api/system/cleanup-memory", asyncHandler(async (req, res) => {
+    try {
+      const beforeCleanup = process.memoryUsage();
+      
+      // Perform cleanup operations similar to what we do in memory monitoring
+      const tempArray = new Array(1000000);
+      for (let i = 0; i < 1000000; i++) {
+        tempArray[i] = i;
+      }
+      tempArray.length = 0;
+      
+      // Force several garbage collection-friendly operations
+      for (let i = 0; i < 5; i++) {
+        const largeObj = { data: new Array(100000).fill('x') };
+        JSON.stringify(largeObj);
+      }
+      
+      // Check if memory was freed
+      const afterCleanup = process.memoryUsage();
+      const freedMemoryMB = Math.max(0, Math.round((beforeCleanup.heapUsed - afterCleanup.heapUsed) / 1024 / 1024));
+      
+      // Trigger a log cleanup for entries older than 3 days
+      const olderThan = new Date();
+      olderThan.setDate(olderThan.getDate() - 3);
+      const deletedLogs = await storage.clearLogs({ olderThan });
+      
+      res.json({
+        success: true,
+        message: `Memory cleanup attempted, freed approximately ${freedMemoryMB}MB and deleted ${deletedLogs} logs older than 3 days`,
+        before: {
+          heapUsed: Math.round(beforeCleanup.heapUsed / 1024 / 1024),
+          heapTotal: Math.round(beforeCleanup.heapTotal / 1024 / 1024),
+        },
+        after: {
+          heapUsed: Math.round(afterCleanup.heapUsed / 1024 / 1024),
+          heapTotal: Math.round(afterCleanup.heapTotal / 1024 / 1024),
+        },
+        freedMemoryMB,
+        deletedLogs,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      console.error("Error during memory cleanup:", error);
+      res.status(500).json({ 
+        success: false,
+        error: "Failed to perform memory cleanup",
+        timestamp: new Date().toISOString()
+      });
+    }
+  }));
+  
   // System monitoring test endpoint
   app.post("/api/system/test-alert", asyncHandler(async (req, res) => {
     try {
