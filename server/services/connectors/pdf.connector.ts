@@ -69,8 +69,8 @@ export class PDFConnector extends BaseDataConnector {
     this.fileEncoding = config.fileEncoding || 'utf8';
 
     // Ensure pdfjs can find its worker
-    const pdfWorkerPath = require.resolve('pdfjs-dist/build/pdf.worker.js');
-    pdfjs.GlobalWorkerOptions.workerSrc = pdfWorkerPath;
+    // Using a direct path instead of require.resolve for ES modules compatibility
+    pdfjs.GlobalWorkerOptions.workerSrc = new URL('pdfjs-dist/build/pdf.worker.js', import.meta.url).href;
   }
 
   /**

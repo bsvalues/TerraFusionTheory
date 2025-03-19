@@ -4,6 +4,7 @@ import { storage } from "./storage";
 import * as openaiController from "./controllers/openai.controller";
 import * as aiController from "./controllers/ai.controller";
 import * as connectorsController from "./controllers/connectors.controller";
+import * as marketController from "./controllers/market.controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
@@ -336,6 +337,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/connectors/:name/models/:model", asyncHandler(connectorsController.getConnectorModelSchema));
   app.post("/api/connectors/:name/query/cama", asyncHandler(connectorsController.queryCAMAData));
   app.post("/api/connectors/:name/query/gis", asyncHandler(connectorsController.queryGISData));
+  
+  // Market Data routes
+  app.get("/api/market/listings", asyncHandler(marketController.getMarketListings));
+  app.get("/api/market/listings/:mlsNumber", asyncHandler(marketController.getMarketListingByMLS));
+  app.get("/api/market/stats", asyncHandler(marketController.getMarketStats));
 
   // Alert system routes
   app.get("/api/alerts", asyncHandler(async (req, res) => {
