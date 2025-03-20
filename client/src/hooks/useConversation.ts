@@ -15,11 +15,14 @@ export const useConversation = (projectId: number) => {
   const conversation = useMemo(() => {
     if (!rawConversation) return null;
     
+    // Ensure rawConversation is treated as an object with messages property
+    const conversationData = rawConversation as Conversation | { messages?: string | Message[] };
+    
     return {
       ...rawConversation,
-      messages: typeof rawConversation.messages === 'string' 
-        ? JSON.parse(rawConversation.messages) 
-        : (rawConversation.messages || [])
+      messages: typeof conversationData.messages === 'string' 
+        ? JSON.parse(conversationData.messages) 
+        : (conversationData.messages || [])
     };
   }, [rawConversation]);
   
