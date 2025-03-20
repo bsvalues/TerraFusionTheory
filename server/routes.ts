@@ -632,6 +632,139 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
+  // Badge routes
+  app.get("/api/badges", asyncHandler(async (req, res) => {
+    try {
+      const badges = await storage.getBadges();
+      res.json(badges);
+    } catch (error) {
+      console.error("Error fetching badges:", error);
+      res.status(500).json({ error: "Failed to fetch badges" });
+    }
+  }));
+
+  app.get("/api/badges/:id", asyncHandler(async (req, res) => {
+    try {
+      const badge = await storage.getBadgeById(parseInt(req.params.id));
+      if (!badge) {
+        return res.status(404).json({ error: "Badge not found" });
+      }
+      res.json(badge);
+    } catch (error) {
+      console.error("Error fetching badge:", error);
+      res.status(500).json({ error: "Failed to fetch badge" });
+    }
+  }));
+
+  app.get("/api/badges/type/:type", asyncHandler(async (req, res) => {
+    try {
+      const badges = await storage.getBadgesByType(req.params.type as any);
+      res.json(badges);
+    } catch (error) {
+      console.error("Error fetching badges by type:", error);
+      res.status(500).json({ error: "Failed to fetch badges by type" });
+    }
+  }));
+
+  app.get("/api/badges/level/:level", asyncHandler(async (req, res) => {
+    try {
+      const badges = await storage.getBadgesByLevel(req.params.level as any);
+      res.json(badges);
+    } catch (error) {
+      console.error("Error fetching badges by level:", error);
+      res.status(500).json({ error: "Failed to fetch badges by level" });
+    }
+  }));
+
+  app.post("/api/badges", asyncHandler(async (req, res) => {
+    try {
+      const badge = await storage.createBadge(req.body);
+      res.status(201).json(badge);
+    } catch (error) {
+      console.error("Error creating badge:", error);
+      res.status(500).json({ error: "Failed to create badge" });
+    }
+  }));
+
+  app.patch("/api/badges/:id", asyncHandler(async (req, res) => {
+    try {
+      const badge = await storage.getBadgeById(parseInt(req.params.id));
+      if (!badge) {
+        return res.status(404).json({ error: "Badge not found" });
+      }
+      
+      const updatedBadge = await storage.updateBadge({
+        ...badge,
+        ...req.body,
+        id: parseInt(req.params.id)
+      });
+      
+      res.json(updatedBadge);
+    } catch (error) {
+      console.error("Error updating badge:", error);
+      res.status(500).json({ error: "Failed to update badge" });
+    }
+  }));
+
+  app.get("/api/users/:userId/badges", asyncHandler(async (req, res) => {
+    try {
+      const userBadges = await storage.getUserBadgesWithDetails(parseInt(req.params.userId));
+      res.json(userBadges);
+    } catch (error) {
+      console.error("Error fetching user badges:", error);
+      res.status(500).json({ error: "Failed to fetch user badges" });
+    }
+  }));
+
+  app.get("/api/users/:userId/badges/project/:projectId", asyncHandler(async (req, res) => {
+    try {
+      const userBadges = await storage.getUserBadgesByProject(
+        parseInt(req.params.userId),
+        parseInt(req.params.projectId)
+      );
+      res.json(userBadges);
+    } catch (error) {
+      console.error("Error fetching user badges for project:", error);
+      res.status(500).json({ error: "Failed to fetch user badges for project" });
+    }
+  }));
+
+  app.post("/api/users/:userId/badges", asyncHandler(async (req, res) => {
+    try {
+      const userBadge = await storage.awardBadgeToUser({
+        ...req.body,
+        userId: parseInt(req.params.userId)
+      });
+      res.status(201).json(userBadge);
+    } catch (error) {
+      console.error("Error awarding badge to user:", error);
+      res.status(500).json({ error: "Failed to award badge to user" });
+    }
+  }));
+
+  app.patch("/api/users/:userId/badges/:badgeId", asyncHandler(async (req, res) => {
+    try {
+      const { progress, metadata } = req.body;
+      const userBadges = await storage.getUserBadges(parseInt(req.params.userId));
+      const userBadge = userBadges.find(ub => ub.badgeId === parseInt(req.params.badgeId));
+      
+      if (!userBadge) {
+        return res.status(404).json({ error: "User badge not found" });
+      }
+      
+      const updatedUserBadge = await storage.updateUserBadgeProgress(
+        userBadge.id,
+        progress,
+        metadata
+      );
+      
+      res.json(updatedUserBadge);
+    } catch (error) {
+      console.error("Error updating user badge progress:", error);
+      res.status(500).json({ error: "Failed to update user badge progress" });
+    }
+  }));
+
   const httpServer = createServer(app);
 
   return httpServer;

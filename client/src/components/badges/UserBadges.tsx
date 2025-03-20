@@ -28,7 +28,7 @@ const badgeIcons: Record<string, React.ReactNode> = {
 };
 
 // Map badge levels to variants
-const levelVariants: Record<BadgeLevel, string> = {
+const levelVariants: Record<BadgeLevel, "default" | "secondary" | "destructive" | "outline" | "warning" | "success" | "info" | "purple"> = {
   [BadgeLevel.BRONZE]: 'warning',
   [BadgeLevel.SILVER]: 'secondary',
   [BadgeLevel.GOLD]: 'warning',
@@ -55,7 +55,7 @@ const UserBadges: React.FC<UserBadgesProps> = ({
               <TooltipTrigger asChild>
                 <div className="relative inline-block">
                   <Badge 
-                    variant={badge.variant || levelVariants[badge.level as BadgeLevel] || 'default'}
+                    variant={(badge.variant as any) || levelVariants[badge.level as BadgeLevel] || 'default'}
                     className="flex items-center"
                     style={{ 
                       opacity: badge.isUnlocked ? 1 : 0.6, 
