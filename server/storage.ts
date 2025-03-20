@@ -277,6 +277,123 @@ export class MemStorage implements IStorage {
     for (const log of sampleLogs) {
       this.logsData.set(log.id, log);
     }
+    
+    // Initialize with sample badges
+    const sampleBadges: Badge[] = [
+      {
+        id: this.currentBadgeId++,
+        name: 'Property Data Analyst',
+        description: 'Successfully analyzed property data from multiple sources',
+        type: BadgeType.EFFICIENCY,
+        level: BadgeLevel.BRONZE,
+        criteria: JSON.stringify({
+          actions: ['data_analysis'],
+          count: 5
+        }),
+        icon: 'chart-bar',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: this.currentBadgeId++,
+        name: 'Market Insight Pioneer',
+        description: 'Discovered meaningful market trends through data analysis',
+        type: BadgeType.ACCURACY, 
+        level: BadgeLevel.SILVER,
+        criteria: JSON.stringify({
+          actions: ['market_analysis'],
+          count: 10
+        }),
+        icon: 'trending-up',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: this.currentBadgeId++,
+        name: 'GIS Explorer',
+        description: 'Used spatial analysis tools to uncover property relationships',
+        type: BadgeType.INNOVATION,
+        level: BadgeLevel.GOLD,
+        criteria: JSON.stringify({
+          actions: ['spatial_analysis', 'map_interaction'],
+          count: 15
+        }),
+        icon: 'map',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: this.currentBadgeId++,
+        name: 'Prediction Master',
+        description: 'Made accurate predictions about future market conditions',
+        type: BadgeType.ACCURACY,
+        level: BadgeLevel.PLATINUM,
+        criteria: JSON.stringify({
+          actions: ['prediction_generation', 'model_accuracy'],
+          threshold: 0.85
+        }),
+        icon: 'sparkles',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      },
+      {
+        id: this.currentBadgeId++,
+        name: 'Conversation Expert',
+        description: 'Engaged in meaningful AI conversation to enhance project understanding',
+        type: BadgeType.COLLABORATION,
+        level: BadgeLevel.BRONZE,
+        criteria: JSON.stringify({
+          actions: ['conversation_message'],
+          count: 20
+        }),
+        icon: 'message-circle',
+        createdAt: new Date(),
+        updatedAt: new Date()
+      }
+    ];
+    
+    // Add sample badges to the map
+    for (const badge of sampleBadges) {
+      this.badgesData.set(badge.id, badge);
+    }
+    
+    // Initialize with sample user badges (progress tracking)
+    const sampleUserBadges: UserBadge[] = [
+      {
+        id: this.currentUserBadgeId++,
+        userId: 1,
+        badgeId: 1,
+        projectId: 1,
+        progress: 60,
+        awardedAt: new Date(Date.now() - 86400000 * 2), // 2 days ago
+        metadata: JSON.stringify({
+          actionCounts: {
+            data_analysis: 3
+          },
+          lastAction: new Date(Date.now() - 86400000).toISOString()
+        })
+      },
+      {
+        id: this.currentUserBadgeId++,
+        userId: 1,
+        badgeId: 5,
+        projectId: 1,
+        progress: 100, // Completed
+        awardedAt: new Date(Date.now() - 86400000), // 1 day ago
+        metadata: JSON.stringify({
+          actionCounts: {
+            conversation_message: 22
+          },
+          lastAction: new Date().toISOString(),
+          completedAt: new Date(Date.now() - 86400000).toISOString()
+        })
+      }
+    ];
+    
+    // Add sample user badges to the map
+    for (const userBadge of sampleUserBadges) {
+      this.userBadgesData.set(userBadge.id, userBadge);
+    }
   }
 
   // User methods
@@ -673,6 +790,178 @@ export class MemStorage implements IStorage {
         return '#721c24'; // Dark Red
       default:
         return '#6c757d'; // Default Gray
+    }
+  }
+  
+  // Badge methods
+  async getBadges(): Promise<Badge[]> {
+    return Array.from(this.badgesData.values());
+  }
+  
+  async getBadgeById(id: number): Promise<Badge | undefined> {
+    return this.badgesData.get(id);
+  }
+  
+  async getBadgesByType(type: BadgeType): Promise<Badge[]> {
+    return Array.from(this.badgesData.values())
+      .filter(badge => badge.type === type)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  
+  async getBadgesByLevel(level: BadgeLevel): Promise<Badge[]> {
+    return Array.from(this.badgesData.values())
+      .filter(badge => badge.level === level)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  
+  async createBadge(badge: InsertBadge): Promise<Badge> {
+    const id = this.currentBadgeId++;
+    const newBadge: Badge = {
+      ...badge,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.badgesData.set(id, newBadge);
+    return newBadge;
+  }
+  
+  async updateBadge(badge: Badge): Promise<Badge> {
+    const updatedBadge = {
+      ...badge,
+      updatedAt: new Date()
+    };
+    this.badgesData.set(badge.id, updatedBadge);
+    return updatedBadge;
+  }
+  async getBadges(): Promise<Badge[]> {
+    return Array.from(this.badgesData.values());
+  }
+  
+  async getBadgeById(id: number): Promise<Badge | undefined> {
+    return this.badgesData.get(id);
+  }
+  
+  async getBadgesByType(type: BadgeType): Promise<Badge[]> {
+    return Array.from(this.badgesData.values())
+      .filter(badge => badge.type === type)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  
+  async getBadgesByLevel(level: BadgeLevel): Promise<Badge[]> {
+    return Array.from(this.badgesData.values())
+      .filter(badge => badge.level === level)
+      .sort((a, b) => a.name.localeCompare(b.name));
+  }
+  
+  async createBadge(badge: InsertBadge): Promise<Badge> {
+    const id = this.currentBadgeId++;
+    const newBadge: Badge = {
+      ...badge,
+      id,
+      createdAt: new Date(),
+      updatedAt: new Date()
+    };
+    this.badgesData.set(id, newBadge);
+    return newBadge;
+  }
+  
+  async updateBadge(badge: Badge): Promise<Badge> {
+    const updatedBadge = {
+      ...badge,
+      updatedAt: new Date()
+    };
+    this.badgesData.set(badge.id, updatedBadge);
+    return updatedBadge;
+  }
+  
+  // User Badge methods
+  async getUserBadges(userId: number): Promise<UserBadge[]> {
+    return Array.from(this.userBadgesData.values())
+      .filter(userBadge => userBadge.userId === userId)
+      .sort((a, b) => new Date(b.awardedAt).getTime() - new Date(a.awardedAt).getTime());
+  }
+  
+  async getUserBadgesByProject(userId: number, projectId: number): Promise<UserBadge[]> {
+    return Array.from(this.userBadgesData.values())
+      .filter(userBadge => userBadge.userId === userId && userBadge.projectId === projectId)
+      .sort((a, b) => new Date(b.awardedAt).getTime() - new Date(a.awardedAt).getTime());
+  }
+  
+  async awardBadgeToUser(userBadge: InsertUserBadge): Promise<UserBadge> {
+    const id = this.currentUserBadgeId++;
+    const newUserBadge: UserBadge = {
+      ...userBadge,
+      id,
+      awardedAt: new Date(),
+      progress: userBadge.progress || 0,
+    };
+    this.userBadgesData.set(id, newUserBadge);
+    return newUserBadge;
+  }
+  
+  async updateUserBadgeProgress(id: number, progress: number, metadata?: Record<string, any>): Promise<UserBadge> {
+    const userBadge = this.userBadgesData.get(id);
+    if (!userBadge) {
+      throw new Error(`User badge with id ${id} not found`);
+    }
+    
+    const updatedUserBadge: UserBadge = {
+      ...userBadge,
+      progress,
+      metadata: metadata ? JSON.stringify(metadata) : userBadge.metadata
+    };
+    this.userBadgesData.set(id, updatedUserBadge);
+    return updatedUserBadge;
+  }
+  
+  async getUserBadgesWithDetails(userId: number): Promise<BadgeWithProgress[]> {
+    const userBadges = await this.getUserBadges(userId);
+    const result: BadgeWithProgress[] = [];
+    
+    for (const userBadge of userBadges) {
+      const badge = await this.getBadgeById(userBadge.badgeId);
+      if (badge) {
+        // Create BadgeWithProgress by combining badge and user progress information
+        const badgeWithProgress: BadgeWithProgress = {
+          ...badge,
+          progress: userBadge.progress,
+          isUnlocked: userBadge.progress >= 100,
+          metadata: userBadge.metadata ? JSON.parse(userBadge.metadata as string) : {},
+          unlockDate: userBadge.progress >= 100 ? new Date(userBadge.awardedAt).toLocaleDateString() : undefined,
+          isNew: (new Date().getTime() - new Date(userBadge.awardedAt).getTime()) < (24 * 60 * 60 * 1000), // Is less than 24 hours old
+          variant: this.getBadgeVariantByLevel(badge.level as BadgeLevel),
+          tooltip: this.generateBadgeTooltip(badge, userBadge)
+        };
+        result.push(badgeWithProgress);
+      }
+    }
+    
+    return result;
+  }
+  
+  // Helper to get badge UI variant based on level
+  private getBadgeVariantByLevel(level: BadgeLevel): string {
+    switch (level) {
+      case BadgeLevel.BRONZE:
+        return 'warning';
+      case BadgeLevel.SILVER:
+        return 'secondary';
+      case BadgeLevel.GOLD:
+        return 'success';
+      case BadgeLevel.PLATINUM:
+        return 'purple';
+      default:
+        return 'default';
+    }
+  }
+  
+  // Helper to generate badge tooltip text
+  private generateBadgeTooltip(badge: Badge, userBadge: UserBadge): string {
+    if (userBadge.progress >= 100) {
+      return `${badge.description} (Awarded: ${new Date(userBadge.awardedAt).toLocaleDateString()})`;
+    } else {
+      return `${badge.description} (Progress: ${userBadge.progress}%)`;
     }
   }
 }
