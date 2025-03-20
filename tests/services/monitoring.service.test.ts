@@ -60,7 +60,21 @@ describe('Monitoring Service', () => {
         category: LogCategory.AI
       }));
       
+      // Check if the mock was called with the right arguments
       expect(mockAlertManager.sendAlert).toHaveBeenCalled();
+      
+      // Get the actual call arguments
+      const callArgs = mockAlertManager.sendAlert.mock.calls[0];
+      
+      // Verify first argument (message)
+      expect(callArgs[0]).toContain("OpenAI API");
+      
+      // Verify second argument (level)
+      expect(["warning", "critical"]).toContain(callArgs[1]);
+      
+      // Verify third argument (context) has the required properties
+      expect(callArgs[2]).toHaveProperty("totalCost");
+      expect(callArgs[2]).toHaveProperty("totalTokens");
     });
     
     it('should not trigger alerts when usage is within thresholds', async () => {
@@ -119,7 +133,21 @@ describe('Monitoring Service', () => {
         category: LogCategory.API
       }));
       
+      // Check if the mock was called with the right arguments
       expect(mockAlertManager.sendAlert).toHaveBeenCalled();
+      
+      // Get the actual call arguments
+      const callArgs = mockAlertManager.sendAlert.mock.calls[0];
+      
+      // Verify first argument (message)
+      expect(callArgs[0]).toContain("API response time");
+      
+      // Verify second argument (level)
+      expect(["warning", "critical"]).toContain(callArgs[1]);
+      
+      // Verify third argument (context) has the required properties
+      expect(callArgs[2]).toHaveProperty("avgResponseTime");
+      expect(callArgs[2]).toHaveProperty("slowEndpoints");
     });
     
     it('should not trigger alerts when API response times are acceptable', async () => {
@@ -185,13 +213,22 @@ describe('Monitoring Service', () => {
         level: [LogLevel.ERROR, LogLevel.CRITICAL],
         startDate: expect.any(Date)
       });
-      expect(mockAlertManager.sendAlert).toHaveBeenCalledWith(
-        expect.stringContaining("Error rate is high"),
-        "warning",
-        expect.objectContaining({
-          errorsPerMinute: expect.any(Number)
-        })
-      );
+      // Check if the mock was called with the right arguments
+      expect(mockAlertManager.sendAlert).toHaveBeenCalled();
+      
+      // Get the actual call arguments
+      const callArgs = mockAlertManager.sendAlert.mock.calls[0];
+      
+      // Verify first argument (message)
+      expect(callArgs[0]).toContain("Error rate is high");
+      
+      // Verify second argument (level)
+      expect(callArgs[1]).toBe("warning");
+      
+      // Verify third argument (context) has the required properties
+      expect(callArgs[2]).toHaveProperty("errorsPerMinute");
+      expect(callArgs[2]).toHaveProperty("errorsByType");
+      expect(callArgs[2]).toHaveProperty("threshold");
     });
     
     it('should not trigger alerts when error rates are acceptable', async () => {
