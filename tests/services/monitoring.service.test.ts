@@ -11,6 +11,14 @@ jest.mock('../../server/storage', () => ({
   }
 }));
 
+// Mock the internal alertManager
+const mockAlertManager = {
+  sendAlert: jest.fn().mockResolvedValue(undefined)
+};
+
+// Replace the internal alertManager with our mock
+(monitoringService as any).alertManager = mockAlertManager;
+
 describe('Monitoring Service', () => {
   beforeEach(() => {
     jest.clearAllMocks();
@@ -46,16 +54,13 @@ describe('Monitoring Service', () => {
         }
       ]);
       
-      // Mock the alert methods
-      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
-      
       await monitoringService.monitorOpenAIUsage();
       
       expect(storage.getLogs).toHaveBeenCalledWith(expect.objectContaining({
         category: LogCategory.AI
       }));
       
-      expect(monitorAlertSpy).toHaveBeenCalled();
+      expect(mockAlertManager.sendAlert).toHaveBeenCalled();
     });
     
     it('should not trigger alerts when usage is within thresholds', async () => {
@@ -75,12 +80,12 @@ describe('Monitoring Service', () => {
         }
       ]);
       
-      // Mock the alert methods
-      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
+      // Reset mock alert manager
+      mockAlertManager.sendAlert.mockClear();
       
       await monitoringService.monitorOpenAIUsage();
       
-      expect(monitorAlertSpy).not.toHaveBeenCalled();
+      expect(mockAlertManager.sendAlert).not.toHaveBeenCalled();
     });
   });
   
@@ -108,16 +113,13 @@ describe('Monitoring Service', () => {
         }
       ]);
       
-      // Mock the alert methods
-      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
-      
       await monitoringService.monitorApiResponseTimes();
       
       expect(storage.getLogs).toHaveBeenCalledWith(expect.objectContaining({
         category: LogCategory.API
       }));
       
-      expect(monitorAlertSpy).toHaveBeenCalled();
+      expect(mockAlertManager.sendAlert).toHaveBeenCalled();
     });
     
     it('should not trigger alerts when API response times are acceptable', async () => {
