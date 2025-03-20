@@ -4,7 +4,10 @@ import {
   conversations, type Conversation, type InsertConversation,
   analysis, type Analysis, type InsertAnalysis,
   logs, type Log, type InsertLog, type LogEntry,
-  LogLevel, LogCategory,
+  badges, type Badge, type InsertBadge,
+  userBadges, type UserBadge, type InsertUserBadge,
+  type BadgeWithProgress,
+  LogLevel, LogCategory, BadgeType, BadgeLevel,
   type Message,
   type FeedbackItem
 } from "../shared/schema";
@@ -38,6 +41,21 @@ export interface IStorage {
   getFeedback(): Promise<FeedbackItem[]>;
   saveFeedback(feedback: { message: string; timestamp: string }): Promise<FeedbackItem>;
   updateFeedbackStatus(id: number, resolved: boolean): Promise<FeedbackItem>;
+  
+  // Badge methods
+  getBadges(): Promise<Badge[]>;
+  getBadgeById(id: number): Promise<Badge | undefined>;
+  getBadgesByType(type: BadgeType): Promise<Badge[]>;
+  getBadgesByLevel(level: BadgeLevel): Promise<Badge[]>;
+  createBadge(badge: InsertBadge): Promise<Badge>;
+  updateBadge(badge: Badge): Promise<Badge>;
+  
+  // User Badge methods
+  getUserBadges(userId: number): Promise<UserBadge[]>;
+  getUserBadgesByProject(userId: number, projectId: number): Promise<UserBadge[]>;
+  awardBadgeToUser(userBadge: InsertUserBadge): Promise<UserBadge>;
+  updateUserBadgeProgress(id: number, progress: number, metadata?: Record<string, any>): Promise<UserBadge>;
+  getUserBadgesWithDetails(userId: number): Promise<BadgeWithProgress[]>;
   
   // Logging methods
   getLogs(options?: {
@@ -78,6 +96,8 @@ export class MemStorage implements IStorage {
   private analysisData: Map<number, Analysis>;
   private feedbackItems: Map<number, FeedbackItem>;
   private logsData: Map<number, Log>;
+  private badgesData: Map<number, Badge>;
+  private userBadgesData: Map<number, UserBadge>;
   
   private currentUserId: number;
   private currentProjectId: number;
@@ -85,6 +105,8 @@ export class MemStorage implements IStorage {
   private currentAnalysisId: number;
   private currentFeedbackId: number;
   private currentLogId: number;
+  private currentBadgeId: number;
+  private currentUserBadgeId: number;
 
   constructor() {
     this.users = new Map();
@@ -93,6 +115,8 @@ export class MemStorage implements IStorage {
     this.analysisData = new Map();
     this.feedbackItems = new Map();
     this.logsData = new Map();
+    this.badgesData = new Map();
+    this.userBadgesData = new Map();
     
     this.currentUserId = 1;
     this.currentProjectId = 1;
@@ -100,6 +124,8 @@ export class MemStorage implements IStorage {
     this.currentAnalysisId = 1;
     this.currentFeedbackId = 1;
     this.currentLogId = 1;
+    this.currentBadgeId = 1;
+    this.currentUserBadgeId = 1;
     
     // Initialize with sample project
     const sampleProject: Project = {

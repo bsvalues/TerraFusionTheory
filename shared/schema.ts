@@ -22,6 +22,25 @@ export enum LogCategory {
   AI = "ai"
 }
 
+// BadgeType enum for categorizing productivity badges
+export enum BadgeType {
+  EFFICIENCY = "efficiency",
+  ACCURACY = "accuracy",
+  SPEED = "speed",
+  CONSISTENCY = "consistency",
+  INNOVATION = "innovation",
+  COLLABORATION = "collaboration",
+  ACHIEVEMENT = "achievement"
+}
+
+// Badge level enum for badge hierarchy
+export enum BadgeLevel {
+  BRONZE = "bronze",
+  SILVER = "silver",
+  GOLD = "gold",
+  PLATINUM = "platinum"
+}
+
 export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
@@ -78,6 +97,29 @@ export const logs = pgTable("logs", {
   tags: text("tags").array(),
 });
 
+export const badges = pgTable("badges", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  description: text("description").notNull(),
+  type: text("type").notNull(), // Maps to BadgeType enum
+  level: text("level").notNull(), // Maps to BadgeLevel enum
+  criteria: jsonb("criteria").notNull().default({}), // JSON criteria for badge award
+  icon: text("icon"), // Icon identifier
+  color: text("color"), // Badge color
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+export const userBadges = pgTable("user_badges", {
+  id: serial("id").primaryKey(),
+  userId: integer("user_id").notNull(),
+  badgeId: integer("badge_id").notNull(),
+  projectId: integer("project_id"), // Optional project association
+  awardedAt: timestamp("awarded_at").defaultNow().notNull(),
+  progress: integer("progress").default(0), // Progress toward completion (0-100)
+  metadata: jsonb("metadata").default({}), // Additional context for the badge
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -123,6 +165,24 @@ export const insertLogSchema = createInsertSchema(logs).pick({
   tags: true,
 });
 
+export const insertBadgeSchema = createInsertSchema(badges).pick({
+  name: true,
+  description: true,
+  type: true,
+  level: true,
+  criteria: true,
+  icon: true,
+  color: true,
+});
+
+export const insertUserBadgeSchema = createInsertSchema(userBadges).pick({
+  userId: true,
+  badgeId: true,
+  projectId: true,
+  progress: true,
+  metadata: true,
+});
+
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
@@ -137,6 +197,12 @@ export type Analysis = typeof analysis.$inferSelect;
 
 export type InsertLog = z.infer<typeof insertLogSchema>;
 export type Log = typeof logs.$inferSelect;
+
+export type InsertBadge = z.infer<typeof insertBadgeSchema>;
+export type Badge = typeof badges.$inferSelect;
+
+export type InsertUserBadge = z.infer<typeof insertUserBadgeSchema>;
+export type UserBadge = typeof userBadges.$inferSelect;
 
 // Extended LogEntry type with additional frontend context
 export type LogEntry = Log & {
@@ -156,4 +222,19 @@ export type FeedbackItem = {
   message: string;
   timestamp: string;
   resolved: boolean;
+};
+
+// Extended badge type with additional display information
+export type BadgeDisplay = Badge & {
+  variant?: string; // For styling with the Badge component
+  tooltip?: string; // Optional tooltip with additional context
+  isNew?: boolean; // To indicate newly awarded badges
+  unlockDate?: string; // Formatted date when the badge was unlocked
+};
+
+// Represents a badge with progress information for a specific user
+export type BadgeWithProgress = BadgeDisplay & {
+  progress: number; // Progress percentage (0-100)
+  isUnlocked: boolean; // Whether the badge is unlocked
+  metadata: Record<string, any>; // Additional context
 };
