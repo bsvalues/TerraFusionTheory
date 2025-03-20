@@ -81,7 +81,7 @@ const UserBadges: React.FC<UserBadgesProps> = ({
               <TooltipContent>
                 <div className="text-xs">
                   <div className="font-bold">{badge.name}</div>
-                  <div className="text-gray-400">{badge.level.toUpperCase()}</div>
+                  <div className="text-gray-400">{badge.level ? badge.level.toUpperCase() : 'UNKNOWN'}</div>
                   <div className="mt-1">{badge.description}</div>
                   {badge.isUnlocked ? (
                     <div className="mt-1 text-green-600">

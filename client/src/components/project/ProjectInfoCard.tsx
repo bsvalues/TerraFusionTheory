@@ -1,12 +1,16 @@
 import React from 'react';
-import { ProjectInfo } from '@/types';
+import { ProjectInfo, BadgeWithProgress } from '@/types';
 import { Badge } from '../ui/badge';
+import UserBadges from '../badges/UserBadges';
+import { useBadges } from '@/hooks/useBadges';
 
 interface ProjectInfoCardProps {
   project: ProjectInfo;
+  userId?: number;
 }
 
-const ProjectInfoCard: React.FC<ProjectInfoCardProps> = ({ project }) => {
+const ProjectInfoCard: React.FC<ProjectInfoCardProps> = ({ project, userId = 1 }) => {
+  const { badges, isLoading } = useBadges(userId, project.id);
   return (
     <div className="bg-white shadow rounded-lg mb-6">
       <div className="px-4 py-5 sm:px-6 border-b border-gray-200">
@@ -66,6 +70,19 @@ const ProjectInfoCard: React.FC<ProjectInfoCardProps> = ({ project }) => {
                 className="bg-primary h-2 rounded-full"
                 style={{ width: `${project.progress}%` }}
               ></div>
+            </div>
+          </div>
+          
+          <div className="sm:col-span-6 mt-4">
+            <div className="border-t pt-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">Earned Badges</label>
+              {isLoading ? (
+                <div className="flex justify-center items-center py-4">
+                  <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                </div>
+              ) : (
+                <UserBadges badges={badges} showProgress={true} />
+              )}
             </div>
           </div>
         </div>
