@@ -1,0 +1,255 @@
+import * as monitoringService from '../../server/services/monitoring.service';
+import { storage } from '../../server/storage';
+import { LogLevel, LogCategory } from '../../shared/schema';
+
+// Mock dependencies
+jest.mock('../../server/storage', () => ({
+  storage: {
+    createLog: jest.fn(),
+    getLogs: jest.fn(),
+    getLogStats: jest.fn()
+  }
+}));
+
+describe('Monitoring Service', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+  
+  describe('monitorOpenAIUsage', () => {
+    it('should trigger alerts when OpenAI usage exceeds thresholds', async () => {
+      // Mock high usage logs
+      (storage.getLogs as jest.Mock).mockResolvedValueOnce([
+        {
+          id: 1,
+          level: LogLevel.INFO,
+          category: LogCategory.AI,
+          message: 'OpenAI API request',
+          details: JSON.stringify({ 
+            model: 'gpt-4', 
+            tokens: 1200,
+            cost: 0.06
+          }),
+          timestamp: new Date()
+        },
+        {
+          id: 2,
+          level: LogLevel.INFO,
+          category: LogCategory.AI,
+          message: 'OpenAI API request',
+          details: JSON.stringify({ 
+            model: 'gpt-4', 
+            tokens: 1500,
+            cost: 0.075
+          }),
+          timestamp: new Date()
+        }
+      ]);
+      
+      // Mock the alert methods
+      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
+      
+      await monitoringService.monitorOpenAIUsage();
+      
+      expect(storage.getLogs).toHaveBeenCalledWith(expect.objectContaining({
+        category: LogCategory.AI
+      }));
+      
+      expect(monitorAlertSpy).toHaveBeenCalled();
+    });
+    
+    it('should not trigger alerts when usage is within thresholds', async () => {
+      // Mock low usage logs
+      (storage.getLogs as jest.Mock).mockResolvedValueOnce([
+        {
+          id: 1,
+          level: LogLevel.INFO,
+          category: LogCategory.AI,
+          message: 'OpenAI API request',
+          details: JSON.stringify({ 
+            model: 'gpt-3.5-turbo', 
+            tokens: 300,
+            cost: 0.0006
+          }),
+          timestamp: new Date()
+        }
+      ]);
+      
+      // Mock the alert methods
+      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
+      
+      await monitoringService.monitorOpenAIUsage();
+      
+      expect(monitorAlertSpy).not.toHaveBeenCalled();
+    });
+  });
+  
+  describe('monitorApiResponseTimes', () => {
+    it('should trigger alerts when API response times are slow', async () => {
+      // Mock slow response logs
+      (storage.getLogs as jest.Mock).mockResolvedValueOnce([
+        {
+          id: 3,
+          level: LogLevel.INFO,
+          category: LogCategory.API,
+          message: 'API request completed',
+          endpoint: '/api/properties',
+          duration: 2500, // 2.5 seconds
+          timestamp: new Date()
+        },
+        {
+          id: 4,
+          level: LogLevel.INFO,
+          category: LogCategory.API,
+          message: 'API request completed',
+          endpoint: '/api/market-analysis',
+          duration: 3200, // 3.2 seconds
+          timestamp: new Date()
+        }
+      ]);
+      
+      // Mock the alert methods
+      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
+      
+      await monitoringService.monitorApiResponseTimes();
+      
+      expect(storage.getLogs).toHaveBeenCalledWith(expect.objectContaining({
+        category: LogCategory.API
+      }));
+      
+      expect(monitorAlertSpy).toHaveBeenCalled();
+    });
+    
+    it('should not trigger alerts when API response times are acceptable', async () => {
+      // Mock fast response logs
+      (storage.getLogs as jest.Mock).mockResolvedValueOnce([
+        {
+          id: 3,
+          level: LogLevel.INFO,
+          category: LogCategory.API,
+          message: 'API request completed',
+          endpoint: '/api/properties',
+          duration: 150, // 150ms
+          timestamp: new Date()
+        },
+        {
+          id: 4,
+          level: LogLevel.INFO,
+          category: LogCategory.API,
+          message: 'API request completed',
+          endpoint: '/api/market-analysis',
+          duration: 320, // 320ms
+          timestamp: new Date()
+        }
+      ]);
+      
+      // Mock the alert methods
+      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
+      
+      await monitoringService.monitorApiResponseTimes();
+      
+      expect(monitorAlertSpy).not.toHaveBeenCalled();
+    });
+  });
+  
+  describe('monitorErrorRates', () => {
+    it('should trigger alerts when error rates are high', async () => {
+      // Mock high error rate
+      (storage.getLogStats as jest.Mock).mockResolvedValueOnce({
+        totalCount: 100,
+        countByLevel: {
+          [LogLevel.ERROR]: 15,
+          [LogLevel.WARNING]: 10,
+          [LogLevel.INFO]: 70,
+          [LogLevel.DEBUG]: 5,
+          [LogLevel.CRITICAL]: 0
+        },
+        countByCategory: {
+          [LogCategory.API]: 30,
+          [LogCategory.DATABASE]: 20,
+          [LogCategory.SYSTEM]: 50
+        },
+        recentErrors: [
+          {
+            id: 5,
+            level: LogLevel.ERROR,
+            category: LogCategory.DATABASE,
+            message: 'Database connection error',
+            timestamp: new Date()
+          }
+        ]
+      });
+      
+      // Mock the alert methods
+      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
+      
+      await monitoringService.monitorErrorRates();
+      
+      expect(storage.getLogStats).toHaveBeenCalled();
+      expect(monitorAlertSpy).toHaveBeenCalled();
+    });
+    
+    it('should not trigger alerts when error rates are acceptable', async () => {
+      // Mock low error rate
+      (storage.getLogStats as jest.Mock).mockResolvedValueOnce({
+        totalCount: 100,
+        countByLevel: {
+          [LogLevel.ERROR]: 2,
+          [LogLevel.WARNING]: 5,
+          [LogLevel.INFO]: 88,
+          [LogLevel.DEBUG]: 5,
+          [LogLevel.CRITICAL]: 0
+        },
+        countByCategory: {
+          [LogCategory.API]: 30,
+          [LogCategory.DATABASE]: 20,
+          [LogCategory.SYSTEM]: 50
+        },
+        recentErrors: []
+      });
+      
+      // Mock the alert methods
+      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
+      
+      await monitoringService.monitorErrorRates();
+      
+      expect(monitorAlertSpy).not.toHaveBeenCalled();
+    });
+  });
+  
+  describe('runMonitoring', () => {
+    it('should run all monitoring checks', async () => {
+      // Mock individual monitoring functions
+      const openAISpy = jest.spyOn(monitoringService, 'monitorOpenAIUsage').mockResolvedValueOnce();
+      const apiSpy = jest.spyOn(monitoringService, 'monitorApiResponseTimes').mockResolvedValueOnce();
+      const errorSpy = jest.spyOn(monitoringService, 'monitorErrorRates').mockResolvedValueOnce();
+      
+      await monitoringService.runMonitoring();
+      
+      expect(openAISpy).toHaveBeenCalled();
+      expect(apiSpy).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalled();
+    });
+    
+    it('should continue even if one check fails', async () => {
+      // Mock individual monitoring functions with one failing
+      const openAISpy = jest.spyOn(monitoringService, 'monitorOpenAIUsage').mockRejectedValueOnce(new Error('Test error'));
+      const apiSpy = jest.spyOn(monitoringService, 'monitorApiResponseTimes').mockResolvedValueOnce();
+      const errorSpy = jest.spyOn(monitoringService, 'monitorErrorRates').mockResolvedValueOnce();
+      
+      // Should not throw
+      await expect(monitoringService.runMonitoring()).resolves.not.toThrow();
+      
+      expect(openAISpy).toHaveBeenCalled();
+      expect(apiSpy).toHaveBeenCalled();
+      expect(errorSpy).toHaveBeenCalled();
+      
+      // Log should be created for the error
+      expect(storage.createLog).toHaveBeenCalledWith(expect.objectContaining({
+        level: LogLevel.ERROR,
+        category: LogCategory.SYSTEM,
+        message: expect.stringContaining('Monitoring check failed')
+      }));
+    });
+  });
+});

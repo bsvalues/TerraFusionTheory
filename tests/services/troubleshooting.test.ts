@@ -76,7 +76,7 @@ describe('TroubleshootingService', () => {
         failedOperation: 'data fetch',
         resource: 'property listings'
       };
-      const error = new AppError('Operation failed', 'OPERATION_FAILED', 500, true, details);
+      const error = new AppError('Operation failed', 'OPERATION_FAILED', 500 as number, true, details);
       const context = { endpoint: '/api/properties' };
       
       await troubleshootingService.analyzeIssue(error, context);
