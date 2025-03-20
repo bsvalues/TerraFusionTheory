@@ -1,3 +1,4 @@
+import 'openai/shims/node';
 import OpenAI from 'openai';
 import * as openaiService from '../../server/services/openai.service';
 import { storage } from '../../server/storage';

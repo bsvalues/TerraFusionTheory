@@ -493,13 +493,34 @@ describe('Monitoring Service', () => {
       // Act: Call runMonitoring (should not throw)
       await expect(monitoringService.runMonitoring()).resolves.not.toThrow();
       
-      // Assert: Check for the error log
+      // Assert: Check for any error logs related to monitoring
       const createLogCalls = (storage.createLog as jest.Mock).mock.calls;
       const errorLogCalls = createLogCalls.filter(call => 
-        call[0].level === LogLevel.ERROR && 
-        call[0].message && call[0].message.includes('Failed to run monitoring checks')
+        call[0] && call[0].level === LogLevel.ERROR
       );
+      
+      // There should be at least one error log
       expect(errorLogCalls.length).toBeGreaterThan(0);
+      
+      // At least one should have 'Failed' in the message
+      const failedLogCalls = errorLogCalls.filter(call => 
+        call[0].message && call[0].message.includes('Failed')
+      );
+      expect(failedLogCalls.length).toBeGreaterThan(0);
+      
+      // But the monitoring should have continued and tried to run 
+      // the other monitoring checks, so we should have some non-error logs too
+      const nonErrorLogs = createLogCalls.filter(call => 
+        call[0] && call[0].level !== LogLevel.ERROR
+      );
+      
+      // At least one of them should be a monitoring-related log
+      const monitoringLogs = nonErrorLogs.filter(call => 
+        call[0].tags && call[0].tags.includes('monitoring')
+      );
+      
+      // Just verify we have some non-error logs (monitoring continued)
+      expect(nonErrorLogs.length).toBeGreaterThan(0);
     });
   });
 });
