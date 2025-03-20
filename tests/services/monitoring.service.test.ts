@@ -145,50 +145,36 @@ describe('Monitoring Service', () => {
         }
       ]);
       
-      // Mock the alert methods
-      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
+      // Reset mock alert manager
+      mockAlertManager.sendAlert.mockClear();
       
       await monitoringService.monitorApiResponseTimes();
       
-      expect(monitorAlertSpy).not.toHaveBeenCalled();
+      expect(mockAlertManager.sendAlert).not.toHaveBeenCalled();
     });
   });
   
   describe('monitorErrorRates', () => {
     it('should trigger alerts when error rates are high', async () => {
-      // Mock high error rate
-      (storage.getLogStats as jest.Mock).mockResolvedValueOnce({
-        totalCount: 100,
-        countByLevel: {
-          [LogLevel.ERROR]: 15,
-          [LogLevel.WARNING]: 10,
-          [LogLevel.INFO]: 70,
-          [LogLevel.DEBUG]: 5,
-          [LogLevel.CRITICAL]: 0
-        },
-        countByCategory: {
-          [LogCategory.API]: 30,
-          [LogCategory.DATABASE]: 20,
-          [LogCategory.SYSTEM]: 50
-        },
-        recentErrors: [
-          {
-            id: 5,
-            level: LogLevel.ERROR,
-            category: LogCategory.DATABASE,
-            message: 'Database connection error',
-            timestamp: new Date()
-          }
-        ]
-      });
+      // Mock getLogs to return many error logs (simulate high error rate)
+      const errorLogs = [];
+      for (let i = 0; i < 100; i++) {
+        errorLogs.push({
+          id: i,
+          level: LogLevel.ERROR,
+          category: LogCategory.DATABASE,
+          message: 'Database connection error',
+          timestamp: new Date(),
+          details: JSON.stringify({ errorType: 'ConnectionError' })
+        });
+      }
       
-      // Mock the alert methods
-      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
+      (storage.getLogs as jest.Mock).mockResolvedValueOnce(errorLogs);
       
       await monitoringService.monitorErrorRates();
       
-      expect(storage.getLogStats).toHaveBeenCalled();
-      expect(monitorAlertSpy).toHaveBeenCalled();
+      expect(storage.getLogs).toHaveBeenCalled();
+      expect(mockAlertManager.sendAlert).toHaveBeenCalled();
     });
     
     it('should not trigger alerts when error rates are acceptable', async () => {
@@ -207,15 +193,16 @@ describe('Monitoring Service', () => {
           [LogCategory.DATABASE]: 20,
           [LogCategory.SYSTEM]: 50
         },
-        recentErrors: []
+        recentErrors: [],
+        performanceAverage: 120
       });
       
-      // Mock the alert methods
-      const monitorAlertSpy = jest.spyOn(monitoringService as any, 'sendAlert').mockResolvedValueOnce(undefined);
+      // Reset mock alert manager
+      mockAlertManager.sendAlert.mockClear();
       
       await monitoringService.monitorErrorRates();
       
-      expect(monitorAlertSpy).not.toHaveBeenCalled();
+      expect(mockAlertManager.sendAlert).not.toHaveBeenCalled();
     });
   });
   
