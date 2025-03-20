@@ -11,9 +11,21 @@ jest.setTimeout(10000); // 10 seconds global timeout
 // Mock the fetch API
 global.fetch = jest.fn();
 
-// Define global.Request for OpenAI
+// Define globals for OpenAI Web API
 if (typeof Request === 'undefined') {
   global.Request = class Request {};
+}
+
+if (typeof Response === 'undefined') {
+  global.Response = class Response {};
+}
+
+if (typeof Headers === 'undefined') {
+  global.Headers = class Headers {};
+}
+
+if (typeof FormData === 'undefined') {
+  global.FormData = class FormData {};
 }
 
 // Polyfill for TextEncoder/Decoder if needed

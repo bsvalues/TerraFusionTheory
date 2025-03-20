@@ -4,13 +4,8 @@ import { storage } from '../storage';
 import { LogCategory, LogLevel } from '@shared/schema';
 import { ServiceError, ValidationError, TimeoutError } from '../errors';
 
-// Create a specific service error for OpenAI
-class OpenAIServiceError extends ServiceError {
-  constructor(message: string, details?: any) {
-    super(message, details);
-    this.code = 'OPENAI_ERROR';
-  }
-}
+// Use ServiceError directly for OpenAI errors
+const OpenAIServiceError = ServiceError;
 
 // Initialize OpenAI client
 const openai = new OpenAI({
