@@ -16,9 +16,6 @@ import { realEstateAnalyticsService } from "./services/real-estate-analytics.ser
 import swaggerUi from 'swagger-ui-express';
 import { openApiSpec } from './openapi';
 
-// API Documentation setup
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
-
 let memoryMonitorTimer: NodeJS.Timeout | null = null;
 
 // Schedule log cleanup to run every day
@@ -40,6 +37,9 @@ async function scheduledLogCleanup() {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Apply performance logging middleware to all routes
   app.use(performanceLogger);
+  
+  // API Documentation setup
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
   
   // Start memory monitoring - check every 5 minutes to reduce overhead
   memoryMonitorTimer = startMemoryMonitoring(300000);
