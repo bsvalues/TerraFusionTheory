@@ -23,10 +23,10 @@ echo "==========================================="
 # Check if a specific test pattern was requested
 if [ $# -eq 0 ]; then
   echo -e "${YELLOW}Running all tests${NC}"
-  npx jest
+  npx jest --config=./jest.config.cjs
 else
   echo -e "${YELLOW}Running tests matching pattern: $1${NC}"
-  npx jest -t "$1"
+  npx jest --config=./jest.config.cjs -t "$1"
 fi
 
 # Store the exit code

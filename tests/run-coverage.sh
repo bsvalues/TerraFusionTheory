@@ -19,7 +19,7 @@ echo -e "${YELLOW}Running IntelligentEstate tests with coverage...${NC}"
 echo "==========================================="
 
 # Run Jest with coverage options
-npx jest --coverage
+npx jest --config=./jest.config.cjs --coverage
 
 # Store the exit code
 EXIT_CODE=$?

@@ -1,16 +1,15 @@
-describe('Jest Configuration', () => {
-  test('basic test functionality works', () => {
-    expect(1 + 2).toBe(3);
+// Basic test to verify the test setup is working
+describe('Test Environment', () => {
+  it('should run tests correctly', () => {
+    expect(true).toBe(true);
   });
 
-  test('mocks are working', () => {
-    const mockFn = jest.fn().mockReturnValue(42);
-    expect(mockFn()).toBe(42);
-    expect(mockFn).toHaveBeenCalledTimes(1);
+  it('should have access to testing utilities', () => {
+    expect(jest).toBeDefined();
+    expect(typeof jest.fn).toBe('function');
   });
 
-  test('async testing works', async () => {
-    const asyncFunction = () => Promise.resolve('success');
-    await expect(asyncFunction()).resolves.toBe('success');
+  it('should have correct environment variable', () => {
+    expect(process.env.NODE_ENV).toBe('test');
   });
 });

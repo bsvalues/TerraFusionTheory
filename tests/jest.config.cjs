@@ -12,7 +12,8 @@ module.exports = {
     '^@server/(.*)$': '<rootDir>/../server/$1',
   },
   setupFilesAfterEnv: [
-    '<rootDir>/setupTests.js'
+    '<rootDir>/setupTests.js',
+    '<rootDir>/setupDataTests.js'
   ],
   testRegex: '(/__tests__/.*|(\\.|/)(test|spec))\\.(jsx?|tsx?)$',
   moduleFileExtensions: ['ts', 'tsx', 'js', 'jsx', 'json', 'node'],

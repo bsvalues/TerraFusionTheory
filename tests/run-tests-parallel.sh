@@ -26,7 +26,7 @@ echo -e "Using ${WORKERS} workers"
 echo "==========================================="
 
 # Run Jest with the specified number of workers
-npx jest --runInBand=false --maxWorkers=$WORKERS
+npx jest --config=./jest.config.cjs --runInBand=false --maxWorkers=$WORKERS
 
 # Store the exit code
 EXIT_CODE=$?
