@@ -79,3 +79,56 @@ export type ArchitectureLayer = {
 export type Architecture = {
   layers: ArchitectureLayer[];
 };
+
+export enum BadgeType {
+  EFFICIENCY = "efficiency",
+  ACCURACY = "accuracy",
+  SPEED = "speed",
+  CONSISTENCY = "consistency",
+  INNOVATION = "innovation",
+  COLLABORATION = "collaboration",
+  ACHIEVEMENT = "achievement"
+}
+
+export enum BadgeLevel {
+  BRONZE = "bronze",
+  SILVER = "silver",
+  GOLD = "gold",
+  PLATINUM = "platinum"
+}
+
+export type UserBadge = {
+  id: number;
+  userId: number;
+  badgeId: number;
+  projectId: number;
+  progress: number;
+  awardedAt: string;
+  metadata: Record<string, any>;
+};
+
+export type Badge = {
+  id: number;
+  name: string;
+  description: string;
+  type: BadgeType;
+  level: BadgeLevel;
+  criteria: Record<string, any>;
+  icon: string;
+  color: string;
+  createdAt: string;
+  updatedAt: string;
+};
+
+export type BadgeDisplay = Badge & {
+  variant?: string;
+  tooltip?: string;
+  isNew?: boolean;
+  unlockDate?: string;
+};
+
+export type BadgeWithProgress = BadgeDisplay & {
+  progress: number;
+  isUnlocked: boolean;
+  metadata: Record<string, any>;
+};
