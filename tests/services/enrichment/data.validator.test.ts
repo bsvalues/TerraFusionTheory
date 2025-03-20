@@ -185,9 +185,9 @@ describe('DataValidator', () => {
       const duplicates = validator.detectDuplicateListings(listings);
       
       expect(duplicates.length).toBeGreaterThan(0);
-      expect(duplicates[0].listings).toHaveLength(2);
-      expect(duplicates[0].listings[0].mlsNumber).toBe('MLS12345');
-      expect(duplicates[0].listings[1].mlsNumber).toBe('MLS99999');
+      expect(duplicates[0].duplicateGroup).toHaveLength(2);
+      expect(duplicates[0].duplicateGroup[0].mlsNumber).toBe('MLS12345');
+      expect(duplicates[0].duplicateGroup[1].mlsNumber).toBe('MLS99999');
     });
     
     it('should not detect distinct listings as duplicates', () => {
@@ -202,13 +202,14 @@ describe('DataValidator', () => {
       // Listing matching the property data
       const matchingListing = sampleListings[0];
       
-      const result = validator.crossValidateListingsWithPropertyData(
-        matchingListing,
-        samplePropertyData
+      const results = validator.crossValidateListingsWithPropertyData(
+        [matchingListing],
+        [samplePropertyData]
       );
       
-      expect(result.isValid).toBe(true);
-      expect(result.crossReferenceIssues).toHaveLength(0);
+      expect(results.length).toBe(1);
+      const result = results[0];
+      expect(result.discrepancies).toHaveLength(0);
     });
     
     it('should detect inconsistencies between listing and property data', () => {
@@ -218,14 +219,15 @@ describe('DataValidator', () => {
         squareFeet: 2200 // Different from property data (1800)
       };
       
-      const result = validator.crossValidateListingsWithPropertyData(
-        inconsistentListing,
-        samplePropertyData
+      const results = validator.crossValidateListingsWithPropertyData(
+        [inconsistentListing],
+        [samplePropertyData]
       );
       
-      expect(result.isValid).toBe(false);
-      expect(result.crossReferenceIssues.length).toBeGreaterThan(0);
-      expect(result.crossReferenceIssues[0].field).toBe('squareFeet');
+      expect(results.length).toBe(1);
+      const result = results[0];
+      expect(result.discrepancies.length).toBeGreaterThan(0);
+      expect(result.discrepancies[0].field).toBe('squareFeet');
     });
     
     it('should detect large price discrepancies', () => {
@@ -235,12 +237,14 @@ describe('DataValidator', () => {
         price: 600000 // Much higher than market value in property data (400000)
       };
       
-      const result = validator.crossValidateListingsWithPropertyData(
-        inconsistentListing,
+      const results = validator.crossValidateListingsWithPropertyData(
+        [inconsistentListing],
         samplePropertyData
       );
       
-      expect(result.crossReferenceIssues.some(issue => issue.field === 'price')).toBe(true);
+      expect(results.length).toBe(1);
+      const result = results[0];
+      expect(result.discrepancies.some(issue => issue.field === 'price')).toBe(true);
     });
   });
 });
