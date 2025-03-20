@@ -69,6 +69,47 @@ Comprehensive test coverage with:
 - **Service Tests**: Testing of service layer functionality
 - **Mock/Stub Strategy**: Consistent approach to mocking external dependencies
 
+### Test Architecture
+
+The test suite is organized according to the application's architecture:
+
+```
+tests/
+  ├── components/            # React component tests
+  ├── controllers/           # API controller tests
+  ├── hooks/                 # React custom hook tests
+  ├── mocks/                 # Mock data and mock implementations
+  ├── services/              # Service layer tests
+  │   ├── ai/                # AI service tests
+  │   ├── connectors/        # Data connector tests
+  │   ├── enrichment/        # Data enrichment tests
+  │   └── monitoring/        # Monitoring service tests
+  └── utils/                 # Test utilities
+```
+
+### Running Tests
+
+We provide several scripts for running tests:
+
+```bash
+# Run all tests
+./tests/run-tests.sh
+
+# Run a single test file
+./tests/run-single-test.sh services/monitoring/market.monitor.test.ts
+
+# Generate coverage report
+./tests/generate-coverage-report.sh
+
+# Run tests with clean cache
+./tests/run-tests-clean.sh
+
+# Run tests in parallel for faster execution
+./tests/run-tests-parallel.sh
+```
+
+For detailed information about the testing infrastructure, please see the [tests/README.md](tests/README.md) file.
+
 ## Getting Started
 
 ### Prerequisites
