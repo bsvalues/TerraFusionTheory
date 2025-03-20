@@ -1,6 +1,6 @@
 import * as monitoringService from '../../server/services/monitoring.service';
 import { storage } from '../../server/storage';
-import { LogLevel, LogCategory } from '../../shared/schema';
+import { LogLevel, LogCategory, LogEntry } from '../../shared/schema';
 
 // Mock dependencies
 jest.mock('../../server/storage', () => ({
@@ -157,7 +157,7 @@ describe('Monitoring Service', () => {
   describe('monitorErrorRates', () => {
     it('should trigger alerts when error rates are high', async () => {
       // Mock getLogs to return many error logs (simulate high error rate)
-      const errorLogs = [];
+      const errorLogs: LogEntry[] = [];
       for (let i = 0; i < 100; i++) {
         errorLogs.push({
           id: i,
@@ -165,7 +165,15 @@ describe('Monitoring Service', () => {
           category: LogCategory.DATABASE,
           message: 'Database connection error',
           timestamp: new Date(),
-          details: JSON.stringify({ errorType: 'ConnectionError' })
+          details: '{"errorType":"ConnectionError"}',
+          source: 'test',
+          tags: ['test', 'error'],
+          sessionId: null,
+          userId: null,
+          projectId: null,
+          duration: null,
+          statusCode: null,
+          endpoint: null
         });
       }
       
@@ -173,13 +181,22 @@ describe('Monitoring Service', () => {
       
       await monitoringService.monitorErrorRates();
       
-      expect(storage.getLogs).toHaveBeenCalled();
-      expect(mockAlertManager.sendAlert).toHaveBeenCalled();
+      expect(storage.getLogs).toHaveBeenCalledWith({
+        level: [LogLevel.ERROR, LogLevel.CRITICAL],
+        startDate: expect.any(Date)
+      });
+      expect(mockAlertManager.sendAlert).toHaveBeenCalledWith(
+        expect.stringContaining("Error rate is high"),
+        "warning",
+        expect.objectContaining({
+          errorsPerMinute: expect.any(Number)
+        })
+      );
     });
     
     it('should not trigger alerts when error rates are acceptable', async () => {
       // Mock getLogs to return few error logs (simulate low error rate)
-      const errorLogs = [];
+      const errorLogs: LogEntry[] = [];
       for (let i = 0; i < 3; i++) {
         errorLogs.push({
           id: i,
@@ -187,7 +204,15 @@ describe('Monitoring Service', () => {
           category: LogCategory.DATABASE,
           message: 'Minor database error',
           timestamp: new Date(),
-          details: JSON.stringify({ errorType: 'MinorError' })
+          details: '{"errorType":"MinorError"}',
+          source: 'test',
+          tags: ['test', 'error'],
+          sessionId: null,
+          userId: null,
+          projectId: null,
+          duration: null,
+          statusCode: null,
+          endpoint: null
         });
       }
       
