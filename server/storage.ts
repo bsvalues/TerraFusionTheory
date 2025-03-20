@@ -286,11 +286,9 @@ export class MemStorage implements IStorage {
         description: 'Successfully analyzed property data from multiple sources',
         type: BadgeType.EFFICIENCY,
         level: BadgeLevel.BRONZE,
-        criteria: JSON.stringify({
-          actions: ['data_analysis'],
-          count: 5
-        }),
+        criteria: {},
         icon: 'chart-bar',
+        color: '#CD7F32', // Bronze color
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -300,11 +298,9 @@ export class MemStorage implements IStorage {
         description: 'Discovered meaningful market trends through data analysis',
         type: BadgeType.ACCURACY, 
         level: BadgeLevel.SILVER,
-        criteria: JSON.stringify({
-          actions: ['market_analysis'],
-          count: 10
-        }),
+        criteria: {},
         icon: 'trending-up',
+        color: '#C0C0C0', // Silver color
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -314,11 +310,9 @@ export class MemStorage implements IStorage {
         description: 'Used spatial analysis tools to uncover property relationships',
         type: BadgeType.INNOVATION,
         level: BadgeLevel.GOLD,
-        criteria: JSON.stringify({
-          actions: ['spatial_analysis', 'map_interaction'],
-          count: 15
-        }),
+        criteria: {},
         icon: 'map',
+        color: '#FFD700', // Gold color
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -328,11 +322,9 @@ export class MemStorage implements IStorage {
         description: 'Made accurate predictions about future market conditions',
         type: BadgeType.ACCURACY,
         level: BadgeLevel.PLATINUM,
-        criteria: JSON.stringify({
-          actions: ['prediction_generation', 'model_accuracy'],
-          threshold: 0.85
-        }),
+        criteria: {},
         icon: 'sparkles',
+        color: '#E5E4E2', // Platinum color
         createdAt: new Date(),
         updatedAt: new Date()
       },
@@ -342,11 +334,9 @@ export class MemStorage implements IStorage {
         description: 'Engaged in meaningful AI conversation to enhance project understanding',
         type: BadgeType.COLLABORATION,
         level: BadgeLevel.BRONZE,
-        criteria: JSON.stringify({
-          actions: ['conversation_message'],
-          count: 20
-        }),
+        criteria: {},
         icon: 'message-circle',
+        color: '#CD7F32', // Bronze color
         createdAt: new Date(),
         updatedAt: new Date()
       }
@@ -366,12 +356,7 @@ export class MemStorage implements IStorage {
         projectId: 1,
         progress: 60,
         awardedAt: new Date(Date.now() - 86400000 * 2), // 2 days ago
-        metadata: JSON.stringify({
-          actionCounts: {
-            data_analysis: 3
-          },
-          lastAction: new Date(Date.now() - 86400000).toISOString()
-        })
+        metadata: {}
       },
       {
         id: this.currentUserBadgeId++,
@@ -380,13 +365,7 @@ export class MemStorage implements IStorage {
         projectId: 1,
         progress: 100, // Completed
         awardedAt: new Date(Date.now() - 86400000), // 1 day ago
-        metadata: JSON.stringify({
-          actionCounts: {
-            conversation_message: 22
-          },
-          lastAction: new Date().toISOString(),
-          completedAt: new Date(Date.now() - 86400000).toISOString()
-        })
+        metadata: {}
       }
     ];
     
@@ -394,6 +373,8 @@ export class MemStorage implements IStorage {
     for (const userBadge of sampleUserBadges) {
       this.userBadgesData.set(userBadge.id, userBadge);
     }
+    
+
   }
 
   // User methods
