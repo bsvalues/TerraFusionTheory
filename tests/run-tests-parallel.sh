@@ -1,36 +1,42 @@
 #!/bin/bash
 
-# Colors for better output
+# Parallel test runner script for IntelligentEstate tests
+# Runs tests in parallel for faster execution (useful in CI/CD pipelines)
+# 
+# Usage:
+#   ./run-tests-parallel.sh [workers]
+#
+# If workers is provided, it specifies the number of parallel workers
+# Default is 4 workers
+
+# Set environment to test
+export NODE_ENV=test
+
+# Colors for output
 GREEN='\033[0;32m'
-YELLOW='\033[0;33m'
+YELLOW='\033[1;33m'
 RED='\033[0;31m'
-BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
-# Get available CPU count (with fallback to 4)
-if [[ "$OSTYPE" == "darwin"* ]]; then
-  # macOS
-  CPU_COUNT=$(sysctl -n hw.ncpu 2>/dev/null || echo 4)
-else
-  # Linux and others
-  CPU_COUNT=$(nproc 2>/dev/null || grep -c ^processor /proc/cpuinfo 2>/dev/null || echo 4)
-fi
+# Set number of workers (default: 4)
+WORKERS=${1:-4}
 
-# Use 75% of available CPUs, min 2, max 8
-WORKER_COUNT=$(( (CPU_COUNT * 3) / 4 ))
-WORKER_COUNT=$(( WORKER_COUNT < 2 ? 2 : WORKER_COUNT ))
-WORKER_COUNT=$(( WORKER_COUNT > 8 ? 8 : WORKER_COUNT ))
+echo -e "${YELLOW}Running IntelligentEstate tests in parallel mode...${NC}"
+echo -e "Using ${WORKERS} workers"
+echo "==========================================="
 
-echo -e "${BLUE}Running tests in parallel using ${YELLOW}${WORKER_COUNT}${BLUE} workers...${NC}"
+# Run Jest with the specified number of workers
+npx jest --runInBand=false --maxWorkers=$WORKERS
 
-# Run tests in parallel with the calculated number of workers
-npx jest --maxWorkers=${WORKER_COUNT} --detectOpenHandles
-
+# Store the exit code
 EXIT_CODE=$?
+
+# Print summary message
 if [ $EXIT_CODE -eq 0 ]; then
-  echo -e "\n${GREEN}All tests passed successfully!${NC}"
+  echo -e "${GREEN}All parallel tests passed successfully!${NC}"
 else
-  echo -e "\n${RED}Tests failed with exit code: $EXIT_CODE${NC}"
+  echo -e "${RED}Parallel tests completed with failures.${NC}"
 fi
 
+echo "==========================================="
 exit $EXIT_CODE

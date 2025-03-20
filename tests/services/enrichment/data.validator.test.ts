@@ -239,7 +239,7 @@ describe('DataValidator', () => {
       
       const results = validator.crossValidateListingsWithPropertyData(
         [inconsistentListing],
-        samplePropertyData
+        [samplePropertyData]
       );
       
       expect(results.length).toBe(1);

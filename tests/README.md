@@ -1,151 +1,116 @@
-# IntelligentEstate Testing Suite
+# IntelligentEstate Test Suite
 
-This directory contains the testing infrastructure for the IntelligentEstate project, a comprehensive real estate analytics platform.
+This directory contains comprehensive tests for the IntelligentEstate real estate analytics platform. The tests cover all major components of the system, including services, controllers, data validation, and UI components.
 
-## Getting Started
+## Test Structure
 
-To run the test suite, you can use one of the following scripts:
-
-```bash
-# Run all tests
-./tests/run-tests.sh
-
-# Run a single test file
-./tests/run-single-test.sh services/monitoring/market.monitor.test.ts
-
-# Generate coverage report
-./tests/generate-coverage-report.sh
-
-# Run tests with clean cache
-./tests/run-tests-clean.sh
-```
-
-## Test Suite Organization
-
-The test suite is organized according to the application's architecture:
+The test suite follows the same structure as the main application code to make it easy to find and maintain tests:
 
 ```
 tests/
-  ├── components/            # React component tests
-  ├── controllers/           # API controller tests
-  ├── hooks/                 # React custom hook tests
-  ├── mocks/                 # Mock data and mock implementations
-  ├── services/              # Service layer tests
-  │   ├── ai/                # AI service tests
-  │   ├── connectors/        # Data connector tests
-  │   ├── enrichment/        # Data enrichment tests
-  │   └── monitoring/        # Monitoring service tests
-  └── utils/                 # Test utilities
+├── components/        # UI component tests
+├── controllers/       # API controller tests 
+├── hooks/             # React hooks tests
+├── services/          # Service layer tests
+│   ├── ai/            # AI service tests
+│   ├── connectors/    # Data connector tests
+│   ├── enrichment/    # Data enrichment service tests
+│   ├── monitoring/    # Monitoring service tests
+├── utils/             # Test utilities and helpers
+│   ├── test-mocks.ts  # Mock data generators
+│   ├── test-utils.tsx # Test helper functions
+│   ├── address-generator.ts # Realistic address generation
+├── mocks/             # Mocked data and services
+├── __mocks__/         # Auto-mocked modules
+├── run-tests.sh       # Main test runner
+├── run-tests-parallel.sh # Parallel test runner
+├── run-coverage.sh    # Coverage test runner
 ```
 
-## Testing Practices
+## Running Tests
 
-### Backend Testing
+Several scripts are provided to run tests in different ways:
 
-For backend service tests, we use Jest to test each service's functionality:
-
-1. **Service Tests**: Verify that services correctly implement their business logic
-2. **Connector Tests**: Ensure data connectors properly interface with external data sources
-3. **Enrichment Tests**: Validate data enrichment and validation functions
-4. **Monitoring Tests**: Test monitoring and alerting capabilities
-
-### Frontend Testing
-
-For frontend component tests, we use Jest with React Testing Library:
-
-1. **Component Tests**: Test React components rendering and behavior
-2. **Hook Tests**: Verify custom hooks work correctly
-3. **Integration Tests**: Test component interactions
-
-## Test Setup Files
-
-- `setupTests.js`: Main test setup for all tests
-- `setupDataTests.js`: Additional setup for data-intensive tests
-- `testUtils.ts`: Utilities for testing (rendering components, etc.)
-
-## Mock Data
-
-Mock data for tests is generally provided in one of two ways:
-
-1. **Inline**: Small datasets defined directly in test files
-2. **Mock Factories**: Helper functions to generate test data (see `setupDataTests.js`)
-
-## Test Coverage
-
-Run the coverage report script to generate a detailed coverage report:
+### Basic Test Run
 
 ```bash
-./tests/generate-coverage-report.sh
+./run-tests.sh
 ```
 
-Coverage thresholds are set to:
-- Statements: 70%
-- Branches: 60%
-- Functions: 75%
-- Lines: 70%
+This runs all tests sequentially.
 
-## Debugging Failed Tests
+### Running Specific Tests
 
-When tests fail, you can:
+```bash
+./run-tests.sh market
+```
 
-1. Run a single test file with the `run-single-test.sh` script
-2. Add `console.log` statements to your tests
-3. Use the `--verbose` flag with Jest for more detailed output:
-   ```bash
-   npx jest --verbose tests/services/real-estate-analytics.service.test.ts
-   ```
+This runs only tests that match the pattern "market" in their descriptions.
+
+### Parallel Test Execution
+
+```bash
+./run-tests-parallel.sh 6
+```
+
+This runs tests in parallel using 6 workers. The default is 4 workers if not specified.
+
+### Test Coverage
+
+```bash
+./run-coverage.sh
+```
+
+This runs tests with coverage reporting. Coverage reports are generated in the `coverage/` directory.
+
+## Test Utilities
+
+### Test Mocks
+
+The `test-mocks.ts` file provides factory functions to create consistent mock objects for testing:
+
+- `createMockPropertyListing()`
+- `createMockPropertyData()`
+- `createMockGeoJSON()`
+- `createMockMarketSnapshot()`
+- `createMockAIResponse()`
+
+### Address Generator
+
+The `address-generator.ts` utility creates realistic addresses in the Grandview, WA area for testing:
+
+- `generateRandomAddress()`
+- `generateAddressBatch(count)`
+- `generateSeededAddress(seed)`
+- `getStandardTestAddresses()`
+
+### React Testing Utilities
+
+The `test-utils.tsx` file provides helper functions for React component testing:
+
+- `renderWithQueryClient()`
+- `renderWithAllProviders()`
+- `customRender()`
 
 ## Best Practices
 
-When writing new tests, follow these practices:
+1. Use the mock factories from `test-mocks.ts` rather than creating new test data structures
+2. Tests should be independent and not rely on the order of execution
+3. Clean up any resources created during tests (e.g., timers, event listeners)
+4. Use descriptive test names following the pattern "it should..."
+5. Group related tests in describe blocks
+6. Use realistic test data from the address generator when testing geospatial features
 
-1. **Test Organization**: Group related tests with `describe` blocks
-2. **Setup/Teardown**: Use `beforeEach`/`afterEach` for test preparation and cleanup
-3. **Isolation**: Mock dependencies to ensure tests are isolated
-4. **Naming**: Name tests clearly to describe what they're testing
-5. **Coverage**: Aim to test both happy paths and error scenarios
+## Troubleshooting
 
-## Writing New Tests
+If tests are failing with timeout errors, you can increase the timeout with:
 
-Here's a template for writing a new test file:
-
-```typescript
-import { ServiceToTest } from '../../server/services/service-to-test';
-
-describe('ServiceToTest', () => {
-  let service: ServiceToTest;
-  
-  beforeEach(() => {
-    // Setup: create service instance and mock dependencies
-    service = new ServiceToTest();
-  });
-  
-  afterEach(() => {
-    // Cleanup: reset mocks
-    jest.clearAllMocks();
-  });
-  
-  describe('methodName', () => {
-    it('should do something specific', () => {
-      // Arrange: prepare test data
-      const input = { /* test data */ };
-      
-      // Act: call the method
-      const result = service.methodName(input);
-      
-      // Assert: verify the result
-      expect(result).toEqual(/* expected output */);
-    });
-    
-    it('should handle errors', () => {
-      // Test error scenarios
-    });
-  });
-});
+```javascript
+jest.setTimeout(10000); // 10 second timeout
 ```
 
-## Continuous Integration
+For tests that have flaky behavior due to async operations, consider using:
 
-These tests are part of the project's CI pipeline. They run automatically on:
-- Every pull request
-- Every merge to the main branch
+```javascript
+await waitMs(100); // Utility from test-mocks.ts
+```
