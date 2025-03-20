@@ -12,6 +12,13 @@ import { alertManager, AlertSeverity } from "./services/alert";
 import { realEstateAnalyticsService } from "./services/real-estate-analytics.service";
 
 // Track the memory monitor timer globally to allow proper cleanup
+
+import swaggerUi from 'swagger-ui-express';
+import { openApiSpec } from './openapi';
+
+// API Documentation setup
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
+
 let memoryMonitorTimer: NodeJS.Timeout | null = null;
 
 // Schedule log cleanup to run every day

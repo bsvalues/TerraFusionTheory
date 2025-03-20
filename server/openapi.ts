@@ -28,6 +28,52 @@ export const openApiSpec: OpenAPIV3.Document = {
                 schema: { $ref: '#/components/schemas/Project' }
               }
             }
+          },
+          '404': {
+            description: 'Project not found',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/Error' }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/analytics/market/{area}': {
+      get: {
+        summary: 'Get market snapshot for an area',
+        parameters: [
+          {
+            name: 'area',
+            in: 'path',
+            required: false,
+            schema: { type: 'string' }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Market snapshot retrieved successfully',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/MarketSnapshot' }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/system/health': {
+      get: {
+        summary: 'Get system health status',
+        responses: {
+          '200': {
+            description: 'System health information',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/SystemHealth' }
+              }
+            }
           }
         }
       }
@@ -41,6 +87,36 @@ export const openApiSpec: OpenAPIV3.Document = {
           id: { type: 'integer' },
           name: { type: 'string' },
           description: { type: 'string' }
+        }
+      },
+      MarketSnapshot: {
+        type: 'object',
+        properties: {
+          averagePrice: { type: 'number' },
+          totalListings: { type: 'integer' },
+          priceChange: { type: 'number' }
+        }
+      },
+      SystemHealth: {
+        type: 'object',
+        properties: {
+          status: { type: 'string' },
+          memory: {
+            type: 'object',
+            properties: {
+              used: { type: 'number' },
+              total: { type: 'number' }
+            }
+          },
+          uptime: { type: 'number' }
+        }
+      },
+      Error: {
+        type: 'object',
+        properties: {
+          code: { type: 'string' },
+          message: { type: 'string' },
+          details: { type: 'object' }
         }
       }
     }

@@ -2,21 +2,30 @@ import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
 import { LogCategory, LogLevel } from '@shared/schema';
 import { AppError, isAppError, toAppError } from '../errors';
+import { troubleshootingService } from '../services/troubleshooting.service';
 
 /**
  * Global error handler middleware
  * Handles all errors that occur in the application
  */
-export function errorHandler(
-  error: Error | AppError,
+export async function errorHandler(
+  error: Error,
   req: Request,
   res: Response,
   next: NextFunction
-): void {
-  // Convert to AppError if not already
+) {
   const appError = isAppError(error) ? error : toAppError(error);
-  
-  // Log the error
+
+  // Get troubleshooting diagnosis
+  const diagnosis = await troubleshootingService.analyzeIssue(error, {
+    path: req.path,
+    method: req.method,
+    query: req.query,
+    body: req.body,
+    headers: req.headers
+  });
+
+  // Log the error, including diagnosis
   const errorLogPromise = storage.createLog({
     level: appError.statusCode >= 500 ? LogLevel.ERROR : LogLevel.WARNING,
     category: LogCategory.SYSTEM,
@@ -28,7 +37,8 @@ export function errorHandler(
       method: req.method,
       isOperational: appError.isOperational,
       context: appError.context,
-      stack: appError.stack
+      stack: appError.stack,
+      diagnosis: diagnosis // Add diagnosis to log details
     }),
     source: 'error-handler',
     projectId: null,
@@ -39,22 +49,23 @@ export function errorHandler(
     endpoint: req.path,
     tags: ['error', appError.errorCode, appError.isOperational ? 'operational' : 'programming']
   });
-  
-  // Construct response based on environment
+
+  // Construct response based on environment, including diagnosis
   const responseBody = {
     error: {
       message: appError.message,
       code: appError.errorCode,
-      status: appError.statusCode
+      status: appError.statusCode,
+      diagnosis: diagnosis // Add diagnosis to response
     }
   };
-  
+
   // Add stack trace in development only
   if (process.env.NODE_ENV === 'development') {
     responseBody.error['stack'] = appError.stack;
     responseBody.error['context'] = appError.context;
   }
-  
+
   // Wait for the error to be logged before sending the response
   errorLogPromise
     .then(() => {
@@ -64,14 +75,15 @@ export function errorHandler(
       console.error('Failed to log error:', logError);
       res.status(appError.statusCode).json(responseBody);
     });
-  
+
   // If this is a critical error, log additional diagnostics
   if (appError.statusCode >= 500) {
     console.error(`[CRITICAL ERROR] ${appError.message}`, {
       path: req.path,
       method: req.method,
       errorCode: appError.errorCode,
-      stack: appError.stack
+      stack: appError.stack,
+      diagnosis: diagnosis //Add diagnosis to critical error log
     });
   }
 }
@@ -105,7 +117,7 @@ export function notFoundHandler(
     endpoint: req.path,
     tags: ['error', '404', 'not-found']
   }).catch(console.error);
-  
+
   // Send 404 response
   res.status(404).json({
     error: {
