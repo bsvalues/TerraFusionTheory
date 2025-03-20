@@ -92,6 +92,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const projectId = parseInt(req.params.id);
       const { message } = req.body;
       
+      // Check if message is an object with content property
+      if (message && typeof message === 'object' && message.content) {
+        // Extract the message content
+        req.body.message = message.content;
+      }
+      
       // Forward to the message handler in the OpenAI controller
       req.body.projectId = projectId;
       return openaiController.handleMessage(req, res);

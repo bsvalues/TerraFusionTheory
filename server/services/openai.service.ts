@@ -1,3 +1,4 @@
+import 'openai/shims/node';
 import OpenAI from "openai";
 import { LogCategory, LogLevel } from "@shared/schema";
 import { storage } from "../storage";

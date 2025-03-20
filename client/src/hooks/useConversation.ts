@@ -26,6 +26,8 @@ export const useConversation = (projectId: number) => {
   // Add message mutation
   const addMessageMutation = useMutation({
     mutationFn: async (content: string) => {
+      // We can either send just the message content as a string
+      // or continue sending the full message object - server handles both now
       const message: Partial<Message> = {
         role: 'user',
         content,
