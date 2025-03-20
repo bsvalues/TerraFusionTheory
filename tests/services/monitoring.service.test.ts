@@ -11,13 +11,32 @@ jest.mock('../../server/storage', () => ({
   }
 }));
 
-// Mock the internal alertManager
-const mockAlertManager = {
-  sendAlert: jest.fn().mockResolvedValue(undefined)
-};
+// Mock for the alertManager
+const mockSendAlert = jest.fn().mockResolvedValue(undefined);
 
-// Replace the internal alertManager with our mock
-(monitoringService as any).alertManager = mockAlertManager;
+// Use beforeEach to set up our mocks fresh for each test
+beforeEach(() => {
+  // Directly modify the monitoringService instance to replace its alertManager
+  (monitoringService as any).alertManager = {
+    sendAlert: mockSendAlert,
+    channels: [],
+    addChannel: jest.fn()
+  };
+});
+
+// Also mock console methods to prevent actual logging during tests
+const originalConsoleWarn = console.warn;
+const originalConsoleError = console.error;
+
+beforeAll(() => {
+  console.warn = jest.fn();
+  console.error = jest.fn();
+});
+
+afterAll(() => {
+  console.warn = originalConsoleWarn;
+  console.error = originalConsoleError;
+});
 
 describe('Monitoring Service', () => {
   beforeEach(() => {
