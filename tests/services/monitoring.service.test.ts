@@ -35,10 +35,22 @@ describe('Monitoring Service', () => {
           message: 'OpenAI API request',
           details: JSON.stringify({ 
             model: 'gpt-4', 
-            tokens: 1200,
+            response: { 
+              usage: { 
+                total_tokens: 1200 
+              }
+            },
             cost: 0.06
           }),
-          timestamp: new Date()
+          timestamp: new Date(),
+          sessionId: null,
+          userId: null,
+          projectId: null,
+          duration: null,
+          statusCode: null,
+          endpoint: null,
+          source: 'openai-service',
+          tags: ['ai', 'openai']
         },
         {
           id: 2,
@@ -47,10 +59,22 @@ describe('Monitoring Service', () => {
           message: 'OpenAI API request',
           details: JSON.stringify({ 
             model: 'gpt-4', 
-            tokens: 1500,
+            response: { 
+              usage: { 
+                total_tokens: 1500 
+              }
+            },
             cost: 0.075
           }),
-          timestamp: new Date()
+          timestamp: new Date(),
+          sessionId: null,
+          userId: null,
+          projectId: null,
+          duration: null,
+          statusCode: null,
+          endpoint: null,
+          source: 'openai-service',
+          tags: ['ai', 'openai']
         }
       ]);
       
@@ -73,8 +97,8 @@ describe('Monitoring Service', () => {
       expect(["warning", "critical"]).toContain(callArgs[1]);
       
       // Verify third argument (context) has the required properties
-      expect(callArgs[2]).toHaveProperty("totalCost");
       expect(callArgs[2]).toHaveProperty("totalTokens");
+      expect(callArgs[2]).toHaveProperty("threshold");
     });
     
     it('should not trigger alerts when usage is within thresholds', async () => {
@@ -87,10 +111,22 @@ describe('Monitoring Service', () => {
           message: 'OpenAI API request',
           details: JSON.stringify({ 
             model: 'gpt-3.5-turbo', 
-            tokens: 300,
+            response: { 
+              usage: { 
+                total_tokens: 300 
+              }
+            },
             cost: 0.0006
           }),
-          timestamp: new Date()
+          timestamp: new Date(),
+          sessionId: null,
+          userId: null,
+          projectId: null,
+          duration: null,
+          statusCode: null,
+          endpoint: null,
+          source: 'openai-service',
+          tags: ['ai', 'openai']
         }
       ]);
       
@@ -114,7 +150,14 @@ describe('Monitoring Service', () => {
           message: 'API request completed',
           endpoint: '/api/properties',
           duration: 2500, // 2.5 seconds
-          timestamp: new Date()
+          timestamp: new Date(),
+          sessionId: null,
+          userId: null,
+          projectId: null,
+          statusCode: 200,
+          source: 'express',
+          details: null,
+          tags: ['api', 'request']
         },
         {
           id: 4,
@@ -123,7 +166,14 @@ describe('Monitoring Service', () => {
           message: 'API request completed',
           endpoint: '/api/market-analysis',
           duration: 3200, // 3.2 seconds
-          timestamp: new Date()
+          timestamp: new Date(),
+          sessionId: null,
+          userId: null,
+          projectId: null,
+          statusCode: 200,
+          source: 'express',
+          details: null,
+          tags: ['api', 'request']
         }
       ]);
       
@@ -148,6 +198,7 @@ describe('Monitoring Service', () => {
       // Verify third argument (context) has the required properties
       expect(callArgs[2]).toHaveProperty("avgResponseTime");
       expect(callArgs[2]).toHaveProperty("slowEndpoints");
+      expect(callArgs[2]).toHaveProperty("threshold");
     });
     
     it('should not trigger alerts when API response times are acceptable', async () => {
@@ -160,7 +211,14 @@ describe('Monitoring Service', () => {
           message: 'API request completed',
           endpoint: '/api/properties',
           duration: 150, // 150ms
-          timestamp: new Date()
+          timestamp: new Date(),
+          sessionId: null,
+          userId: null,
+          projectId: null,
+          statusCode: 200,
+          source: 'express',
+          details: null,
+          tags: ['api', 'request']
         },
         {
           id: 4,
@@ -169,7 +227,14 @@ describe('Monitoring Service', () => {
           message: 'API request completed',
           endpoint: '/api/market-analysis',
           duration: 320, // 320ms
-          timestamp: new Date()
+          timestamp: new Date(),
+          sessionId: null,
+          userId: null,
+          projectId: null,
+          statusCode: 200,
+          source: 'express',
+          details: null,
+          tags: ['api', 'request']
         }
       ]);
       
