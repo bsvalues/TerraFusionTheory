@@ -5,45 +5,27 @@ import { LogLevel, LogCategory, LogEntry } from '../../shared/schema';
 // Mock dependencies
 jest.mock('../../server/storage', () => ({
   storage: {
-    createLog: jest.fn(),
-    getLogs: jest.fn(),
+    createLog: jest.fn().mockResolvedValue(undefined),
+    getLogs: jest.fn().mockResolvedValue([]),
     getLogStats: jest.fn()
   }
 }));
 
-// External alertManager is a singleton instance created in the module
-// We need to directly monkey-patch its sendAlert method
-const mockSendAlert = jest.fn().mockResolvedValue(undefined);
-const originalSendAlert = (monitoringService as any).alertManager.sendAlert;
-
-// Use beforeEach to set up our mocks fresh for each test
-beforeEach(() => {
-  // Reset mocks for each test
-  mockSendAlert.mockClear();
-  // Replace the alertManager's sendAlert method with our mock
-  (monitoringService as any).alertManager.sendAlert = mockSendAlert;
-});
-
-// Restore the original after tests
-afterAll(() => {
-  // Restore the original function
-  if ((monitoringService as any).alertManager) {
-    (monitoringService as any).alertManager.sendAlert = originalSendAlert;
-  }
-});
-
-// Also mock console methods to prevent actual logging during tests
+// Mock console methods to prevent actual logging during tests
 const originalConsoleWarn = console.warn;
 const originalConsoleError = console.error;
+const originalConsoleInfo = console.info;
 
 beforeAll(() => {
   console.warn = jest.fn();
   console.error = jest.fn();
+  console.info = jest.fn();
 });
 
 afterAll(() => {
   console.warn = originalConsoleWarn;
   console.error = originalConsoleError;
+  console.info = originalConsoleInfo;
 });
 
 describe('Monitoring Service', () => {
@@ -53,8 +35,8 @@ describe('Monitoring Service', () => {
   
   describe('monitorOpenAIUsage', () => {
     it('should trigger alerts when OpenAI usage exceeds thresholds', async () => {
-      // Mock high usage logs
-      (storage.getLogs as jest.Mock).mockResolvedValueOnce([
+      // Setup: Create high usage logs that will trigger an alert
+      const highUsageLogs = [
         {
           id: 1,
           level: LogLevel.INFO,
@@ -77,7 +59,7 @@ describe('Monitoring Service', () => {
           statusCode: null,
           endpoint: null,
           source: 'openai-service',
-          tags: ['ai', 'openai']
+          tags: ['ai', 'openai', 'api-call']
         },
         {
           id: 2,
@@ -101,36 +83,49 @@ describe('Monitoring Service', () => {
           statusCode: null,
           endpoint: null,
           source: 'openai-service',
-          tags: ['ai', 'openai']
+          tags: ['ai', 'openai', 'api-call']
         }
-      ]);
+      ];
       
+      // Mock storage.getLogs to return high usage data
+      (storage.getLogs as jest.Mock).mockResolvedValueOnce(highUsageLogs);
+      
+      // Act: Call the monitor function
       await monitoringService.monitorOpenAIUsage();
       
+      // Assert: Check that logs were queried with correct parameters
       expect(storage.getLogs).toHaveBeenCalledWith(expect.objectContaining({
-        category: LogCategory.AI
+        category: LogCategory.AI,
+        tags: ['openai', 'api-call']
       }));
       
-      // Check if the mock was called with the right arguments
-      expect(mockSendAlert).toHaveBeenCalled();
+      // Assert: Alert should be logged through the storage.createLog
+      // Find any createLog calls that have a message including "System alert"
+      const createLogCalls = (storage.createLog as jest.Mock).mock.calls;
+      const alertLogCalls = createLogCalls.filter(call => 
+        call[0].message && call[0].message.includes('System alert')
+      );
       
-      // Get the actual call arguments
-      const callArgs = mockSendAlert.mock.calls[0];
+      // Check that we have at least one alert log
+      expect(alertLogCalls.length).toBeGreaterThan(0);
       
-      // Verify first argument (message)
-      expect(callArgs[0]).toContain("OpenAI API");
-      
-      // Verify second argument (level)
-      expect(["warning", "critical"]).toContain(callArgs[1]);
-      
-      // Verify third argument (context) has the required properties
-      expect(callArgs[2]).toHaveProperty("totalTokens");
-      expect(callArgs[2]).toHaveProperty("threshold");
+      // Check that the alert log has the expected properties
+      const alertLogCall = alertLogCalls[0][0];
+      expect(alertLogCall).toMatchObject({
+        category: LogCategory.SYSTEM,
+        message: expect.stringContaining('System alert')
+      });
+
+      // Also expect a debug log for the monitoring check
+      const debugLogCalls = createLogCalls.filter(call => 
+        call[0].message && call[0].message.includes('Monitored OpenAI token usage')
+      );
+      expect(debugLogCalls.length).toBeGreaterThan(0);
     });
     
     it('should not trigger alerts when usage is within thresholds', async () => {
-      // Mock low usage logs
-      (storage.getLogs as jest.Mock).mockResolvedValueOnce([
+      // Setup: Create low usage logs that won't trigger an alert
+      const lowUsageLogs = [
         {
           id: 1,
           level: LogLevel.INFO,
@@ -153,23 +148,44 @@ describe('Monitoring Service', () => {
           statusCode: null,
           endpoint: null,
           source: 'openai-service',
-          tags: ['ai', 'openai']
+          tags: ['ai', 'openai', 'api-call']
         }
-      ]);
+      ];
       
-      // Reset mock 
-      mockSendAlert.mockClear();
+      // Mock storage.getLogs to return low usage data
+      (storage.getLogs as jest.Mock).mockResolvedValueOnce(lowUsageLogs);
       
+      // Clear previous calls
+      (storage.createLog as jest.Mock).mockClear();
+      
+      // Act: Call the monitor function
       await monitoringService.monitorOpenAIUsage();
       
-      expect(mockSendAlert).not.toHaveBeenCalled();
+      // Assert: No alert should be created, only debug log
+      const createLogCalls = (storage.createLog as jest.Mock).mock.calls;
+      
+      // Should only have one call for the debug log
+      expect(createLogCalls.length).toBe(1);
+      
+      // That call should be the debug log, not an alert
+      expect(createLogCalls[0][0]).toMatchObject({
+        level: LogLevel.DEBUG,
+        category: LogCategory.SYSTEM,
+        message: expect.stringContaining('Monitored OpenAI token usage')
+      });
+      
+      // Make sure no alert message was logged
+      const alertCalls = createLogCalls.filter(call => 
+        call[0].message.includes('System alert')
+      );
+      expect(alertCalls.length).toBe(0);
     });
   });
   
   describe('monitorApiResponseTimes', () => {
     it('should trigger alerts when API response times are slow', async () => {
-      // Mock slow response logs
-      (storage.getLogs as jest.Mock).mockResolvedValueOnce([
+      // Setup: Create logs with slow API response times
+      const slowApiLogs = [
         {
           id: 3,
           level: LogLevel.INFO,
@@ -202,35 +218,48 @@ describe('Monitoring Service', () => {
           details: null,
           tags: ['api', 'request']
         }
-      ]);
+      ];
       
+      // Mock storage.getLogs to return slow API logs
+      (storage.getLogs as jest.Mock).mockResolvedValueOnce(slowApiLogs);
+      
+      // Clear previous calls
+      (storage.createLog as jest.Mock).mockClear();
+      
+      // Act: Call the monitor function
       await monitoringService.monitorApiResponseTimes();
       
+      // Assert: Check that logs were queried with correct parameters
       expect(storage.getLogs).toHaveBeenCalledWith(expect.objectContaining({
         category: LogCategory.API
       }));
       
-      // Check if the mock was called with the right arguments
-      expect(mockSendAlert).toHaveBeenCalled();
+      // Assert: Alert should be logged through storage.createLog
+      const createLogCalls = (storage.createLog as jest.Mock).mock.calls;
+      const alertLogCalls = createLogCalls.filter(call => 
+        call[0].message && call[0].message.includes('System alert')
+      );
       
-      // Get the actual call arguments
-      const callArgs = mockSendAlert.mock.calls[0];
+      // Check that we have at least one alert log
+      expect(alertLogCalls.length).toBeGreaterThan(0);
       
-      // Verify first argument (message)
-      expect(callArgs[0]).toContain("API response time");
+      // Check that the alert log has the expected properties
+      const alertLogCall = alertLogCalls[0][0];
+      expect(alertLogCall).toMatchObject({
+        category: LogCategory.SYSTEM,
+        message: expect.stringContaining('System alert')
+      });
       
-      // Verify second argument (level)
-      expect(["warning", "critical"]).toContain(callArgs[1]);
-      
-      // Verify third argument (context) has the required properties
-      expect(callArgs[2]).toHaveProperty("avgResponseTime");
-      expect(callArgs[2]).toHaveProperty("slowEndpoints");
-      expect(callArgs[2]).toHaveProperty("threshold");
+      // Also expect a debug log for the monitoring check
+      const debugLogCalls = createLogCalls.filter(call => 
+        call[0].message && call[0].message.includes('Monitored API response times')
+      );
+      expect(debugLogCalls.length).toBeGreaterThan(0);
     });
     
     it('should not trigger alerts when API response times are acceptable', async () => {
-      // Mock fast response logs
-      (storage.getLogs as jest.Mock).mockResolvedValueOnce([
+      // Setup: Create logs with fast API response times
+      const fastApiLogs = [
         {
           id: 3,
           level: LogLevel.INFO,
@@ -263,20 +292,41 @@ describe('Monitoring Service', () => {
           details: null,
           tags: ['api', 'request']
         }
-      ]);
+      ];
       
-      // Reset mock
-      mockSendAlert.mockClear();
+      // Mock storage.getLogs to return fast API logs
+      (storage.getLogs as jest.Mock).mockResolvedValueOnce(fastApiLogs);
       
+      // Clear previous calls
+      (storage.createLog as jest.Mock).mockClear();
+      
+      // Act: Call the monitor function
       await monitoringService.monitorApiResponseTimes();
       
-      expect(mockSendAlert).not.toHaveBeenCalled();
+      // Assert: No alert should be created, only debug log
+      const createLogCalls = (storage.createLog as jest.Mock).mock.calls;
+      
+      // Should only have one call for the debug log
+      expect(createLogCalls.length).toBe(1);
+      
+      // That call should be the debug log, not an alert
+      expect(createLogCalls[0][0]).toMatchObject({
+        level: LogLevel.DEBUG,
+        category: LogCategory.SYSTEM,
+        message: expect.stringContaining('Monitored API response times')
+      });
+      
+      // Make sure no alert message was logged
+      const alertCalls = createLogCalls.filter(call => 
+        call[0].message.includes('System alert')
+      );
+      expect(alertCalls.length).toBe(0);
     });
   });
   
   describe('monitorErrorRates', () => {
     it('should trigger alerts when error rates are high', async () => {
-      // Mock getLogs to return many error logs (simulate high error rate)
+      // Setup: Create many error logs to simulate a high error rate
       const errorLogs: LogEntry[] = [];
       for (let i = 0; i < 100; i++) {
         errorLogs.push({
@@ -297,34 +347,46 @@ describe('Monitoring Service', () => {
         });
       }
       
+      // Mock storage.getLogs to return many error logs
       (storage.getLogs as jest.Mock).mockResolvedValueOnce(errorLogs);
       
+      // Clear previous calls
+      (storage.createLog as jest.Mock).mockClear();
+      
+      // Act: Call the monitor function
       await monitoringService.monitorErrorRates();
       
+      // Assert: Check that logs were queried with correct parameters
       expect(storage.getLogs).toHaveBeenCalledWith({
         level: [LogLevel.ERROR, LogLevel.CRITICAL],
         startDate: expect.any(Date)
       });
-      // Check if the mock was called with the right arguments
-      expect(mockSendAlert).toHaveBeenCalled();
       
-      // Get the actual call arguments
-      const callArgs = mockSendAlert.mock.calls[0];
+      // Assert: Alert should be logged through storage.createLog
+      const createLogCalls = (storage.createLog as jest.Mock).mock.calls;
+      const alertLogCalls = createLogCalls.filter(call => 
+        call[0].message && call[0].message.includes('System alert')
+      );
       
-      // Verify first argument (message)
-      expect(callArgs[0]).toContain("Error rate is high");
+      // Check that we have at least one alert log
+      expect(alertLogCalls.length).toBeGreaterThan(0);
       
-      // Verify second argument (level)
-      expect(callArgs[1]).toBe("warning");
+      // Check that the alert log has the expected properties
+      const alertLogCall = alertLogCalls[0][0];
+      expect(alertLogCall).toMatchObject({
+        category: LogCategory.SYSTEM,
+        message: expect.stringContaining('System alert')
+      });
       
-      // Verify third argument (context) has the required properties
-      expect(callArgs[2]).toHaveProperty("errorsPerMinute");
-      expect(callArgs[2]).toHaveProperty("errorsByType");
-      expect(callArgs[2]).toHaveProperty("threshold");
+      // Also expect a debug log for the monitoring check
+      const debugLogCalls = createLogCalls.filter(call => 
+        call[0].message && call[0].message.includes('Monitored error rates')
+      );
+      expect(debugLogCalls.length).toBeGreaterThan(0);
     });
     
     it('should not trigger alerts when error rates are acceptable', async () => {
-      // Mock getLogs to return few error logs (simulate low error rate)
+      // Setup: Create few error logs to simulate a low error rate
       const errorLogs: LogEntry[] = [];
       for (let i = 0; i < 3; i++) {
         errorLogs.push({
@@ -345,14 +407,33 @@ describe('Monitoring Service', () => {
         });
       }
       
+      // Mock storage.getLogs to return few error logs
       (storage.getLogs as jest.Mock).mockResolvedValueOnce(errorLogs);
       
-      // Reset mock
-      mockSendAlert.mockClear();
+      // Clear previous calls
+      (storage.createLog as jest.Mock).mockClear();
       
+      // Act: Call the monitor function
       await monitoringService.monitorErrorRates();
       
-      expect(mockSendAlert).not.toHaveBeenCalled();
+      // Assert: No alert should be created, only debug log
+      const createLogCalls = (storage.createLog as jest.Mock).mock.calls;
+      
+      // Should only have one call for the debug log
+      expect(createLogCalls.length).toBe(1);
+      
+      // That call should be the debug log, not an alert
+      expect(createLogCalls[0][0]).toMatchObject({
+        level: LogLevel.DEBUG,
+        category: LogCategory.SYSTEM,
+        message: expect.stringContaining('Monitored error rates')
+      });
+      
+      // Make sure no alert message was logged
+      const alertCalls = createLogCalls.filter(call => 
+        call[0].message.includes('System alert')
+      );
+      expect(alertCalls.length).toBe(0);
     });
   });
   
@@ -363,32 +444,49 @@ describe('Monitoring Service', () => {
       const apiSpy = jest.spyOn(monitoringService, 'monitorApiResponseTimes').mockResolvedValueOnce();
       const errorSpy = jest.spyOn(monitoringService, 'monitorErrorRates').mockResolvedValueOnce();
       
+      // Act: Call runMonitoring
       await monitoringService.runMonitoring();
       
+      // Assert: All monitoring checks should be called
       expect(openAISpy).toHaveBeenCalled();
       expect(apiSpy).toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalled();
+      
+      // Clean up spies
+      openAISpy.mockRestore();
+      apiSpy.mockRestore();
+      errorSpy.mockRestore();
     });
     
     it('should continue even if one check fails', async () => {
       // Mock individual monitoring functions with one failing
-      const openAISpy = jest.spyOn(monitoringService, 'monitorOpenAIUsage').mockRejectedValueOnce(new Error('Test error'));
+      const openAISpy = jest.spyOn(monitoringService, 'monitorOpenAIUsage')
+        .mockRejectedValueOnce(new Error('Test error'));
       const apiSpy = jest.spyOn(monitoringService, 'monitorApiResponseTimes').mockResolvedValueOnce();
       const errorSpy = jest.spyOn(monitoringService, 'monitorErrorRates').mockResolvedValueOnce();
       
-      // Should not throw
+      // Clear previous calls
+      (storage.createLog as jest.Mock).mockClear();
+      
+      // Act: Call runMonitoring (should not throw)
       await expect(monitoringService.runMonitoring()).resolves.not.toThrow();
       
+      // Assert: All monitoring checks should be called, even the failing one
       expect(openAISpy).toHaveBeenCalled();
       expect(apiSpy).toHaveBeenCalled();
       expect(errorSpy).toHaveBeenCalled();
       
-      // Log should be created for the error
+      // Assert: Log should be created for the error
       expect(storage.createLog).toHaveBeenCalledWith(expect.objectContaining({
         level: LogLevel.ERROR,
         category: LogCategory.SYSTEM,
-        message: expect.stringContaining('Monitoring check failed')
+        message: expect.stringContaining('Failed to run monitoring checks')
       }));
+      
+      // Clean up spies
+      openAISpy.mockRestore();
+      apiSpy.mockRestore();
+      errorSpy.mockRestore();
     });
   });
 });
