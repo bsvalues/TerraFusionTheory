@@ -5,6 +5,7 @@ import { Toaster } from "@/components/ui/toaster";
 import NotFound from "@/pages/not-found";
 import Home from "@/pages/Home";
 import GISDemo from "@/pages/GISDemo";
+import Badges from "@/pages/Badges";
 import { ErrorProvider } from "@/hooks/useErrors";
 import { FeedbackProvider } from "@/hooks/useFeedback";
 import ErrorDashboard from "@/components/debug/ErrorDashboard";
@@ -15,6 +16,7 @@ function Router() {
       {/* Add pages below */}
       <Route path="/" component={Home} />
       <Route path="/gis-demo" component={GISDemo} />
+      <Route path="/badges" component={Badges} />
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>

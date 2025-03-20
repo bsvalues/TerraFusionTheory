@@ -574,7 +574,7 @@ const BadgeManagement: React.FC<BadgeManagementProps> = ({ userId = 1, projectId
                         <Button
                           variant="outline"
                           size="sm"
-                          onClick={() => handleAwardBadge(badge.badgeId, 100)}
+                          onClick={() => handleAwardBadge(badge.id, 100)}
                         >
                           Complete Badge
                         </Button>
