@@ -178,24 +178,20 @@ describe('Monitoring Service', () => {
     });
     
     it('should not trigger alerts when error rates are acceptable', async () => {
-      // Mock low error rate
-      (storage.getLogStats as jest.Mock).mockResolvedValueOnce({
-        totalCount: 100,
-        countByLevel: {
-          [LogLevel.ERROR]: 2,
-          [LogLevel.WARNING]: 5,
-          [LogLevel.INFO]: 88,
-          [LogLevel.DEBUG]: 5,
-          [LogLevel.CRITICAL]: 0
-        },
-        countByCategory: {
-          [LogCategory.API]: 30,
-          [LogCategory.DATABASE]: 20,
-          [LogCategory.SYSTEM]: 50
-        },
-        recentErrors: [],
-        performanceAverage: 120
-      });
+      // Mock getLogs to return few error logs (simulate low error rate)
+      const errorLogs = [];
+      for (let i = 0; i < 3; i++) {
+        errorLogs.push({
+          id: i,
+          level: LogLevel.ERROR,
+          category: LogCategory.DATABASE,
+          message: 'Minor database error',
+          timestamp: new Date(),
+          details: JSON.stringify({ errorType: 'MinorError' })
+        });
+      }
+      
+      (storage.getLogs as jest.Mock).mockResolvedValueOnce(errorLogs);
       
       // Reset mock alert manager
       mockAlertManager.sendAlert.mockClear();
