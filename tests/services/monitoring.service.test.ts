@@ -11,17 +11,25 @@ jest.mock('../../server/storage', () => ({
   }
 }));
 
-// Mock for the alertManager
+// External alertManager is a singleton instance created in the module
+// We need to directly monkey-patch its sendAlert method
 const mockSendAlert = jest.fn().mockResolvedValue(undefined);
+const originalSendAlert = (monitoringService as any).alertManager.sendAlert;
 
 // Use beforeEach to set up our mocks fresh for each test
 beforeEach(() => {
-  // Directly modify the monitoringService instance to replace its alertManager
-  (monitoringService as any).alertManager = {
-    sendAlert: mockSendAlert,
-    channels: [],
-    addChannel: jest.fn()
-  };
+  // Reset mocks for each test
+  mockSendAlert.mockClear();
+  // Replace the alertManager's sendAlert method with our mock
+  (monitoringService as any).alertManager.sendAlert = mockSendAlert;
+});
+
+// Restore the original after tests
+afterAll(() => {
+  // Restore the original function
+  if ((monitoringService as any).alertManager) {
+    (monitoringService as any).alertManager.sendAlert = originalSendAlert;
+  }
 });
 
 // Also mock console methods to prevent actual logging during tests
@@ -104,10 +112,10 @@ describe('Monitoring Service', () => {
       }));
       
       // Check if the mock was called with the right arguments
-      expect(mockAlertManager.sendAlert).toHaveBeenCalled();
+      expect(mockSendAlert).toHaveBeenCalled();
       
       // Get the actual call arguments
-      const callArgs = mockAlertManager.sendAlert.mock.calls[0];
+      const callArgs = mockSendAlert.mock.calls[0];
       
       // Verify first argument (message)
       expect(callArgs[0]).toContain("OpenAI API");
@@ -149,12 +157,12 @@ describe('Monitoring Service', () => {
         }
       ]);
       
-      // Reset mock alert manager
-      mockAlertManager.sendAlert.mockClear();
+      // Reset mock 
+      mockSendAlert.mockClear();
       
       await monitoringService.monitorOpenAIUsage();
       
-      expect(mockAlertManager.sendAlert).not.toHaveBeenCalled();
+      expect(mockSendAlert).not.toHaveBeenCalled();
     });
   });
   
@@ -203,10 +211,10 @@ describe('Monitoring Service', () => {
       }));
       
       // Check if the mock was called with the right arguments
-      expect(mockAlertManager.sendAlert).toHaveBeenCalled();
+      expect(mockSendAlert).toHaveBeenCalled();
       
       // Get the actual call arguments
-      const callArgs = mockAlertManager.sendAlert.mock.calls[0];
+      const callArgs = mockSendAlert.mock.calls[0];
       
       // Verify first argument (message)
       expect(callArgs[0]).toContain("API response time");
@@ -257,12 +265,12 @@ describe('Monitoring Service', () => {
         }
       ]);
       
-      // Reset mock alert manager
-      mockAlertManager.sendAlert.mockClear();
+      // Reset mock
+      mockSendAlert.mockClear();
       
       await monitoringService.monitorApiResponseTimes();
       
-      expect(mockAlertManager.sendAlert).not.toHaveBeenCalled();
+      expect(mockSendAlert).not.toHaveBeenCalled();
     });
   });
   
@@ -298,10 +306,10 @@ describe('Monitoring Service', () => {
         startDate: expect.any(Date)
       });
       // Check if the mock was called with the right arguments
-      expect(mockAlertManager.sendAlert).toHaveBeenCalled();
+      expect(mockSendAlert).toHaveBeenCalled();
       
       // Get the actual call arguments
-      const callArgs = mockAlertManager.sendAlert.mock.calls[0];
+      const callArgs = mockSendAlert.mock.calls[0];
       
       // Verify first argument (message)
       expect(callArgs[0]).toContain("Error rate is high");
@@ -339,12 +347,12 @@ describe('Monitoring Service', () => {
       
       (storage.getLogs as jest.Mock).mockResolvedValueOnce(errorLogs);
       
-      // Reset mock alert manager
-      mockAlertManager.sendAlert.mockClear();
+      // Reset mock
+      mockSendAlert.mockClear();
       
       await monitoringService.monitorErrorRates();
       
-      expect(mockAlertManager.sendAlert).not.toHaveBeenCalled();
+      expect(mockSendAlert).not.toHaveBeenCalled();
     });
   });
   
