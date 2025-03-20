@@ -1,3 +1,4 @@
+import 'openai/shims/node';
 import { Request, Response } from 'express';
 import * as openaiController from '../../server/controllers/openai.controller';
 import * as openaiService from '../../server/services/openai.service';
