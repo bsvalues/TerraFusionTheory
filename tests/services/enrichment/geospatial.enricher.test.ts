@@ -204,11 +204,11 @@ describe('GeospatialEnricher', () => {
       expect(trends).toHaveProperty('Hillside');
       
       // Check Downtown neighborhood stats
-      expect(trends.Downtown).toHaveProperty('averagePrice');
+      expect(trends.Downtown).toHaveProperty('avgPrice');
       expect(trends.Downtown).toHaveProperty('listingCount', 2);
       
       // Average price should be (400000 + 550000) / 2 = 475000
-      expect(trends.Downtown.averagePrice).toBe(475000);
+      expect(trends.Downtown.avgPrice).toBe(475000);
     });
     
     it('should handle listings without neighborhood data', () => {
