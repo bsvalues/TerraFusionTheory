@@ -1,594 +1,383 @@
 /**
- * Vector Memory Implementation
+ * Vector Memory System
  * 
- * This module provides a vector database-backed memory for agents to store and retrieve
- * information based on semantic similarity. It enables agents to have a more sophisticated
- * memory system than simple key-value stores.
+ * This file implements the vector memory system for agent memory storage
+ * and retrieval with semantic search capabilities.
  */
 
 import { v4 as uuidv4 } from 'uuid';
-import { storage } from '../../server/storage';
 import { LogCategory, LogLevel } from '../../shared/schema';
-import { enhancedAIService } from '../../server/services/enhanced-ai.service';
+import { storage } from '../../server/storage';
 
 /**
- * Vector memory item with embeddings for similarity search
+ * Memory entry with vector embeddings
  */
-export interface VectorMemoryItem {
+export interface MemoryEntry {
   id: string;
-  content: string;
-  metadata: Record<string, any>;
-  embedding: number[];
-  timestamp: number;
-  ttl?: number; // Time-to-live in seconds (optional)
+  text: string;
+  embedding?: number[];
+  metadata: {
+    source: string;
+    agentId?: string;
+    timestamp: string;
+    category?: string;
+    tags?: string[];
+    [key: string]: any;
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 /**
- * Response from a memory search
+ * Memory search result
  */
 export interface MemorySearchResult {
-  items: Array<{
-    id: string;
-    content: string;
-    metadata: Record<string, any>;
-    score: number; // Similarity score
-    timestamp: number;
-  }>;
-  total: number;
+  entry: MemoryEntry;
+  score: number;
 }
 
 /**
- * Vector memory configuration
+ * Options for memory storage
  */
-export interface VectorMemoryConfig {
-  defaultTTL?: number; // Default time-to-live for items in seconds
-  maxItems?: number; // Maximum number of items to store
-  embeddingDimension?: number; // Dimensionality of embeddings
-  removalStrategy?: 'lru' | 'lfu' | 'fifo' | 'ttl'; // Strategy for removing items when maxItems is reached
-  persistToDisk?: boolean; // Whether to persist memory to disk
-  persistenceInterval?: number; // How often to persist to disk in seconds
+export interface MemoryStoreOptions {
+  namespace?: string;
+  persistToFile?: boolean;
+  persistPath?: string;
+  dimensions?: number;
+  maxEntries?: number;
 }
 
 /**
- * Vector memory implementation using in-memory store with file backup
+ * Simplified in-memory vector store
+ * 
+ * Note: This is a simple implementation for development purposes.
+ * In a production system, this would be replaced with a proper vector database
+ * such as Pinecone, Milvus, Qdrant, etc.
  */
-export class VectorMemory {
-  private static instance: VectorMemory;
-  private items: Map<string, VectorMemoryItem>;
-  private config: VectorMemoryConfig;
-  private lastPersistTime: number;
-  private isDirty: boolean;
-  private persistenceTimer: NodeJS.Timeout | null;
+class InMemoryVectorStore {
+  private entries: Map<string, MemoryEntry> = new Map();
+  private namespace: string;
+  private persistToFile: boolean;
+  private persistPath: string;
+  private dimensions: number;
+  private maxEntries: number;
+  private dirty: boolean = false;
+  
+  constructor(options?: MemoryStoreOptions) {
+    this.namespace = options?.namespace || 'default';
+    this.persistToFile = options?.persistToFile || false;
+    this.persistPath = options?.persistPath || `./data/vector_memory_${this.namespace}.json`;
+    this.dimensions = options?.dimensions || 1536; // Default for OpenAI embeddings
+    this.maxEntries = options?.maxEntries || 10000;
+    
+    // Log initialization
+    this.logActivity('Initialized vector memory store', LogLevel.INFO, {
+      namespace: this.namespace,
+      persistToFile: this.persistToFile,
+      persistPath: this.persistPath,
+      dimensions: this.dimensions,
+      maxEntries: this.maxEntries
+    });
+  }
   
   /**
-   * Private constructor for singleton pattern
+   * Add an entry to the vector store
    */
-  private constructor(config: VectorMemoryConfig = {}) {
-    this.items = new Map<string, VectorMemoryItem>();
-    this.config = {
-      defaultTTL: 0, // 0 means no expiration
-      maxItems: 10000,
-      embeddingDimension: 1536, // Default for OpenAI embeddings
-      removalStrategy: 'lru',
-      persistToDisk: true,
-      persistenceInterval: 300, // 5 minutes
-      ...config
+  async addEntry(
+    text: string,
+    metadata: MemoryEntry['metadata'],
+    embedding?: number[]
+  ): Promise<string> {
+    // Generate ID if not provided in metadata
+    const id = metadata.id || `mem_${uuidv4()}`;
+    
+    // If no embedding is provided, we would normally generate one here
+    // For now, we'll use a mock embedding (random vector) in development
+    const actualEmbedding = embedding || this.mockEmbedding();
+    
+    const entry: MemoryEntry = {
+      id,
+      text,
+      embedding: actualEmbedding,
+      metadata: {
+        ...metadata,
+        timestamp: metadata.timestamp || new Date().toISOString()
+      },
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
     };
     
-    this.lastPersistTime = Date.now();
-    this.isDirty = false;
-    this.persistenceTimer = null;
+    // Store the entry
+    this.entries.set(id, entry);
+    this.dirty = true;
     
-    // Set up persistence timer if enabled
-    if (this.config.persistToDisk && this.config.persistenceInterval) {
-      this.persistenceTimer = setInterval(() => {
-        this.persistToDisk();
-      }, this.config.persistenceInterval * 1000);
-    }
-    
-    // Load from disk if enabled
-    if (this.config.persistToDisk) {
-      this.loadFromDisk();
-    }
-    
-    this.logActivity('Initialized vector memory', LogLevel.INFO);
-  }
-  
-  /**
-   * Get singleton instance
-   */
-  public static getInstance(config?: VectorMemoryConfig): VectorMemory {
-    if (!VectorMemory.instance) {
-      VectorMemory.instance = new VectorMemory(config);
-    }
-    return VectorMemory.instance;
-  }
-  
-  /**
-   * Clean up resources when shutting down
-   */
-  public shutdown(): void {
-    if (this.persistenceTimer) {
-      clearInterval(this.persistenceTimer);
-      this.persistenceTimer = null;
-    }
-    
-    if (this.isDirty && this.config.persistToDisk) {
-      this.persistToDisk();
-    }
-  }
-  
-  /**
-   * Add an item to memory with embedding
-   */
-  public async add(content: string, metadata: Record<string, any> = {}, ttl?: number): Promise<string> {
-    const id = uuidv4();
-    const timestamp = Date.now();
-    
-    try {
-      // Generate embedding
-      const embedding = await this.getEmbedding(content);
+    // Handle max entries limit (simple FIFO eviction policy)
+    if (this.entries.size > this.maxEntries) {
+      const oldestEntryId = Array.from(this.entries.keys())[0];
+      this.entries.delete(oldestEntryId);
       
-      // Create memory item
-      const item: VectorMemoryItem = {
-        id,
-        content,
-        metadata,
-        embedding,
-        timestamp,
-        ttl: ttl !== undefined ? ttl : this.config.defaultTTL
-      };
-      
-      // Add to memory
-      this.items.set(id, item);
-      this.isDirty = true;
-      
-      // Check if we need to remove items
-      this.enforceMaxItems();
-      
-      // Log activity
-      this.logActivity('Added memory item', LogLevel.INFO, {
-        id,
-        contentLength: content.length,
-        metadataKeys: Object.keys(metadata)
+      this.logActivity('Evicted oldest memory entry due to capacity limit', LogLevel.INFO, {
+        evictedId: oldestEntryId,
+        currentSize: this.entries.size,
+        maxSize: this.maxEntries
       });
-      
-      return id;
-    } catch (error) {
-      this.logActivity('Failed to add memory item', LogLevel.ERROR, {
-        error: error instanceof Error ? error.message : String(error),
-        contentLength: content.length
-      });
-      throw error;
     }
-  }
-  
-  /**
-   * Get an item by ID
-   */
-  public get(id: string): VectorMemoryItem | undefined {
-    const item = this.items.get(id);
     
-    // Check if item exists and is not expired
-    if (item) {
-      if (this.isItemExpired(item)) {
-        this.delete(id);
-        return undefined;
+    // Log the addition
+    this.logActivity('Added memory entry', LogLevel.DEBUG, {
+      id,
+      textPreview: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+      metadata: {
+        source: metadata.source,
+        category: metadata.category,
+        tags: metadata.tags
       }
-      return item;
-    }
+    });
     
-    return undefined;
+    return id;
   }
   
   /**
-   * Delete an item by ID
+   * Get an entry by ID
    */
-  public delete(id: string): boolean {
-    const deleted = this.items.delete(id);
+  async getEntry(id: string): Promise<MemoryEntry | null> {
+    const entry = this.entries.get(id);
+    return entry || null;
+  }
+  
+  /**
+   * Delete an entry by ID
+   */
+  async deleteEntry(id: string): Promise<boolean> {
+    const deleted = this.entries.delete(id);
     if (deleted) {
-      this.isDirty = true;
-      this.logActivity('Deleted memory item', LogLevel.INFO, { id });
+      this.dirty = true;
+      this.logActivity('Deleted memory entry', LogLevel.DEBUG, { id });
     }
     return deleted;
   }
   
   /**
-   * Clear all items from memory
+   * Update an entry
    */
-  public clear(): void {
-    const itemCount = this.items.size;
-    this.items.clear();
-    this.isDirty = true;
-    this.logActivity('Cleared all memory items', LogLevel.INFO, { count: itemCount });
+  async updateEntry(
+    id: string,
+    updates: Partial<Omit<MemoryEntry, 'id' | 'createdAt'>>
+  ): Promise<MemoryEntry | null> {
+    const entry = this.entries.get(id);
+    if (!entry) {
+      return null;
+    }
+    
+    const updatedEntry: MemoryEntry = {
+      ...entry,
+      ...updates,
+      id, // Ensure ID doesn't change
+      createdAt: entry.createdAt, // Preserve creation date
+      updatedAt: new Date().toISOString(),
+      metadata: {
+        ...entry.metadata,
+        ...(updates.metadata || {})
+      }
+    };
+    
+    this.entries.set(id, updatedEntry);
+    this.dirty = true;
+    
+    this.logActivity('Updated memory entry', LogLevel.DEBUG, { id });
+    
+    return updatedEntry;
   }
   
   /**
-   * Search for similar items in memory
+   * Search for entries using vector similarity
    */
-  public async search(
-    query: string, 
-    options: { 
-      limit?: number; 
-      threshold?: number; 
-      filter?: (item: VectorMemoryItem) => boolean;
-    } = {}
-  ): Promise<MemorySearchResult> {
-    const limit = options.limit || 10;
-    const threshold = options.threshold || 0.7;
-    const filter = options.filter;
+  async search(
+    query: string,
+    options?: {
+      limit?: number;
+      threshold?: number;
+      filter?: (entry: MemoryEntry) => boolean;
+    }
+  ): Promise<MemorySearchResult[]> {
+    const limit = options?.limit || 5;
+    const threshold = options?.threshold || 0.7;
     
-    try {
-      // Generate embedding for query
-      const queryEmbedding = await this.getEmbedding(query);
+    // In a real implementation, we would:
+    // 1. Generate embedding for the query
+    // 2. Compute similarity with all entries
+    // 3. Return the most similar entries above threshold
+    
+    // For this mock implementation, we'll:
+    // 1. Create a mock query embedding
+    // 2. Compute mock similarity scores (normally cosine similarity)
+    // 3. Return entries with mock filtering
+    
+    const queryEmbedding = this.mockEmbedding();
+    
+    // Get all entries that match the filter (if provided)
+    const filteredEntries = Array.from(this.entries.values())
+      .filter(entry => !options?.filter || options.filter(entry));
+    
+    // Calculate mock similarity scores
+    const results: MemorySearchResult[] = filteredEntries.map(entry => {
+      // Mock similarity calculation (in real implementation, this would be cosine similarity)
+      // Random score between 0.5 and 1.0 for demo purposes
+      const score = 0.5 + Math.random() * 0.5;
       
-      // Calculate similarity for all items
-      const similarities: Array<{ item: VectorMemoryItem; score: number }> = [];
-      
-      for (const item of this.items.values()) {
-        // Skip expired items
-        if (this.isItemExpired(item)) {
-          this.delete(item.id);
-          continue;
-        }
-        
-        // Apply filter if provided
-        if (filter && !filter(item)) {
-          continue;
-        }
-        
-        // Calculate cosine similarity
-        const similarity = this.calculateCosineSimilarity(queryEmbedding, item.embedding);
-        
-        // Add to results if above threshold
-        if (similarity >= threshold) {
-          similarities.push({ item, score: similarity });
-        }
-      }
-      
-      // Sort by similarity (highest first)
-      similarities.sort((a, b) => b.score - a.score);
-      
-      // Take top N results
-      const topResults = similarities.slice(0, limit);
-      
-      // Format results
-      const result: MemorySearchResult = {
-        items: topResults.map(({ item, score }) => ({
-          id: item.id,
-          content: item.content,
-          metadata: item.metadata,
-          score,
-          timestamp: item.timestamp
-        })),
-        total: similarities.length
+      return {
+        entry,
+        score
       };
-      
-      this.logActivity('Searched memory', LogLevel.INFO, {
-        queryLength: query.length,
-        resultsFound: result.items.length,
-        totalMatches: result.total
-      });
-      
-      return result;
-    } catch (error) {
-      this.logActivity('Memory search failed', LogLevel.ERROR, {
-        error: error instanceof Error ? error.message : String(error),
-        queryLength: query.length
-      });
-      throw error;
-    }
+    });
+    
+    // Sort by score (descending) and apply threshold
+    const finalResults = results
+      .filter(result => result.score >= threshold)
+      .sort((a, b) => b.score - a.score)
+      .slice(0, limit);
+    
+    this.logActivity('Performed vector search', LogLevel.DEBUG, {
+      query: query.substring(0, 50) + (query.length > 50 ? '...' : ''),
+      resultCount: finalResults.length,
+      totalSearched: filteredEntries.length
+    });
+    
+    return finalResults;
   }
   
   /**
-   * Get the number of items in memory
+   * Get all entries (with optional filtering)
    */
-  public size(): number {
-    // Only count non-expired items
-    let count = 0;
-    const now = Date.now();
-    
-    for (const item of this.items.values()) {
-      if (!this.isItemExpired(item)) {
-        count++;
-      }
-    }
-    
-    return count;
+  async getAllEntries(filter?: (entry: MemoryEntry) => boolean): Promise<MemoryEntry[]> {
+    const entries = Array.from(this.entries.values());
+    return filter ? entries.filter(filter) : entries;
   }
   
   /**
-   * Get memory usage statistics
+   * Get entries by tag
    */
-  public getStats(): Record<string, any> {
-    // Count items by age buckets
-    const now = Date.now();
-    const stats = {
-      totalItems: this.items.size,
-      nonExpiredItems: 0,
-      expiredItems: 0,
-      byAge: {
-        lastHour: 0,
-        lastDay: 0,
-        lastWeek: 0,
-        older: 0
-      },
-      avgContentLength: 0,
-      totalMemoryUsage: 0, // Approximate memory usage in bytes
-    };
-    
-    let totalContentLength = 0;
-    
-    for (const item of this.items.values()) {
-      // Check expiration
-      if (this.isItemExpired(item)) {
-        stats.expiredItems++;
-        continue;
-      }
-      
-      stats.nonExpiredItems++;
-      totalContentLength += item.content.length;
-      
-      // Categorize by age
-      const ageMs = now - item.timestamp;
-      if (ageMs < 60 * 60 * 1000) { // Last hour
-        stats.byAge.lastHour++;
-      } else if (ageMs < 24 * 60 * 60 * 1000) { // Last day
-        stats.byAge.lastDay++;
-      } else if (ageMs < 7 * 24 * 60 * 60 * 1000) { // Last week
-        stats.byAge.lastWeek++;
-      } else {
-        stats.byAge.older++;
-      }
-      
-      // Approximate memory usage: strings ~2 bytes per char, plus embedding size
-      stats.totalMemoryUsage += item.content.length * 2 + item.embedding.length * 4 + 
-        JSON.stringify(item.metadata).length * 2;
-    }
-    
-    if (stats.nonExpiredItems > 0) {
-      stats.avgContentLength = totalContentLength / stats.nonExpiredItems;
-    }
-    
-    return stats;
+  async getEntriesByTag(tag: string): Promise<MemoryEntry[]> {
+    return Array.from(this.entries.values())
+      .filter(entry => entry.metadata.tags?.includes(tag));
   }
   
   /**
-   * Prune expired items
+   * Get entries by category
    */
-  public pruneExpired(): number {
-    let prunedCount = 0;
-    
-    for (const item of this.items.values()) {
-      if (this.isItemExpired(item)) {
-        this.items.delete(item.id);
-        prunedCount++;
-      }
-    }
-    
-    if (prunedCount > 0) {
-      this.isDirty = true;
-      this.logActivity('Pruned expired memory items', LogLevel.INFO, { count: prunedCount });
-    }
-    
-    return prunedCount;
+  async getEntriesByCategory(category: string): Promise<MemoryEntry[]> {
+    return Array.from(this.entries.values())
+      .filter(entry => entry.metadata.category === category);
   }
   
   /**
-   * Check if an item is expired
+   * Get entries by agent ID
    */
-  private isItemExpired(item: VectorMemoryItem): boolean {
-    if (!item.ttl || item.ttl <= 0) {
-      return false; // No expiration
-    }
-    
-    const now = Date.now();
-    const expirationTime = item.timestamp + (item.ttl * 1000);
-    
-    return now > expirationTime;
+  async getEntriesByAgentId(agentId: string): Promise<MemoryEntry[]> {
+    return Array.from(this.entries.values())
+      .filter(entry => entry.metadata.agentId === agentId);
   }
   
   /**
-   * Calculate cosine similarity between two vectors
+   * Clear all entries
    */
-  private calculateCosineSimilarity(vecA: number[], vecB: number[]): number {
-    if (vecA.length !== vecB.length) {
-      throw new Error(`Vector dimensions do not match: ${vecA.length} vs ${vecB.length}`);
-    }
+  async clear(): Promise<void> {
+    const count = this.entries.size;
+    this.entries.clear();
+    this.dirty = true;
     
-    let dotProduct = 0;
-    let normA = 0;
-    let normB = 0;
-    
-    for (let i = 0; i < vecA.length; i++) {
-      dotProduct += vecA[i] * vecB[i];
-      normA += vecA[i] * vecA[i];
-      normB += vecB[i] * vecB[i];
-    }
-    
-    if (normA === 0 || normB === 0) {
-      return 0;
-    }
-    
-    return dotProduct / (Math.sqrt(normA) * Math.sqrt(normB));
+    this.logActivity('Cleared all memory entries', LogLevel.INFO, { count });
   }
   
   /**
-   * Generate embedding for text using OpenAI (or other service)
+   * Get the count of entries
    */
-  private async getEmbedding(text: string): Promise<number[]> {
+  async count(): Promise<number> {
+    return this.entries.size;
+  }
+  
+  /**
+   * Load entries from persistent storage
+   */
+  async load(): Promise<boolean> {
+    if (!this.persistToFile) {
+      return false;
+    }
+    
     try {
-      // Here we would use OpenAI or other embedding service
-      // For now, we'll create a simple mock embedding
-      // In a real implementation, this would call an API to get embeddings
-      
-      // For demonstration purposes, we're generating random embeddings
-      // In a production system, you would use a proper embedding model like:
-      // OpenAI's text-embedding-ada-002 or similar
-      
-      // This is just a mock implementation
-      return this.mockEmbedding(text, this.config.embeddingDimension || 1536);
-    } catch (error) {
-      this.logActivity('Failed to generate embedding', LogLevel.ERROR, {
-        error: error instanceof Error ? error.message : String(error),
-        textLength: text.length
+      // In a real implementation, this would read from a file or database
+      // For now, we'll just log that we would load
+      this.logActivity('Would load vector memory from file (not implemented)', LogLevel.INFO, {
+        path: this.persistPath
       });
-      throw error;
-    }
-  }
-  
-  /**
-   * Mock embedding generation for demonstration purposes
-   */
-  private mockEmbedding(text: string, dimension: number): number[] {
-    // Creates a deterministic but very simplistic "embedding" based on the text
-    // This is NOT a real embedding - just for demonstration
-    const embedding: number[] = Array(dimension).fill(0);
-    
-    // Use text as a seed for the embedding
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      hash = ((hash << 5) - hash) + text.charCodeAt(i);
-      hash |= 0; // Convert to 32bit integer
-    }
-    
-    // Use the hash to seed a very basic PRNG
-    const seed = Math.abs(hash);
-    const prng = (n: number) => {
-      return ((n * 9301 + 49297) % 233280) / 233280;
-    };
-    
-    // Generate embedding values using the seeded PRNG
-    let state = seed;
-    for (let i = 0; i < dimension; i++) {
-      state = prng(state) * 100000;
-      embedding[i] = (prng(state) * 2) - 1; // Values between -1 and 1
-    }
-    
-    // Normalize to unit length
-    const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
-    return embedding.map(val => val / magnitude);
-  }
-  
-  /**
-   * Enforce maximum items policy
-   */
-  private enforceMaxItems(): void {
-    if (!this.config.maxItems || this.items.size <= this.config.maxItems) {
-      return;
-    }
-    
-    const excess = this.items.size - this.config.maxItems;
-    let removed = 0;
-    
-    // First remove expired items
-    for (const item of this.items.values()) {
-      if (removed >= excess) {
-        break;
-      }
       
-      if (this.isItemExpired(item)) {
-        this.items.delete(item.id);
-        removed++;
-      }
-    }
-    
-    // If we still need to remove more, use the configured strategy
-    if (removed < excess) {
-      switch (this.config.removalStrategy) {
-        case 'fifo':
-          this.removeOldestItems(excess - removed);
-          break;
-        case 'lru':
-          this.removeLeastRecentlyUsedItems(excess - removed);
-          break;
-        case 'lfu':
-          this.removeLeastFrequentlyUsedItems(excess - removed);
-          break;
-        default:
-          this.removeOldestItems(excess - removed);
-      }
+      return true;
+    } catch (error) {
+      this.logActivity('Failed to load vector memory', LogLevel.ERROR, {
+        error: error instanceof Error ? error.message : String(error),
+        path: this.persistPath
+      });
+      
+      return false;
     }
   }
   
   /**
-   * Remove oldest items
+   * Save entries to persistent storage
    */
-  private removeOldestItems(count: number): void {
-    // Sort items by timestamp
-    const sorted = Array.from(this.items.entries())
-      .sort((a, b) => a[1].timestamp - b[1].timestamp);
-    
-    // Remove oldest items
-    for (let i = 0; i < Math.min(count, sorted.length); i++) {
-      this.items.delete(sorted[i][0]);
-    }
-    
-    this.isDirty = true;
-  }
-  
-  /**
-   * Remove least recently used items
-   * This is a simple implementation - in a real system you'd track access times
-   */
-  private removeLeastRecentlyUsedItems(count: number): void {
-    // For now, this is the same as removing oldest
-    // In a real implementation, you would track last access time
-    this.removeOldestItems(count);
-  }
-  
-  /**
-   * Remove least frequently used items
-   * This is a simple implementation - in a real system you'd track access counts
-   */
-  private removeLeastFrequentlyUsedItems(count: number): void {
-    // For now, this is the same as removing oldest
-    // In a real implementation, you would track access frequency
-    this.removeOldestItems(count);
-  }
-  
-  /**
-   * Persist memory to disk
-   */
-  private async persistToDisk(): Promise<void> {
-    if (!this.isDirty) {
-      return;
+  async save(): Promise<boolean> {
+    if (!this.persistToFile || !this.dirty) {
+      return false;
     }
     
     try {
       // In a real implementation, this would write to a file or database
-      // For this example, we'll just log that we would persist
-      this.logActivity('Would persist memory to disk', LogLevel.INFO, {
-        itemCount: this.items.size,
-        dataSize: JSON.stringify(Array.from(this.items.entries())).length
+      // For now, we'll just log that we would save
+      this.logActivity('Would save vector memory to file (not implemented)', LogLevel.INFO, {
+        path: this.persistPath,
+        entryCount: this.entries.size
       });
       
-      this.isDirty = false;
-      this.lastPersistTime = Date.now();
+      this.dirty = false;
+      return true;
     } catch (error) {
-      this.logActivity('Failed to persist memory', LogLevel.ERROR, {
-        error: error instanceof Error ? error.message : String(error)
+      this.logActivity('Failed to save vector memory', LogLevel.ERROR, {
+        error: error instanceof Error ? error.message : String(error),
+        path: this.persistPath
       });
+      
+      return false;
     }
   }
   
   /**
-   * Load memory from disk
+   * Clean up and persist if needed
    */
-  private async loadFromDisk(): Promise<void> {
-    try {
-      // In a real implementation, this would read from a file or database
-      // For this example, we'll just log that we would load from disk
-      this.logActivity('Would load memory from disk', LogLevel.INFO);
-    } catch (error) {
-      this.logActivity('Failed to load memory from disk', LogLevel.ERROR, {
-        error: error instanceof Error ? error.message : String(error)
-      });
+  async shutdown(): Promise<void> {
+    // Persist to storage if needed
+    if (this.persistToFile && this.dirty) {
+      await this.save();
     }
+    
+    this.logActivity('Vector memory store shutdown', LogLevel.INFO, {
+      namespace: this.namespace,
+      entryCount: this.entries.size
+    });
   }
   
   /**
-   * Log activity to the storage system
+   * Generate a mock embedding vector
+   * 
+   * Note: In a real implementation, this would call an embedding API
+   * like OpenAI's text-embedding-ada-002 model
+   */
+  private mockEmbedding(): number[] {
+    // Create a random vector with appropriate dimensions
+    return Array.from({ length: this.dimensions }, () => Math.random() * 2 - 1);
+  }
+  
+  /**
+   * Log an activity to the storage system
    */
   private async logActivity(message: string, level: LogLevel, details?: any): Promise<void> {
     try {
@@ -604,7 +393,7 @@ export class VectorMemory {
         duration: null,
         statusCode: null,
         endpoint: null,
-        tags: ['memory', 'vector', 'agent']
+        tags: ['memory', 'vector', this.namespace]
       });
     } catch (error) {
       console.error('Failed to log vector memory activity:', error);
@@ -612,5 +401,11 @@ export class VectorMemory {
   }
 }
 
-// Export a singleton instance
-export const vectorMemory = VectorMemory.getInstance();
+/**
+ * Singleton vector memory instance
+ */
+export const vectorMemory = new InMemoryVectorStore({
+  namespace: 'intelligent-estate',
+  persistToFile: true,
+  persistPath: './data/vector_memory.json'
+});

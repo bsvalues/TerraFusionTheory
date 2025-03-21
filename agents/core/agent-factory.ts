@@ -39,36 +39,37 @@ class AgentFactory {
     
     console.log('Initializing agent factory...');
     
-    // Register agent constructors
-    // These are placeholder implementations until we create the actual agent classes
+    // Dynamically import the agent implementations to avoid circular dependencies
+    const { createDeveloperAgent } = await import('../implementations/developer-agent');
+    const { createRealEstateAgent } = await import('../implementations/real-estate-agent');
+    
+    // Register agent constructors with their concrete implementations
     
     this.agentConstructors[AgentType.DEVELOPER] = async (id, config) => {
-      // Placeholder developer agent
-      return {
-        ...this.createBaseAgent(id, {
-          ...config,
-          capabilities: [...(config.capabilities || []), AgentCapability.CODE_GENERATION, AgentCapability.CODE_UNDERSTANDING]
-        }),
-        getType: () => AgentType.DEVELOPER,
-        useTool: async () => ({ success: false, error: new Error('Not implemented') }),
-        processTask: async () => {},
-        initialize: async () => {}
-      };
+      return await createDeveloperAgent({
+        id,
+        ...config,
+        // Ensure developer-specific capabilities
+        capabilities: [...(config.capabilities || []), 
+          AgentCapability.CODE_GENERATION, 
+          AgentCapability.CODE_UNDERSTANDING
+        ]
+      });
     };
     
     this.agentConstructors[AgentType.REAL_ESTATE] = async (id, config) => {
-      // Placeholder real estate agent
-      return {
-        ...this.createBaseAgent(id, {
-          ...config,
-          capabilities: [...(config.capabilities || []), AgentCapability.REAL_ESTATE_ANALYSIS, AgentCapability.MARKET_PREDICTION]
-        }),
-        getType: () => AgentType.REAL_ESTATE,
-        useTool: async () => ({ success: false, error: new Error('Not implemented') }),
-        processTask: async () => {},
-        initialize: async () => {}
-      };
+      return await createRealEstateAgent({
+        id,
+        ...config,
+        // Ensure real estate-specific capabilities
+        capabilities: [...(config.capabilities || []), 
+          AgentCapability.REAL_ESTATE_ANALYSIS,
+          AgentCapability.MARKET_PREDICTION
+        ]
+      });
     };
+    
+    // For now, we still have placeholder implementations for other agent types
     
     this.agentConstructors[AgentType.ANALYTICS] = async (id, config) => {
       // Placeholder analytics agent
