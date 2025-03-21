@@ -204,7 +204,8 @@ export class DeveloperAgent extends BaseAgent {
         currentTask.status = 'failed';
         currentTask.endTime = new Date();
         currentTask.result = { 
-          success: false, 
+          success: false,
+          output: null,
           error: error instanceof Error ? error : new Error(String(error)) 
         };
         

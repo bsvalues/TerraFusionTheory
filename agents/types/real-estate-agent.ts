@@ -204,6 +204,7 @@ export class RealEstateAgent extends BaseAgent {
         currentTask.endTime = new Date();
         currentTask.result = { 
           success: false, 
+          output: null,
           error: error instanceof Error ? error : new Error(String(error)) 
         };
         
@@ -361,7 +362,13 @@ export class RealEstateAgent extends BaseAgent {
       
       // Calculate predicted values
       const currentValue = propertyData.assessedValue || propertyData.marketValue;
-      const predictionFactor = marketPrediction.medianPriceChange / 100 + 1;
+      
+      // Extract the median price change from market prediction
+      const currentMedianPrice = marketPrediction.predictedMetrics.medianPrice || 0;
+      const originalMedianPrice = propertyData.marketValue || currentValue; // Fallback if not available
+      const medianPriceChange = ((currentMedianPrice - originalMedianPrice) / originalMedianPrice) * 100;
+      
+      const predictionFactor = medianPriceChange / 100 + 1;
       const predictedValue = currentValue * predictionFactor;
       
       // Return prediction results
@@ -370,7 +377,7 @@ export class RealEstateAgent extends BaseAgent {
         currentValue,
         predictedValue,
         percentageChange: (predictedValue - currentValue) / currentValue * 100,
-        confidence: marketPrediction.confidence,
+        confidence: marketPrediction.confidenceScore,
         timeframe: `${timeframeMonths} months`,
         marketPrediction
       };
