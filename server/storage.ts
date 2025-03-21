@@ -850,7 +850,7 @@ export class MemStorage implements IStorage {
     const updatedUserBadge: UserBadge = {
       ...userBadge,
       progress,
-      metadata: metadata ? JSON.stringify(metadata) : userBadge.metadata
+      metadata: metadata || userBadge.metadata
     };
     this.userBadgesData.set(id, updatedUserBadge);
     return updatedUserBadge;
@@ -868,7 +868,11 @@ export class MemStorage implements IStorage {
           ...badge,
           progress: userBadge.progress,
           isUnlocked: userBadge.progress >= 100,
-          metadata: userBadge.metadata ? JSON.parse(userBadge.metadata as string) : {},
+          metadata: userBadge.metadata ? 
+            (typeof userBadge.metadata === 'string' ? 
+              JSON.parse(userBadge.metadata) : 
+              userBadge.metadata) : 
+            {},
           unlockDate: userBadge.progress >= 100 ? new Date(userBadge.awardedAt).toLocaleDateString() : undefined,
           isNew: (new Date().getTime() - new Date(userBadge.awardedAt).getTime()) < (24 * 60 * 60 * 1000), // Is less than 24 hours old
           variant: this.getBadgeVariantByLevel(badge.level as BadgeLevel),
