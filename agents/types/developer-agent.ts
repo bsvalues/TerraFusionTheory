@@ -502,8 +502,13 @@ Please provide:
    * @param language Programming language
    */
   private extractCodeFromDebug(debugResult: any, language: string): string {
+    // Handle the case where debugResult is an object with an analysis property
+    const analysisText = typeof debugResult === 'object' && debugResult.analysis 
+      ? debugResult.analysis 
+      : debugResult;
+    
     // Convert debugResult to string if it's not already
-    const debugStr = typeof debugResult === 'string' ? debugResult : JSON.stringify(debugResult);
+    const debugStr = typeof analysisText === 'string' ? analysisText : JSON.stringify(analysisText);
     
     // Extract code blocks from the debug result
     const codeBlockRegex = new RegExp(`\`\`\`(?:${language})?\\n([\\s\\S]*?)\`\`\``, 'g');
