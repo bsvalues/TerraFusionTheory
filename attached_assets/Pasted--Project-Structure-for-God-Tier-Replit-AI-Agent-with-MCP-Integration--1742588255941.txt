@@ -1,0 +1,58 @@
+# 📁 Project Structure for God-Tier Replit AI Agent with MCP Integration
+
+# ───────────────────────────────────────────────
+# Root Level
+├── agent/
+│   ├── __init__.py
+│   ├── core.py                       # Main agent logic (memory + MCP context fusion)
+│   ├── memory/
+│   │   ├── __init__.py
+│   │   └── vector.py                 # Vector memory storage/retrieval
+│   ├── tools/
+│   │   ├── __init__.py
+│   │   ├── mcp.py                    # MCP Connector Tool
+│   │   ├── web.py
+│   │   └── file.py
+│   ├── utils/
+│   │   ├── __init__.py
+│   │   ├── tool_registry.py          # Auto-loads tools
+│   │   ├── semantic_cache.py         # Optional caching layer for MCP
+│   │   └── debug.py                  # Debug logger / tracer
+│
+├── config/
+│   ├── settings.py                   # Fallback/default config loader
+│   └── mcp.yaml                      # Optional config per-MCP endpoint
+│
+├── tests/
+│   ├── __init__.py
+│   ├── test_mcp.py                   # Unit test for MCP connector
+│   ├── test_core.py                  # E2E test of query pipeline
+│   └── mocks/
+│       └── mocked_mcp.json           # Sample mocked response
+│
+├── docs/
+│   ├── quickstart.md
+│   ├── architecture.md
+│   ├── testing.md
+│   ├── tools/
+│   │   └── mcp.md
+│   ├── media/
+│   │   ├── context_fusion_flow.mmd   # Mermaid source for flow diagram
+│   │   ├── agent_core_diagram.svg
+│   │   ├── mcp_connector_sequence.png
+│   │   └── intro_video.mp4           # Screencast: overview of architecture
+│   └── agent_flow_training_block.md # Embedded training documentation for LLMs
+│
+├── examples/
+│   ├── sample_queries.json
+│   └── ab_test_prompt_comparisons.md
+│
+├── scripts/
+│   └── generate_training_dataset.py # Optional script to log MCP vs non-MCP queries
+│
+├── .env                             # MCP_ENDPOINT, MCP_API_KEY, etc.
+├── agent_manifest.yaml              # Machine-readable manifest for tools and training
+├── requirements.txt
+├── .replit
+├── replit.nix
+└── README.md

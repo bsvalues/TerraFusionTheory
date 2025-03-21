@@ -1,0 +1,134 @@
+Below is a detailed prompt and implementation plan to integrate the Model Context Protocol (MCP) into our current Replit AI Agent project:
+
+---
+
+### **Targeted Replit Agent Prompt: Integrate MCP**
+
+> **Task:**  
+> Enhance our Replit AI Agent by integrating the Model Context Protocol (MCP) to enable standardized, context-rich data retrieval from various data sources.  
+> 
+> **Objectives:**  
+> - Allow the agent to automatically retrieve additional context via MCP endpoints, enhancing its ability to answer queries accurately.  
+> - Create an MCP connector module in our agent tools that standardizes data fetching from different sources.
+> - Update the agent core to incorporate this context into its memory and response generation.
+> 
+> **Implementation Steps:**  
+> 1. **Create MCP Connector:**  
+>    - Develop a new module (e.g., `agent/tools/mcp.py`) that implements functions for connecting to MCP endpoints, handling authentication if required, and standardizing the response.  
+>    - Ensure the MCP module is designed to fetch additional context data that can be merged with the agent's current memory.
+> 
+> 2. **Integrate MCP in Agent Core:**  
+>    - Update `agent/core.py` to load the MCP connector as one of the available tools.  
+>    - Modify the `run(query)` method to first retrieve context via the MCP connector before or after querying local memory.  
+>    - Merge the MCP context data with the agent’s own memory context for enriched responses.
+> 
+> 3. **Configuration:**  
+>    - Update environment variables or configuration files (e.g., `.env` or `config/settings.py`) to store MCP endpoint URLs, API keys, or other necessary configuration details.
+> 
+> 4. **Testing:**  
+>    - Implement unit tests (in `tests/test_mcp.py`) to verify that the MCP connector correctly fetches and returns context data.
+>    - Extend the end-to-end tests to ensure that the complete system now includes MCP-sourced context in its responses.
+> 
+> **Expected Outcome:**  
+> The Replit AI Agent will now leverage MCP to access standardized context from diverse data sources, enhancing its responses with richer, more accurate data insights.
+> 
+> **Reference:**  
+> For more details on MCP implementation and best practices, see the [Model Context Protocol documentation](https://www.anthropic.com/news/model-context-protocol?utm_source=chatgpt.com).
+
+---
+
+### **Generic Implementation Plan**
+
+1. **Develop MCP Connector Module:**
+
+   Create a new file at `agent/tools/mcp.py` with content similar to:
+   ```python
+   import requests
+
+   class MCPConnector:
+       def __init__(self, endpoint, api_key=None):
+           self.endpoint = endpoint
+           self.api_key = api_key
+
+       def fetch_context(self, query):
+           headers = {}
+           if self.api_key:
+               headers['Authorization'] = f"Bearer {self.api_key}"
+           payload = {'query': query}
+           try:
+               response = requests.post(self.endpoint, json=payload, headers=headers)
+               response.raise_for_status()
+               return response.json()  # Assuming a JSON response containing context data.
+           except Exception as e:
+               print(f"Error fetching MCP context: {e}")
+               return None
+
+   # Convenience function
+   def get_mcp_context(query, endpoint, api_key=None):
+       connector = MCPConnector(endpoint, api_key)
+       return connector.fetch_context(query)
+   ```
+
+2. **Update Agent Core:**
+
+   In `agent/core.py`, import and use the MCP connector:
+   ```python
+   import importlib
+   from agent.memory.vector import VectorMemory
+   from agent.tools import web, file
+   from agent.tools.mcp import get_mcp_context
+   import os
+
+   class ReplitAgent:
+       def __init__(self):
+           self.memory = VectorMemory()
+           # Load tools dynamically
+           self.tools = self.load_tools()
+           # Load MCP configuration from environment variables
+           self.mcp_endpoint = os.getenv("MCP_ENDPOINT", "https://mcp.example.com/api/context")
+           self.mcp_api_key = os.getenv("MCP_API_KEY")
+           print("✅ AI Agent Initialized with MCP support")
+
+       def load_tools(self):
+           tool_names = ["web", "file", "mcp"]
+           return [importlib.import_module(f"agent.tools.{tool}") for tool in tool_names if tool != "mcp"]
+
+       def run(self, query):
+           # Retrieve local memory context
+           local_context = self.memory.retrieve(query)
+           # Retrieve additional context using MCP
+           mcp_context = get_mcp_context(query, self.mcp_endpoint, self.mcp_api_key)
+           # Combine both contexts
+           combined_context = f"Local Context: {local_context}\nMCP Context: {mcp_context}"
+           response = f"Agent Response based on combined context:\n{combined_context}"
+           return response
+   ```
+
+3. **Configuration:**
+
+   Update your `.env` or configuration file with:
+   ```env
+   MCP_ENDPOINT=https://mcp.example.com/api/context
+   MCP_API_KEY=your_api_key_here
+   ```
+
+4. **Testing:**
+
+   Add unit tests in `tests/test_mcp.py` to ensure the MCP connector works as expected:
+   ```python
+   from agent.tools.mcp import MCPConnector
+
+   def test_mcp_connector():
+       # Use a mock endpoint or a known test endpoint for MCP
+       connector = MCPConnector("https://mcp.example.com/api/context", api_key="test_key")
+       result = connector.fetch_context("sample query")
+       assert result is not None, "MCP context should not be None"
+   ```
+
+5. **Integrate into CI/CD:**
+
+   Make sure to add these new tests to your CI pipeline so that any changes to the MCP integration are automatically verified.
+
+---
+
+By integrating MCP, your AI agent will benefit from enhanced context awareness and improved data retrieval, leading to more informed and accurate responses. Let me know if you need further customization or additional details!
