@@ -7,6 +7,7 @@ import { storage } from "./storage";
 import { LogCategory, LogLevel } from "@shared/schema";
 import { scheduler } from "./services/scheduler.service";
 import { initializeConnectors } from "./services/connectors";
+import { initializeAgentSystem } from "../agents";
 
 // Declare session data type
 declare module 'express-session' {
@@ -144,7 +145,14 @@ app.use((req, res, next) => {
       
       // Initialize default connectors
       initializeConnectors()
-        .then(() => log('Default connectors initialized'))
+        .then(() => {
+          log('Default connectors initialized');
+          
+          // Initialize agent system
+          return initializeAgentSystem()
+            .then(() => log('Agent system initialized'))
+            .catch(err => console.error('Failed to initialize agent system:', err));
+        })
         .catch(err => console.error('Failed to initialize connectors:', err));
     });
     

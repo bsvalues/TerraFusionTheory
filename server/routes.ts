@@ -10,6 +10,13 @@ import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
 import { realEstateAnalyticsService } from "./services/real-estate-analytics.service";
+import { 
+  agentRegistry, 
+  agentFactory, 
+  agentCoordinator, 
+  AgentType,
+  AgentCapability
+} from "../agents";
 
 // Track the memory monitor timer globally to allow proper cleanup
 
@@ -629,6 +636,212 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error sending test alert:", error);
       res.status(500).json({ error: "Failed to send test alert" });
+    }
+  }));
+
+  // Agent system routes
+  app.get("/api/agents", asyncHandler(async (req, res) => {
+    try {
+      const agents = agentRegistry.getAllAgents().map(agent => ({
+        id: agent.getId(),
+        type: agent.getType(),
+        name: agent.getName(),
+        description: agent.getDescription(),
+        state: agent.getState(),
+        capabilities: agent.getCapabilities(),
+        isActive: agent.isActiveAgent()
+      }));
+      res.json(agents);
+    } catch (error) {
+      console.error("Error fetching agents:", error);
+      res.status(500).json({ error: "Failed to get agents" });
+    }
+  }));
+
+  app.get("/api/agents/active", asyncHandler(async (req, res) => {
+    try {
+      const agents = agentRegistry.getActiveAgents().map(agent => ({
+        id: agent.getId(),
+        type: agent.getType(),
+        name: agent.getName(),
+        description: agent.getDescription(),
+        state: agent.getState(),
+        capabilities: agent.getCapabilities()
+      }));
+      res.json(agents);
+    } catch (error) {
+      console.error("Error fetching active agents:", error);
+      res.status(500).json({ error: "Failed to get active agents" });
+    }
+  }));
+
+  app.get("/api/agents/type/:type", asyncHandler(async (req, res) => {
+    try {
+      const type = req.params.type as AgentType;
+      const agents = agentRegistry.getAgentsByType(type).map(agent => ({
+        id: agent.getId(),
+        type: agent.getType(),
+        name: agent.getName(),
+        description: agent.getDescription(),
+        state: agent.getState(),
+        capabilities: agent.getCapabilities(),
+        isActive: agent.isActiveAgent()
+      }));
+      res.json(agents);
+    } catch (error) {
+      console.error("Error fetching agents by type:", error);
+      res.status(500).json({ error: "Failed to get agents by type" });
+    }
+  }));
+
+  app.get("/api/agents/:id", asyncHandler(async (req, res) => {
+    try {
+      const agent = agentRegistry.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      
+      const agentDetails = {
+        id: agent.getId(),
+        type: agent.getType(),
+        name: agent.getName(),
+        description: agent.getDescription(),
+        state: agent.getState(),
+        capabilities: agent.getCapabilities(),
+        isActive: agent.isActiveAgent(),
+        diagnostics: agent.getDiagnostics()
+      };
+      
+      res.json(agentDetails);
+    } catch (error) {
+      console.error("Error fetching agent:", error);
+      res.status(500).json({ error: "Failed to get agent" });
+    }
+  }));
+
+  app.post("/api/agents/:id/execute", asyncHandler(async (req, res) => {
+    try {
+      const { task, inputs, options } = req.body;
+      
+      if (!task) {
+        return res.status(400).json({ error: "Task is required" });
+      }
+      
+      const agent = agentRegistry.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      
+      const result = await agent.execute(task, inputs || {}, options || {});
+      res.json(result);
+    } catch (error) {
+      console.error("Error executing agent task:", error);
+      res.status(500).json({ 
+        error: "Failed to execute agent task",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }));
+
+  app.post("/api/agents/:id/state", asyncHandler(async (req, res) => {
+    try {
+      const { action } = req.body;
+      
+      if (!action || !['pause', 'resume', 'shutdown'].includes(action)) {
+        return res.status(400).json({ error: "Valid action (pause, resume, shutdown) is required" });
+      }
+      
+      const agent = agentRegistry.getAgent(req.params.id);
+      if (!agent) {
+        return res.status(404).json({ error: "Agent not found" });
+      }
+      
+      let success = false;
+      
+      switch (action) {
+        case 'pause':
+          success = await agent.pause();
+          break;
+        case 'resume':
+          success = await agent.resume();
+          break;
+        case 'shutdown':
+          success = await agent.shutdown();
+          break;
+      }
+      
+      if (success) {
+        res.json({ 
+          id: agent.getId(),
+          state: agent.getState(),
+          action,
+          success
+        });
+      } else {
+        res.status(400).json({ 
+          error: `Failed to ${action} agent`,
+          currentState: agent.getState()
+        });
+      }
+    } catch (error) {
+      console.error(`Error changing agent state:`, error);
+      res.status(500).json({ 
+        error: "Failed to change agent state",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }));
+
+  app.post("/api/coordinator/execute", asyncHandler(async (req, res) => {
+    try {
+      const { agentId, task, inputs, options } = req.body;
+      
+      if (!agentId || !task) {
+        return res.status(400).json({ error: "Agent ID and task are required" });
+      }
+      
+      const result = await agentCoordinator.assignTask(agentId, task, inputs || {}, options || {});
+      res.json(result);
+    } catch (error) {
+      console.error("Error executing coordinated task:", error);
+      res.status(500).json({ 
+        error: "Failed to execute coordinated task",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }));
+
+  app.post("/api/coordinator/broadcast", asyncHandler(async (req, res) => {
+    try {
+      const { task, inputs, options } = req.body;
+      
+      if (!task) {
+        return res.status(400).json({ error: "Task is required" });
+      }
+      
+      const results = await agentCoordinator.broadcastTask(task, inputs || {}, options || {});
+      res.json(results);
+    } catch (error) {
+      console.error("Error broadcasting task:", error);
+      res.status(500).json({ 
+        error: "Failed to broadcast task",
+        details: error instanceof Error ? error.message : String(error)
+      });
+    }
+  }));
+
+  app.get("/api/coordinator/status", asyncHandler(async (req, res) => {
+    try {
+      const statuses = agentCoordinator.getAllAgentStatuses();
+      const assignments = agentCoordinator.getAllAssignments();
+      
+      res.json({
+        statuses,
+        assignments
+      });
+    } catch (error) {
+      console.error("Error fetching coordinator status:", error);
+      res.status(500).json({ error: "Failed to get coordinator status" });
     }
   }));
 

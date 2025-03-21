@@ -30,23 +30,34 @@ export async function initializeAgentSystem(): Promise<void> {
   console.log('Initializing Agent System...');
   
   try {
+    // Import the required components directly to avoid circular dependencies
+    const { AgentFactory } = await import('./core/agent-factory');
+    const { AgentRegistry } = await import('./core/agent-registry');
+    const { AgentCoordinator } = await import('./core/agent-coordinator');
+    const { AgentType } = await import('./interfaces/agent-interface');
+    
+    // Get singleton instances
+    const factory = AgentFactory.getInstance();
+    const registry = AgentRegistry.getInstance();
+    const coordinator = AgentCoordinator.getInstance();
+    
     // Create default real estate agent
-    const realEstateAgent = await agentFactory.createAgent(
-      'real-estate', 
+    const realEstateAgent = await factory.createAgent(
+      AgentType.REAL_ESTATE, 
       'Property Advisor', 
       'Provides real estate analytics and property insights'
     );
     
     // Create default developer agent
-    const developerAgent = await agentFactory.createAgent(
-      'developer', 
+    const developerAgent = await factory.createAgent(
+      AgentType.DEVELOPER, 
       'Code Assistant', 
       'Assists with software development tasks'
     );
     
     // Create default analytics agent
-    const analyticsAgent = await agentFactory.createAgent(
-      'analytics', 
+    const analyticsAgent = await factory.createAgent(
+      AgentType.ANALYTICS, 
       'Data Analyst', 
       'Analyzes data and provides visualizations and insights'
     );
@@ -57,14 +68,14 @@ export async function initializeAgentSystem(): Promise<void> {
     await analyticsAgent.initialize();
     
     // Register the agents
-    agentRegistry.registerAgent(realEstateAgent);
-    agentRegistry.registerAgent(developerAgent);
-    agentRegistry.registerAgent(analyticsAgent);
+    registry.registerAgent(realEstateAgent);
+    registry.registerAgent(developerAgent);
+    registry.registerAgent(analyticsAgent);
     
     // Add the agents to the coordinator
-    agentCoordinator.addAgent(realEstateAgent);
-    agentCoordinator.addAgent(developerAgent);
-    agentCoordinator.addAgent(analyticsAgent);
+    coordinator.addAgent(realEstateAgent);
+    coordinator.addAgent(developerAgent);
+    coordinator.addAgent(analyticsAgent);
     
     console.log('Agent System initialized successfully');
   } catch (error) {
