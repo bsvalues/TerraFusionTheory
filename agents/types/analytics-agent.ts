@@ -674,12 +674,16 @@ export class AnalyticsAgent extends BaseAgent {
     }
     
     // Add insight based on market trend
-    if (prediction.marketTrend === MarketTrend.UP_STRONG || prediction.marketTrend === MarketTrend.UP_MODERATE) {
-      insights.push(`The market trend is upward (${prediction.marketTrend}), suggesting continued price appreciation.`);
-    } else if (prediction.marketTrend === MarketTrend.DOWN_STRONG || prediction.marketTrend === MarketTrend.DOWN_MODERATE) {
-      insights.push(`The market trend is downward (${prediction.marketTrend}), suggesting potential price decreases.`);
+    if (prediction.marketTrend) {
+      if (prediction.marketTrend === MarketTrend.UP_STRONG || prediction.marketTrend === MarketTrend.UP_MODERATE) {
+        insights.push(`The market trend is upward (${prediction.marketTrend}), suggesting continued price appreciation.`);
+      } else if (prediction.marketTrend === MarketTrend.DOWN_STRONG || prediction.marketTrend === MarketTrend.DOWN_MODERATE) {
+        insights.push(`The market trend is downward (${prediction.marketTrend}), suggesting potential price decreases.`);
+      } else {
+        insights.push(`The market trend is stable, suggesting prices may hold steady.`);
+      }
     } else {
-      insights.push(`The market trend is stable, suggesting prices may hold steady.`);
+      insights.push('Market trend data is not available for this prediction.');
     }
     
     return insights;
