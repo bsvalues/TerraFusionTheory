@@ -1,52 +1,69 @@
 /**
- * Market condition status
+ * Types for real estate data visualization components
  */
-export type MarketCondition = 'hot' | 'warm' | 'balanced' | 'cool' | 'cold';
 
-/**
- * Market trend direction
- */
-export type MarketTrend = 'upStrong' | 'upModerate' | 'stable' | 'downModerate' | 'downStrong';
+// Market condition enum
+export enum MarketCondition {
+  HOT = 'hot',
+  WARM = 'warm',
+  BALANCED = 'balanced',
+  COOL = 'cool',
+  COLD = 'cold'
+}
 
-/**
- * Market metrics snapshot for a specific time period
- */
-export interface MarketMetricsSnapshot {
-  // Time period
-  periodStart: Date;
-  periodEnd: Date;
-  
-  // Overall metrics
-  totalListings: number;
-  totalSales: number;
-  
-  // Price metrics
-  medianPrice: number;
-  averagePrice: number;
-  pricePerSqFtAvg: number;
-  
-  // Time metrics
-  avgDaysOnMarket: number;
-  
-  // Ratio metrics
-  listToSaleRatio: number; // sale price / list price
-  
-  // Condition and trend
-  marketCondition: MarketCondition;
-  marketTrend: MarketTrend;
-  
-  // Segment metrics (by property type, price range, etc.)
-  segmentMetrics: {
-    [key: string]: {
-      totalListings: number;
-      medianPrice: number;
-      avgDaysOnMarket: number;
-    }
-  };
+// Market trend direction enum
+export enum MarketTrend {
+  UP_STRONG = 'upStrong',
+  UP_MODERATE = 'upModerate',
+  STABLE = 'stable',
+  DOWN_MODERATE = 'downModerate',
+  DOWN_STRONG = 'downStrong'
 }
 
 /**
- * Property Listing Data structure
+ * Market metrics snapshot for visualization
+ */
+export interface MarketMetricsSnapshot {
+  periodStart: string;
+  periodEnd: string;
+  totalListings: number;
+  totalSales: number;
+  medianPrice: number;
+  averagePrice: number;
+  pricePerSqFtAvg: number;
+  avgDaysOnMarket: number;
+  listToSaleRatio: number;
+  marketCondition: MarketCondition;
+  marketTrend: MarketTrend;
+  segmentMetrics: Record<string, {
+    totalListings: number;
+    medianPrice: number;
+    avgDaysOnMarket: number;
+  }>;
+}
+
+/**
+ * Market alert for visualization
+ */
+export interface MarketAlert {
+  id: string;
+  timestamp: string;
+  title: string;
+  description: string;
+  severity: 'info' | 'warning' | 'critical';
+  metrics: {
+    previous: any;
+    current: any;
+    changePct?: number;
+    changeAbs?: number;
+  };
+  affectedArea: string;
+  affectedSegment?: string;
+  recommendations?: string[];
+}
+
+/**
+ * Property listing data for visualization
  */
 export interface PropertyListing {
   mlsNumber: string;
@@ -69,15 +86,89 @@ export interface PropertyListing {
   neighborhood?: string;
   latitude?: number;
   longitude?: number;
-  garage?: string;
-  photos?: number;
   [key: string]: any;
 }
 
 /**
- * Market prediction result
+ * GeoJSON feature collection for map visualization
+ */
+export interface GeoJSONFeatureCollection {
+  type: 'FeatureCollection';
+  features: Array<{
+    type: 'Feature';
+    geometry: {
+      type: string;
+      coordinates: number[] | number[][] | number[][][] | number[][][][];
+    };
+    properties: Record<string, any>;
+    id?: string | number;
+  }>;
+  bbox?: number[];
+}
+
+/**
+ * Neighborhood trend data for visualization
+ */
+export interface NeighborhoodTrend {
+  name: string;
+  priceChange: number;
+  daysOnMarketChange: number;
+  inventoryChange: number;
+  demandLevel: number;
+  hotness: number;
+  trendDirection: 'up' | 'down' | 'stable';
+  predictions: {
+    medianPrice: number;
+    inventory: number;
+    daysOnMarket: number;
+  };
+}
+
+/**
+ * Prediction data point for visualization
+ */
+export interface PredictionData {
+  date: string;
+  value: number;
+  confidenceLow?: number;
+  confidenceHigh?: number;
+}
+
+/**
+ * Market prediction for visualization
  */
 export interface MarketPrediction {
-  predictedMetrics: Partial<MarketMetricsSnapshot>;
+  predictions: PredictionData[];
   confidenceScore: number;
+  predictionDate: string; 
+  metric: string;
+  metricLabel: string;
+}
+
+/**
+ * Price history data point for visualization
+ */
+export interface PriceHistoryData {
+  date: string;
+  median: number;
+  average: number;
+  sqft: number;
+}
+
+/**
+ * Segment comparison data for visualization
+ */
+export interface SegmentComparisonData {
+  name: string;
+  value: number;
+  average: number;
+}
+
+/**
+ * Radar chart data point for visualization
+ */
+export interface RadarDataPoint {
+  metric: string;
+  value: number;
+  average: number;
 }

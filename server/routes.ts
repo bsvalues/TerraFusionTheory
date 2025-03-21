@@ -361,9 +361,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/connectors/:name/query/gis", asyncHandler(connectorsController.queryGISData));
   
   // Market Data routes
-  app.get("/api/market/listings", asyncHandler(marketController.getMarketListings));
-  app.get("/api/market/listings/:mlsNumber", asyncHandler(marketController.getMarketListingByMLS));
-  app.get("/api/market/stats", asyncHandler(marketController.getMarketStats));
   app.get("/api/market/snapshot", asyncHandler(marketController.getMarketSnapshot));
   app.get("/api/market/predict", asyncHandler(marketController.predictMarketMetrics));
   app.get("/api/market/alerts", asyncHandler(marketController.getMarketAlerts));

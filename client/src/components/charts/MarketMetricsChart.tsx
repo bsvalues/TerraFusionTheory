@@ -10,7 +10,7 @@ import {
 } from 'recharts';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
-import { MarketCondition, MarketTrend } from '@/types/real-estate';
+import { MarketCondition, MarketTrend } from '../../types/real-estate';
 import { Badge } from '@/components/ui/badge';
 
 interface MarketMetricsChartProps {
@@ -40,22 +40,22 @@ const defaultData = {
     { name: 'Price Growth', value: 0, fullValue: 0 },
     { name: 'Demand', value: 0, fullValue: 0 },
   ],
-  marketCondition: 'balanced' as MarketCondition,
-  marketTrend: 'stable' as MarketTrend
+  marketCondition: MarketCondition.BALANCED,
+  marketTrend: MarketTrend.STABLE
 };
 
 // Get badge color based on market condition
 const getConditionColor = (condition: MarketCondition): string => {
   switch (condition) {
-    case 'hot':
+    case MarketCondition.HOT:
       return 'bg-red-500 hover:bg-red-600';
-    case 'warm':
+    case MarketCondition.WARM:
       return 'bg-orange-500 hover:bg-orange-600';
-    case 'balanced':
+    case MarketCondition.BALANCED:
       return 'bg-green-500 hover:bg-green-600';
-    case 'cool':
+    case MarketCondition.COOL:
       return 'bg-blue-500 hover:bg-blue-600';
-    case 'cold':
+    case MarketCondition.COLD:
       return 'bg-blue-700 hover:bg-blue-800';
     default:
       return 'bg-gray-500 hover:bg-gray-600';
@@ -65,15 +65,15 @@ const getConditionColor = (condition: MarketCondition): string => {
 // Get badge color based on market trend
 const getTrendColor = (trend: MarketTrend): string => {
   switch (trend) {
-    case 'upStrong':
+    case MarketTrend.UP_STRONG:
       return 'bg-red-500 hover:bg-red-600';
-    case 'upModerate':
+    case MarketTrend.UP_MODERATE:
       return 'bg-orange-500 hover:bg-orange-600';
-    case 'stable':
+    case MarketTrend.STABLE:
       return 'bg-green-500 hover:bg-green-600';
-    case 'downModerate':
+    case MarketTrend.DOWN_MODERATE:
       return 'bg-blue-500 hover:bg-blue-600';
-    case 'downStrong':
+    case MarketTrend.DOWN_STRONG:
       return 'bg-blue-700 hover:bg-blue-800';
     default:
       return 'bg-gray-500 hover:bg-gray-600';
@@ -83,36 +83,36 @@ const getTrendColor = (trend: MarketTrend): string => {
 // Format trend for display
 const formatTrend = (trend: MarketTrend): string => {
   switch (trend) {
-    case 'upStrong':
+    case MarketTrend.UP_STRONG:
       return 'Strong Upward';
-    case 'upModerate':
+    case MarketTrend.UP_MODERATE:
       return 'Moderate Upward';
-    case 'stable':
+    case MarketTrend.STABLE:
       return 'Stable';
-    case 'downModerate':
+    case MarketTrend.DOWN_MODERATE:
       return 'Moderate Downward';
-    case 'downStrong':
+    case MarketTrend.DOWN_STRONG:
       return 'Strong Downward';
     default:
-      return trend;
+      return String(trend);
   }
 };
 
 // Format condition for display
 const formatCondition = (condition: MarketCondition): string => {
   switch (condition) {
-    case 'hot':
+    case MarketCondition.HOT:
       return 'Hot';
-    case 'warm':
+    case MarketCondition.WARM:
       return 'Warm';
-    case 'balanced':
+    case MarketCondition.BALANCED:
       return 'Balanced';
-    case 'cool':
+    case MarketCondition.COOL:
       return 'Cool';
-    case 'cold':
+    case MarketCondition.COLD:
       return 'Cold';
     default:
-      return condition;
+      return String(condition);
   }
 };
 
