@@ -16,7 +16,12 @@ import {
 import { BaseAgent } from '../core/agent-base';
 import { storage } from '../../server/storage';
 import { LogCategory, LogLevel } from '../../shared/schema';
-import { realEstateAnalyticsService } from '../../server/services/real-estate-analytics.service';
+import { 
+  realEstateAnalyticsService,
+  MarketMetricsSnapshot,
+  MarketTrend,
+  MarketCondition
+} from '../../server/services/real-estate-analytics.service';
 
 /**
  * Analytics Agent class
@@ -426,7 +431,7 @@ export class AnalyticsAgent extends BaseAgent {
    * 
    * @param snapshot Market metrics snapshot
    */
-  private calculateKeyMetrics(snapshot: any): Record<string, any> {
+  private calculateKeyMetrics(snapshot: MarketMetricsSnapshot): Record<string, any> {
     // Placeholder implementation
     return {
       averagePrice: snapshot.averagePrice,
@@ -442,7 +447,7 @@ export class AnalyticsAgent extends BaseAgent {
    * 
    * @param snapshot Market metrics snapshot
    */
-  private identifyOutliers(snapshot: any): Array<any> {
+  private identifyOutliers(snapshot: MarketMetricsSnapshot): Array<any> {
     // Placeholder implementation
     return [];
   }
@@ -453,7 +458,7 @@ export class AnalyticsAgent extends BaseAgent {
    * @param snapshot Market metrics snapshot
    * @param timeframe Timeframe for trend analysis
    */
-  private identifyTrends(snapshot: any, timeframe: string): Record<string, any> {
+  private identifyTrends(snapshot: MarketMetricsSnapshot, timeframe: string): Record<string, any> {
     // Placeholder implementation
     return {
       priceMovement: snapshot.marketTrend,
@@ -471,7 +476,7 @@ export class AnalyticsAgent extends BaseAgent {
    * @param trends Identified trends
    */
   private generateInsights(
-    snapshot: any,
+    snapshot: MarketMetricsSnapshot,
     keyMetrics: Record<string, any>,
     outliers: Array<any>,
     trends: Record<string, any>
