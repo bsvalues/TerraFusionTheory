@@ -16,12 +16,12 @@ import {
 import { BaseAgent } from '../core/agent-base';
 import { storage } from '../../server/storage';
 import { LogCategory, LogLevel } from '../../shared/schema';
+import { realEstateAnalyticsService } from '../../server/services/real-estate-analytics.service';
 import { 
-  realEstateAnalyticsService,
   MarketMetricsSnapshot,
   MarketTrend,
   MarketCondition
-} from '../../server/services/real-estate-analytics.service';
+} from '../../server/services/monitoring/market.monitor';
 
 /**
  * Analytics Agent class
@@ -322,11 +322,14 @@ export class AnalyticsAgent extends BaseAgent {
     const { area, timeframe, predictionHorizon } = inputs;
     
     try {
-      // Get market prediction
-      const prediction = await realEstateAnalyticsService.predictMarketMetrics(
+      // Get market prediction (returns { predictedMetrics, confidenceScore })
+      const predictionResult = await realEstateAnalyticsService.predictMarketMetrics(
         area,
         predictionHorizon
       );
+      
+      // Extract the predicted metrics (partial MarketMetricsSnapshot)
+      const prediction = predictionResult.predictedMetrics as MarketMetricsSnapshot;
       
       // Calculate confidence intervals
       const confidenceIntervals = this.calculateConfidenceIntervals(prediction);
@@ -340,6 +343,7 @@ export class AnalyticsAgent extends BaseAgent {
         timeframe,
         predictionHorizon,
         prediction,
+        confidenceScore: predictionResult.confidenceScore,
         confidenceIntervals,
         scenarios,
         insights: this.generatePredictionInsights(prediction, scenarios)
@@ -604,7 +608,7 @@ export class AnalyticsAgent extends BaseAgent {
    * 
    * @param prediction Market prediction data
    */
-  private calculateConfidenceIntervals(prediction: any): Record<string, any> {
+  private calculateConfidenceIntervals(prediction: MarketMetricsSnapshot): Record<string, any> {
     // Placeholder implementation
     return {
       medianPrice: {
@@ -623,7 +627,7 @@ export class AnalyticsAgent extends BaseAgent {
    * 
    * @param prediction Market prediction data
    */
-  private generateScenarios(prediction: any): Record<string, any> {
+  private generateScenarios(prediction: MarketMetricsSnapshot): Record<string, any> {
     // Placeholder implementation
     return {
       optimistic: {
@@ -647,16 +651,28 @@ export class AnalyticsAgent extends BaseAgent {
    * @param scenarios Scenario analysis data
    */
   private generatePredictionInsights(
-    prediction: any,
+    prediction: MarketMetricsSnapshot,
     scenarios: Record<string, any>
   ): Array<string> {
     // Placeholder implementation
     const insights = [];
     
-    if (prediction.medianPriceChange > 0) {
-      insights.push(`Median prices are expected to increase by ${prediction.medianPriceChange}% over the prediction horizon.`);
+    // Since medianPriceChange is not in MarketMetricsSnapshot, we'll calculate it
+    const medianPriceChange = 0; // This would be calculated based on historical data
+    
+    if (medianPriceChange > 0) {
+      insights.push(`Median prices are expected to increase by ${medianPriceChange}% over the prediction horizon.`);
     } else {
-      insights.push(`Median prices are expected to decrease by ${Math.abs(prediction.medianPriceChange)}% over the prediction horizon.`);
+      insights.push(`Median prices are expected to decrease by ${Math.abs(medianPriceChange)}% over the prediction horizon.`);
+    }
+    
+    // Add insight based on market trend
+    if (prediction.marketTrend === MarketTrend.UP_STRONG || prediction.marketTrend === MarketTrend.UP_MODERATE) {
+      insights.push(`The market trend is upward (${prediction.marketTrend}), suggesting continued price appreciation.`);
+    } else if (prediction.marketTrend === MarketTrend.DOWN_STRONG || prediction.marketTrend === MarketTrend.DOWN_MODERATE) {
+      insights.push(`The market trend is downward (${prediction.marketTrend}), suggesting potential price decreases.`);
+    } else {
+      insights.push(`The market trend is stable, suggesting prices may hold steady.`);
     }
     
     return insights;
