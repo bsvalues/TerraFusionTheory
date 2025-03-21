@@ -1,119 +1,80 @@
 /**
  * Agent Coordinator
  * 
- * This class handles coordination between agents, enabling them to work together
- * on complex tasks that require multiple capabilities.
+ * This file implements the agent coordinator which manages communication
+ * and coordination between multiple agents.
  */
 
 import { EventEmitter } from 'events';
-import { 
-  Agent, 
-  AgentCoordinator as AgentCoordinatorInterface,
-  AgentState, 
-  ExecutionResult 
-} from '../interfaces/agent-interface';
-import { storage } from '../../server/storage';
-import { LogCategory, LogLevel } from '../../shared/schema';
-import { agentRegistry } from './agent-registry';
+import { Agent, AgentCoordinator, AgentState, ExecutionResult } from '../interfaces/agent-interface';
 
 /**
- * Agent Coordinator implementation
+ * Implementation of the Agent Coordinator
  */
-export class AgentCoordinator extends EventEmitter implements AgentCoordinatorInterface {
-  // Singleton pattern
-  private static instance: AgentCoordinator;
+class AgentCoordinatorImpl extends EventEmitter implements AgentCoordinator {
+  private agents: Map<string, Agent> = new Map();
+  private agentStates: Map<string, AgentState> = new Map();
+  private activeAssignments: Map<string, any> = new Map();
   
-  // Map of agents being coordinated
-  private agents: Map<string, Agent>;
-  
-  // Map of agent task assignments
-  private assignments: Map<string, {
-    taskId: string;
-    startTime: Date;
-    status: 'pending' | 'in-progress' | 'completed' | 'failed';
-  }>;
-  
-  /**
-   * Private constructor for singleton
-   */
-  private constructor() {
+  constructor() {
     super();
-    this.agents = new Map<string, Agent>();
-    this.assignments = new Map<string, {
-      taskId: string;
-      startTime: Date;
-      status: 'pending' | 'in-progress' | 'completed' | 'failed';
-    }>();
-  }
-  
-  /**
-   * Get the singleton instance of the coordinator
-   */
-  public static getInstance(): AgentCoordinator {
-    if (!AgentCoordinator.instance) {
-      AgentCoordinator.instance = new AgentCoordinator();
-    }
-    return AgentCoordinator.instance;
+    
+    // Set up event handlers
+    this.on('agentAdded', this.handleAgentAdded.bind(this));
+    this.on('agentRemoved', this.handleAgentRemoved.bind(this));
+    this.on('messageReceived', this.handleMessageReceived.bind(this));
+    this.on('taskAssigned', this.handleTaskAssigned.bind(this));
+    this.on('taskCompleted', this.handleTaskCompleted.bind(this));
   }
   
   /**
    * Add an agent to the coordinator
-   * 
-   * @param agent The agent to add
    */
   public addAgent(agent: Agent): void {
-    const agentId = agent.getId();
-    
-    // Check if agent is already registered
-    if (this.agents.has(agentId)) {
-      throw new Error(`Agent with ID ${agentId} is already being coordinated`);
+    if (this.agents.has(agent.getId())) {
+      console.warn(`Agent with ID ${agent.getId()} already exists in coordinator`);
+      return;
     }
     
-    // Add agent to coordinator
-    this.agents.set(agentId, agent);
+    this.agents.set(agent.getId(), agent);
+    this.agentStates.set(agent.getId(), AgentState.READY);
     
-    // Log addition
-    this.logCoordinatorAction('added', agent);
+    // Subscribe to agent events
+    agent.on('started', this.handleAgentStarted.bind(this));
+    agent.on('paused', this.handleAgentPaused.bind(this));
+    agent.on('resumed', this.handleAgentResumed.bind(this));
+    agent.on('stopped', this.handleAgentStopped.bind(this));
+    agent.on('messageSent', this.handleAgentMessageSent.bind(this));
     
-    // Emit addition event
-    this.emit('agent-added', { agentId });
+    this.emit('agentAdded', { agentId: agent.getId() });
   }
   
   /**
    * Remove an agent from the coordinator
-   * 
-   * @param agentId The ID of the agent to remove
    */
   public removeAgent(agentId: string): boolean {
-    // Check if agent is registered
-    if (!this.agents.has(agentId)) {
+    const agent = this.agents.get(agentId);
+    if (!agent) {
       return false;
     }
     
-    const agent = this.agents.get(agentId)!;
+    // Unsubscribe from agent events
+    agent.removeAllListeners('started');
+    agent.removeAllListeners('paused');
+    agent.removeAllListeners('resumed');
+    agent.removeAllListeners('stopped');
+    agent.removeAllListeners('messageSent');
     
-    // Remove agent from coordinator
     this.agents.delete(agentId);
+    this.agentStates.delete(agentId);
+    this.activeAssignments.delete(agentId);
     
-    // Remove any assignments for this agent
-    this.assignments.delete(agentId);
-    
-    // Log removal
-    this.logCoordinatorAction('removed', agent);
-    
-    // Emit removal event
-    this.emit('agent-removed', { agentId });
-    
+    this.emit('agentRemoved', { agentId });
     return true;
   }
   
   /**
    * Assign a task to a specific agent
-   * 
-   * @param agentId The ID of the agent to assign the task to
-   * @param task The task to execute
-   * @param inputs The inputs for the task
-   * @param options Additional options for execution
    */
   public async assignTask(
     agentId: string,
@@ -121,92 +82,67 @@ export class AgentCoordinator extends EventEmitter implements AgentCoordinatorIn
     inputs: Record<string, any>,
     options?: Record<string, any>
   ): Promise<ExecutionResult> {
-    // Check if agent is registered
-    if (!this.agents.has(agentId)) {
-      throw new Error(`Agent with ID ${agentId} is not being coordinated`);
+    const agent = this.agents.get(agentId);
+    if (!agent) {
+      return {
+        success: false,
+        error: new Error(`Agent with ID ${agentId} not found`),
+        metadata: { task, agentId }
+      };
     }
-    
-    const agent = this.agents.get(agentId)!;
     
     // Check if agent is available
-    if (agent.getState() !== AgentState.READY && agent.getState() !== AgentState.IDLE) {
-      throw new Error(`Agent with ID ${agentId} is not ready (current state: ${agent.getState()})`);
+    const state = this.agentStates.get(agentId);
+    if (state !== AgentState.READY && state !== AgentState.IDLE) {
+      return {
+        success: false,
+        error: new Error(`Agent ${agentId} is not available (state: ${state})`),
+        metadata: { task, agentId, agentState: state }
+      };
     }
     
-    // Record assignment
-    const taskId = `task_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`;
-    this.assignments.set(agentId, {
-      taskId,
-      startTime: new Date(),
-      status: 'pending'
-    });
+    // Update agent state
+    this.agentStates.set(agentId, AgentState.BUSY);
+    this.activeAssignments.set(agentId, { task, inputs, options, startTime: Date.now() });
     
-    // Log assignment
-    await this.logTaskAssignment(agent, task, taskId);
-    
-    // Emit assignment event
-    this.emit('task-assigned', { agentId, taskId, task });
+    this.emit('taskAssigned', { agentId, task, inputs });
     
     try {
-      // Update assignment status
-      this.assignments.set(agentId, {
-        taskId,
-        startTime: new Date(),
-        status: 'in-progress'
-      });
+      if (!agent.execute) {
+        throw new Error(`Agent ${agentId} does not implement execute method`);
+      }
       
-      // Execute task
+      // Execute the task
       const result = await agent.execute(task, inputs, options);
       
-      // Update assignment status
-      this.assignments.set(agentId, {
-        taskId,
-        startTime: new Date(),
-        status: 'completed'
-      });
+      // Update agent state
+      this.agentStates.set(agentId, AgentState.READY);
+      this.activeAssignments.delete(agentId);
       
-      // Log completion
-      await this.logTaskCompletion(agent, task, taskId, true);
-      
-      // Emit completion event
-      this.emit('task-completed', { agentId, taskId, task, result });
+      this.emit('taskCompleted', { agentId, task, success: result.success });
       
       return result;
     } catch (error) {
-      // Update assignment status
-      this.assignments.set(agentId, {
-        taskId,
-        startTime: new Date(),
-        status: 'failed'
-      });
+      // Update agent state to error
+      this.agentStates.set(agentId, AgentState.ERROR);
+      this.activeAssignments.delete(agentId);
       
-      // Log failure
-      await this.logTaskCompletion(
-        agent, 
-        task, 
-        taskId, 
-        false, 
-        error instanceof Error ? error : new Error(String(error))
-      );
-      
-      // Emit failure event
-      this.emit('task-failed', { 
+      this.emit('taskFailed', { 
         agentId, 
-        taskId, 
         task, 
-        error: error instanceof Error ? error : new Error(String(error)) 
+        error: error instanceof Error ? error.message : String(error) 
       });
       
-      throw error;
+      return {
+        success: false,
+        error: error instanceof Error ? error : new Error(String(error)),
+        metadata: { task, agentId }
+      };
     }
   }
   
   /**
-   * Broadcast a task to all coordinated agents
-   * 
-   * @param task The task to execute
-   * @param inputs The inputs for the task
-   * @param options Additional options for execution
+   * Broadcast a task to all available agents
    */
   public async broadcastTask(
     task: string,
@@ -214,289 +150,169 @@ export class AgentCoordinator extends EventEmitter implements AgentCoordinatorIn
     options?: Record<string, any>
   ): Promise<Record<string, ExecutionResult>> {
     const results: Record<string, ExecutionResult> = {};
-    const errors: Record<string, Error> = {};
+    const promises: Promise<void>[] = [];
     
-    // Execute task on all available agents
-    const promises = Array.from(this.agents.entries()).map(async ([agentId, agent]) => {
-      try {
-        // Check if agent is available
-        if (agent.getState() !== AgentState.READY && agent.getState() !== AgentState.IDLE) {
-          throw new Error(`Agent is not ready (current state: ${agent.getState()})`);
-        }
+    // Assign task to each available agent
+    for (const [agentId, state] of this.agentStates.entries()) {
+      if (state === AgentState.READY || state === AgentState.IDLE) {
+        const promise = this.assignTask(agentId, task, inputs, options)
+          .then(result => {
+            results[agentId] = result;
+          })
+          .catch(error => {
+            results[agentId] = {
+              success: false,
+              error: error instanceof Error ? error : new Error(String(error)),
+              metadata: { task, agentId }
+            };
+          });
         
-        // Assign task
-        const result = await this.assignTask(agentId, task, inputs, options);
-        
-        // Record result
-        results[agentId] = result;
-      } catch (error) {
-        // Record error
-        errors[agentId] = error instanceof Error ? error : new Error(String(error));
+        promises.push(promise);
       }
-    });
+    }
     
     // Wait for all tasks to complete
     await Promise.all(promises);
-    
-    // Log broadcast completion
-    await this.logBroadcastCompletion(task, results, errors);
-    
-    // Emit broadcast completion event
-    this.emit('broadcast-completed', { task, results, errors });
     
     return results;
   }
   
   /**
-   * Get the current status of an agent
-   * 
-   * @param agentId The ID of the agent
+   * Get the status of a specific agent
    */
   public getAgentStatus(agentId: string): AgentState {
-    // Check if agent is registered
-    if (!this.agents.has(agentId)) {
-      throw new Error(`Agent with ID ${agentId} is not being coordinated`);
-    }
-    
-    const agent = this.agents.get(agentId)!;
-    
-    return agent.getState();
+    return this.agentStates.get(agentId) || AgentState.TERMINATED;
   }
   
   /**
-   * Get the current status of all coordinated agents
+   * Get the status of all agents
    */
   public getAllAgentStatuses(): Record<string, AgentState> {
     const statuses: Record<string, AgentState> = {};
-    
-    // Convert map entries to array to avoid iterator issues
-    Array.from(this.agents.entries()).forEach(([agentId, agent]) => {
-      statuses[agentId] = agent.getState();
-    });
-    
+    for (const [agentId, state] of this.agentStates.entries()) {
+      statuses[agentId] = state;
+    }
     return statuses;
   }
   
   /**
-   * Get the current task assignment for an agent
-   * 
-   * @param agentId The ID of the agent
+   * Get the current assignment of a specific agent
    */
-  public getAgentAssignment(agentId: string): {
-    taskId: string;
-    startTime: Date;
-    status: 'pending' | 'in-progress' | 'completed' | 'failed';
-  } | undefined {
-    return this.assignments.get(agentId);
+  public getAgentAssignment(agentId: string): any {
+    return this.activeAssignments.get(agentId) || null;
   }
   
   /**
-   * Get all current task assignments
+   * Get all current assignments
    */
-  public getAllAssignments(): Record<string, {
-    taskId: string;
-    startTime: Date;
-    status: 'pending' | 'in-progress' | 'completed' | 'failed';
-    agent: {
-      id: string;
-      name: string;
-      type: string;
-    };
-  }> {
-    const assignments: Record<string, {
-      taskId: string;
-      startTime: Date;
-      status: 'pending' | 'in-progress' | 'completed' | 'failed';
-      agent: {
-        id: string;
-        name: string;
-        type: string;
-      };
-    }> = {};
-    
-    // Convert map entries to array to avoid iterator issues
-    Array.from(this.assignments.entries()).forEach(([agentId, assignment]) => {
-      const agent = this.agents.get(agentId);
-      
-      if (agent) {
-        assignments[agentId] = {
-          ...assignment,
-          agent: {
-            id: agent.getId(),
-            name: agent.getName(),
-            type: agent.getType()
-          }
-        };
-      }
-    });
-    
+  public getAllAssignments(): Record<string, any> {
+    const assignments: Record<string, any> = {};
+    for (const [agentId, assignment] of this.activeAssignments.entries()) {
+      assignments[agentId] = assignment;
+    }
     return assignments;
   }
   
   /**
-   * Log a coordinator action
-   * 
-   * @param action The action that occurred
-   * @param agent The agent involved
+   * Handle agent added event
    */
-  private async logCoordinatorAction(action: string, agent: Agent): Promise<void> {
-    try {
-      await storage.createLog({
-        level: LogLevel.INFO,
-        category: LogCategory.SYSTEM,
-        message: `Agent Coordinator ${action} agent: ${agent.getName()} (${agent.getId()})`,
-        details: JSON.stringify({
-          agentId: agent.getId(),
-          agentType: agent.getType(),
-          agentName: agent.getName(),
-          action
-        }),
-        source: 'AgentCoordinator',
-        projectId: null,
-        userId: null,
-        sessionId: null,
-        duration: null,
-        statusCode: null,
-        endpoint: null,
-        tags: ['agent', 'coordinator', action]
+  private handleAgentAdded(data: { agentId: string }): void {
+    console.log(`Agent ${data.agentId} added to coordinator`);
+  }
+  
+  /**
+   * Handle agent removed event
+   */
+  private handleAgentRemoved(data: { agentId: string }): void {
+    console.log(`Agent ${data.agentId} removed from coordinator`);
+  }
+  
+  /**
+   * Handle agent started event
+   */
+  private handleAgentStarted(data: { agentId: string }): void {
+    this.agentStates.set(data.agentId, AgentState.READY);
+    this.emit('agentStatusChanged', { agentId: data.agentId, state: AgentState.READY });
+  }
+  
+  /**
+   * Handle agent paused event
+   */
+  private handleAgentPaused(data: { agentId: string }): void {
+    this.agentStates.set(data.agentId, AgentState.PAUSED);
+    this.emit('agentStatusChanged', { agentId: data.agentId, state: AgentState.PAUSED });
+  }
+  
+  /**
+   * Handle agent resumed event
+   */
+  private handleAgentResumed(data: { agentId: string }): void {
+    this.agentStates.set(data.agentId, AgentState.READY);
+    this.emit('agentStatusChanged', { agentId: data.agentId, state: AgentState.READY });
+  }
+  
+  /**
+   * Handle agent stopped event
+   */
+  private handleAgentStopped(data: { agentId: string }): void {
+    this.agentStates.set(data.agentId, AgentState.TERMINATED);
+    this.activeAssignments.delete(data.agentId);
+    this.emit('agentStatusChanged', { agentId: data.agentId, state: AgentState.TERMINATED });
+  }
+  
+  /**
+   * Handle message sent from one agent to another
+   */
+  private handleAgentMessageSent(data: { fromAgentId: string; toAgentId: string; message: any }): void {
+    const targetAgent = this.agents.get(data.toAgentId);
+    if (!targetAgent) {
+      console.warn(`Target agent ${data.toAgentId} not found for message from ${data.fromAgentId}`);
+      return;
+    }
+    
+    // Forward the message to the target agent
+    this.emit('messageReceived', {
+      fromAgentId: data.fromAgentId,
+      toAgentId: data.toAgentId,
+      message: data.message
+    });
+    
+    // Let the target agent handle the message
+    if (targetAgent.updateContext) {
+      targetAgent.updateContext({
+        messages: [
+          {
+            fromAgentId: data.fromAgentId,
+            message: data.message
+          }
+        ]
       });
-    } catch (error) {
-      console.error(`Failed to log coordinator ${action}:`, error);
     }
   }
   
   /**
-   * Log a task assignment
-   * 
-   * @param agent The agent
-   * @param task The task
-   * @param taskId The task ID
+   * Handle message received by the coordinator
    */
-  private async logTaskAssignment(
-    agent: Agent,
-    task: string,
-    taskId: string
-  ): Promise<void> {
-    try {
-      await storage.createLog({
-        level: LogLevel.INFO,
-        category: LogCategory.SYSTEM,
-        message: `Agent Coordinator assigned task to ${agent.getName()}: ${task}`,
-        details: JSON.stringify({
-          agentId: agent.getId(),
-          agentType: agent.getType(),
-          agentName: agent.getName(),
-          taskId,
-          task
-        }),
-        source: 'AgentCoordinator',
-        projectId: null,
-        userId: null,
-        sessionId: null,
-        duration: null,
-        statusCode: null,
-        endpoint: null,
-        tags: ['agent', 'coordinator', 'task-assignment']
-      });
-    } catch (error) {
-      console.error('Failed to log task assignment:', error);
-    }
+  private handleMessageReceived(data: { fromAgentId: string; toAgentId: string; message: any }): void {
+    console.log(`Message from ${data.fromAgentId} to ${data.toAgentId} received by coordinator`);
   }
   
   /**
-   * Log a task completion
-   * 
-   * @param agent The agent
-   * @param task The task
-   * @param taskId The task ID
-   * @param success Whether the task was successful
-   * @param error Any error that occurred
+   * Handle task assigned to an agent
    */
-  private async logTaskCompletion(
-    agent: Agent,
-    task: string,
-    taskId: string,
-    success: boolean,
-    error?: Error
-  ): Promise<void> {
-    try {
-      await storage.createLog({
-        level: success ? LogLevel.INFO : LogLevel.ERROR,
-        category: LogCategory.SYSTEM,
-        message: `Agent Coordinator task ${success ? 'completed' : 'failed'}: ${task} by ${agent.getName()}`,
-        details: JSON.stringify({
-          agentId: agent.getId(),
-          agentType: agent.getType(),
-          agentName: agent.getName(),
-          taskId,
-          task,
-          success,
-          error: error ? {
-            name: error.name,
-            message: error.message,
-            stack: error.stack
-          } : undefined
-        }),
-        source: 'AgentCoordinator',
-        projectId: null,
-        userId: null,
-        sessionId: null,
-        duration: null,
-        statusCode: null,
-        endpoint: null,
-        tags: ['agent', 'coordinator', success ? 'task-completion' : 'task-failure']
-      });
-    } catch (logError) {
-      console.error('Failed to log task completion:', logError);
-      if (error) {
-        console.error('Original error:', error);
-      }
-    }
+  private handleTaskAssigned(data: { agentId: string; task: string; inputs: Record<string, any> }): void {
+    console.log(`Task ${data.task} assigned to agent ${data.agentId}`);
   }
   
   /**
-   * Log a broadcast completion
-   * 
-   * @param task The task
-   * @param results The results
-   * @param errors Any errors that occurred
+   * Handle task completed by an agent
    */
-  private async logBroadcastCompletion(
-    task: string,
-    results: Record<string, ExecutionResult>,
-    errors: Record<string, Error>
-  ): Promise<void> {
-    try {
-      await storage.createLog({
-        level: Object.keys(errors).length > 0 ? LogLevel.WARNING : LogLevel.INFO,
-        category: LogCategory.SYSTEM,
-        message: `Agent Coordinator broadcast completed: ${task}`,
-        details: JSON.stringify({
-          task,
-          successCount: Object.keys(results).length,
-          errorCount: Object.keys(errors).length,
-          errors: Object.entries(errors).map(([agentId, error]) => ({
-            agentId,
-            error: {
-              name: error.name,
-              message: error.message
-            }
-          }))
-        }),
-        source: 'AgentCoordinator',
-        projectId: null,
-        userId: null,
-        sessionId: null,
-        duration: null,
-        statusCode: null,
-        endpoint: null,
-        tags: ['agent', 'coordinator', 'broadcast-completion']
-      });
-    } catch (error) {
-      console.error('Failed to log broadcast completion:', error);
-    }
+  private handleTaskCompleted(data: { agentId: string; task: string; success: boolean }): void {
+    console.log(`Task ${data.task} completed by agent ${data.agentId} (success: ${data.success})`);
   }
 }
 
-// Export a singleton instance
-export const agentCoordinator = AgentCoordinator.getInstance();
+/**
+ * Singleton instance of the agent coordinator
+ */
+export const agentCoordinator = new AgentCoordinatorImpl();

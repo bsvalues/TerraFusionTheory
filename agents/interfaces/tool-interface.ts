@@ -1,91 +1,94 @@
 /**
- * Tool Interface Definitions
+ * Tool Interface
  * 
- * This file defines the core interfaces, types, and enums used for agent tools
+ * This file defines the core interfaces, types, and enums used for tools
  * within the IntelligentEstate agent system.
  */
 
-import { Agent, AgentCapability } from './agent-interface';
-
 /**
- * Tool execution context provided to tools when they run
- */
-export interface ToolContext {
-  // Agent that is running the tool (may be null for system-initiated calls)
-  agent?: Agent;
-  
-  // Agent context from the agent
-  agentContext?: Record<string, any>;
-  
-  // Input parameters for the tool
-  inputs: Record<string, any>;
-  
-  // Execution context/environment
-  environment?: Record<string, any>;
-  
-  // Tool-specific metadata
-  metadata?: Record<string, any>;
-}
-
-/**
- * Result of tool execution
+ * Result from a tool execution
  */
 export interface ToolResult {
-  // Whether the tool execution was successful
   success: boolean;
-  
-  // Result data if successful
   result?: any;
-  
-  // Error message if not successful
-  error?: string;
-  
-  // Additional metadata about the execution
+  error?: Error | string;
   metadata?: Record<string, any>;
 }
 
 /**
- * Tool definition interface
+ * Parameter definition for a tool
  */
-export interface Tool {
-  // Unique name of the tool
+export interface ToolParameter {
   name: string;
-  
-  // Human-readable description
+  type: 'string' | 'number' | 'boolean' | 'object' | 'array';
   description: string;
-  
-  // Schema for the inputs
-  inputSchema?: Record<string, any>;
-  
-  // Schema for the outputs
-  outputSchema?: Record<string, any>;
-  
-  // Capabilities required to use this tool
-  requiredCapabilities: AgentCapability[];
-  
-  // Execute the tool
-  execute: (context: ToolContext) => Promise<ToolResult>;
-  
-  // Validate inputs against schema (optional)
-  validateInputs?: (inputs: Record<string, any>) => boolean;
+  required: boolean;
+  default?: any;
+  enum?: any[];
 }
 
 /**
- * Tool registry interface
+ * Tool interface
  */
-export interface ToolRegistry {
-  // Register a new tool
-  registerTool(tool: Tool): void;
+export interface Tool {
+  // Basic properties
+  name: string;
+  description: string;
+  category?: string;
+  version?: string;
   
-  // Get a tool by name
-  getTool(name: string): Tool | undefined;
+  // Parameter definitions
+  parameters: ToolParameter[];
   
-  // Get all registered tools
-  getAllTools(): Tool[];
+  // Execution function
+  execute(args: Record<string, any>): Promise<ToolResult>;
   
-  // Get tools that require specific capabilities
-  getToolsForCapabilities(capabilities: AgentCapability[]): Tool[];
+  // Optional methods
+  validate?(args: Record<string, any>): boolean | { valid: boolean; errors?: string[] };
+  getUsage?(): string;
+  getExamples?(): Array<{ description: string; args: Record<string, any> }>;
   
-  // Remove a tool from the registry
-  unregisterTool(name: string): boolean;
+  // MCP specific properties
+  mcp?: {
+    isModelControlled?: boolean;
+    modelProvider?: string;
+    modelName?: string;
+    apiEndpoint?: string;
+  };
+}
+
+/**
+ * Create a new tool with the given properties
+ */
+export function createTool(
+  name: string,
+  description: string,
+  parameters: ToolParameter[],
+  executeFn: (args: Record<string, any>) => Promise<ToolResult>,
+  options?: {
+    category?: string;
+    version?: string;
+    validate?: (args: Record<string, any>) => boolean | { valid: boolean; errors?: string[] };
+    getUsage?: () => string;
+    getExamples?: () => Array<{ description: string; args: Record<string, any> }>;
+    mcp?: {
+      isModelControlled?: boolean;
+      modelProvider?: string;
+      modelName?: string;
+      apiEndpoint?: string;
+    };
+  }
+): Tool {
+  return {
+    name,
+    description,
+    category: options?.category,
+    version: options?.version,
+    parameters,
+    execute: executeFn,
+    validate: options?.validate,
+    getUsage: options?.getUsage,
+    getExamples: options?.getExamples,
+    mcp: options?.mcp
+  };
 }

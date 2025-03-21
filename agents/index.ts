@@ -13,6 +13,7 @@ import { agentCoordinator } from './core/agent-coordinator';
 import { agentFactory, AgentType } from './core/agent-factory';
 import { vectorMemory } from './memory/vector';
 import { registerMCPTool } from './tools/mcp';
+import { AgentCapability } from './interfaces/agent-interface';
 
 /**
  * Initialize the entire agent system
@@ -101,7 +102,7 @@ export async function createDemoAgents(): Promise<void> {
  */
 export async function getRealEstateAgent(): Promise<any> {
   // Find an existing real estate agent
-  const existingAgents = agentRegistry.getAgentsByCapability('real_estate_analysis');
+  const existingAgents = agentRegistry.getAgentsByCapability(AgentCapability.REAL_ESTATE_ANALYSIS);
   if (existingAgents.length > 0) {
     return existingAgents[0];
   }
@@ -123,7 +124,7 @@ export async function getRealEstateAgent(): Promise<any> {
  */
 export async function getDeveloperAgent(): Promise<any> {
   // Find an existing developer agent
-  const existingAgents = agentRegistry.getAgentsByCapability('code_generation');
+  const existingAgents = agentRegistry.getAgentsByCapability(AgentCapability.CODE_GENERATION);
   if (existingAgents.length > 0) {
     return existingAgents[0];
   }

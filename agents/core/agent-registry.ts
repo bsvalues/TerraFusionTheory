@@ -1,169 +1,148 @@
 /**
  * Agent Registry
  * 
- * This module provides a centralized registry for all agents in the system,
- * allowing components to discover and interact with agents.
+ * This file implements the agent registry which maintains a registry of all
+ * agents and handles agent discovery and lookup.
  */
 
-import { v4 as uuidv4 } from 'uuid';
-import { Agent, AgentCapability, AgentStatus } from '../interfaces/agent-interface';
-import { LogCategory, LogLevel } from '../../shared/schema';
-import { storage } from '../../server/storage';
+import { Agent, AgentCapability } from '../interfaces/agent-interface';
 
 /**
- * Agent Registry that manages all agents in the system
+ * Interface for the Agent Registry
  */
-export class AgentRegistry {
-  private static instance: AgentRegistry;
+export interface IAgentRegistry {
+  registerAgent(agent: Agent): void;
+  unregisterAgent(agentId: string): boolean;
+  getAgent(agentId: string): Agent | undefined;
+  getAllAgents(): Agent[];
+  getAgentsByCapability(capability: AgentCapability): Agent[];
+  getAgentsByType(type: string): Agent[];
+}
+
+/**
+ * Implementation of the Agent Registry
+ */
+class AgentRegistryImpl implements IAgentRegistry {
   private agents: Map<string, Agent> = new Map();
+  private capabilityIndex: Map<AgentCapability, Set<string>> = new Map();
+  private typeIndex: Map<string, Set<string>> = new Map();
   
   /**
-   * Private constructor for singleton pattern
+   * Register an agent with the registry
    */
-  private constructor() {
-    this.logActivity('Initialized agent registry', LogLevel.INFO);
-  }
-  
-  /**
-   * Get singleton instance
-   */
-  public static getInstance(): AgentRegistry {
-    if (!AgentRegistry.instance) {
-      AgentRegistry.instance = new AgentRegistry();
-    }
-    return AgentRegistry.instance;
-  }
-  
-  /**
-   * Register a new agent in the registry
-   */
-  registerAgent(agent: Agent): void {
+  public registerAgent(agent: Agent): void {
     const agentId = agent.getId();
     
+    // Check if agent is already registered
     if (this.agents.has(agentId)) {
-      this.logActivity(`Agent with ID ${agentId} already registered, replacing`, LogLevel.WARNING);
+      console.warn(`Agent with ID ${agentId} already registered`);
+      return;
     }
     
+    // Store the agent
     this.agents.set(agentId, agent);
-    this.logActivity(`Registered agent: ${agent.getName()} (${agentId})`, LogLevel.INFO, {
-      capabilities: agent.getCapabilities(),
-      type: agent.getType?.() || 'unknown'
-    });
+    
+    // Index by capabilities
+    const capabilities = agent.getCapabilities();
+    for (const capability of capabilities) {
+      if (!this.capabilityIndex.has(capability)) {
+        this.capabilityIndex.set(capability, new Set());
+      }
+      this.capabilityIndex.get(capability)?.add(agentId);
+    }
+    
+    // Index by type if available
+    if (agent.getType) {
+      const type = agent.getType();
+      if (!this.typeIndex.has(type)) {
+        this.typeIndex.set(type, new Set());
+      }
+      this.typeIndex.get(type)?.add(agentId);
+    }
+    
+    console.log(`Agent registered: ${agentId} (${agent.getName()})`);
+  }
+  
+  /**
+   * Unregister an agent from the registry
+   */
+  public unregisterAgent(agentId: string): boolean {
+    const agent = this.agents.get(agentId);
+    if (!agent) {
+      return false;
+    }
+    
+    // Remove from main store
+    this.agents.delete(agentId);
+    
+    // Remove from capability index
+    const capabilities = agent.getCapabilities();
+    for (const capability of capabilities) {
+      this.capabilityIndex.get(capability)?.delete(agentId);
+      // Clean up empty sets
+      if (this.capabilityIndex.get(capability)?.size === 0) {
+        this.capabilityIndex.delete(capability);
+      }
+    }
+    
+    // Remove from type index if available
+    if (agent.getType) {
+      const type = agent.getType();
+      this.typeIndex.get(type)?.delete(agentId);
+      // Clean up empty sets
+      if (this.typeIndex.get(type)?.size === 0) {
+        this.typeIndex.delete(type);
+      }
+    }
+    
+    console.log(`Agent unregistered: ${agentId}`);
+    return true;
   }
   
   /**
    * Get an agent by ID
    */
-  getAgent(id: string): Agent | undefined {
-    return this.agents.get(id);
+  public getAgent(agentId: string): Agent | undefined {
+    return this.agents.get(agentId);
   }
   
   /**
    * Get all registered agents
    */
-  getAllAgents(): Agent[] {
+  public getAllAgents(): Agent[] {
     return Array.from(this.agents.values());
   }
   
   /**
    * Get agents by capability
    */
-  getAgentsByCapability(capability: AgentCapability): Agent[] {
-    return this.getAllAgents().filter(agent => 
-      agent.hasCapability(capability)
-    );
-  }
-  
-  /**
-   * Get agents by status
-   */
-  getAgentsByStatus(status: AgentStatus): Agent[] {
-    return this.getAllAgents().filter(agent => 
-      agent.getStatus() === status
-    );
-  }
-  
-  /**
-   * Remove an agent from the registry
-   */
-  unregisterAgent(id: string): boolean {
-    const agent = this.agents.get(id);
-    if (!agent) {
-      return false;
+  public getAgentsByCapability(capability: AgentCapability): Agent[] {
+    const agentIds = this.capabilityIndex.get(capability);
+    if (!agentIds || agentIds.size === 0) {
+      return [];
     }
     
-    this.agents.delete(id);
-    this.logActivity(`Unregistered agent: ${agent.getName()} (${id})`, LogLevel.INFO);
-    return true;
+    return Array.from(agentIds)
+      .map(id => this.agents.get(id))
+      .filter((agent): agent is Agent => agent !== undefined);
   }
   
   /**
-   * Generate a new unique agent ID
+   * Get agents by type
    */
-  generateAgentId(): string {
-    return `agent_${uuidv4()}`;
-  }
-  
-  /**
-   * Get agent statistics
-   */
-  getAgentStats(): {
-    total: number;
-    byStatus: Record<AgentStatus, number>;
-    byCapability: Partial<Record<AgentCapability, number>>;
-  } {
-    const stats = {
-      total: this.agents.size,
-      byStatus: {
-        [AgentStatus.IDLE]: 0,
-        [AgentStatus.INITIALIZING]: 0,
-        [AgentStatus.WORKING]: 0,
-        [AgentStatus.PAUSED]: 0,
-        [AgentStatus.ERROR]: 0,
-        [AgentStatus.TERMINATED]: 0
-      },
-      byCapability: {} as Partial<Record<AgentCapability, number>>
-    };
-    
-    // Count by status and capability
-    for (const agent of this.agents.values()) {
-      // Count by status
-      const status = agent.getStatus();
-      stats.byStatus[status]++;
-      
-      // Count by capability
-      for (const capability of agent.getCapabilities()) {
-        stats.byCapability[capability] = (stats.byCapability[capability] || 0) + 1;
-      }
+  public getAgentsByType(type: string): Agent[] {
+    const agentIds = this.typeIndex.get(type);
+    if (!agentIds || agentIds.size === 0) {
+      return [];
     }
     
-    return stats;
-  }
-  
-  /**
-   * Log activity to the storage system
-   */
-  private async logActivity(message: string, level: LogLevel, details?: any): Promise<void> {
-    try {
-      await storage.createLog({
-        level,
-        category: LogCategory.SYSTEM,
-        message: `[AgentRegistry] ${message}`,
-        details: details ? JSON.stringify(details) : null,
-        source: 'agent-registry',
-        projectId: null,
-        userId: null,
-        sessionId: null,
-        duration: null,
-        statusCode: null,
-        endpoint: null,
-        tags: ['agent', 'registry']
-      });
-    } catch (error) {
-      console.error('Failed to log agent registry activity:', error);
-    }
+    return Array.from(agentIds)
+      .map(id => this.agents.get(id))
+      .filter((agent): agent is Agent => agent !== undefined);
   }
 }
 
-// Export singleton instance
-export const agentRegistry = AgentRegistry.getInstance();
+/**
+ * Singleton instance of the Agent Registry
+ */
+export const agentRegistry = new AgentRegistryImpl();

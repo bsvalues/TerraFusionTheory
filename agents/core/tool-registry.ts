@@ -1,115 +1,111 @@
 /**
  * Tool Registry
  * 
- * This module provides a registry for all agent tools, allowing agents to
- * discover, validate, and use tools based on their capabilities.
+ * This file implements the tool registry which maintains a registry of all
+ * tools and handles tool discovery and lookup.
  */
 
-import { Tool, ToolRegistry as IToolRegistry } from '../interfaces/tool-interface';
-import { AgentCapability } from '../interfaces/agent-interface';
-import { LogCategory, LogLevel } from '../../shared/schema';
-import { storage } from '../../server/storage';
+import { Tool } from '../interfaces/tool-interface';
 
 /**
- * Tool Registry implementation that stores and manages all available tools
+ * Interface for the Tool Registry
  */
-export class ToolRegistry implements IToolRegistry {
-  private static instance: ToolRegistry;
+export interface IToolRegistry {
+  registerTool(tool: Tool): void;
+  unregisterTool(toolName: string): boolean;
+  getTool(toolName: string): Tool | undefined;
+  getAllTools(): Tool[];
+  getToolsByCategory(category: string): Tool[];
+}
+
+/**
+ * Implementation of the Tool Registry
+ */
+class ToolRegistryImpl implements IToolRegistry {
   private tools: Map<string, Tool> = new Map();
+  private categoryIndex: Map<string, Set<string>> = new Map();
   
   /**
-   * Private constructor for singleton pattern
+   * Register a tool with the registry
    */
-  private constructor() {
-    this.logActivity('Initialized tool registry', LogLevel.INFO);
-  }
-  
-  /**
-   * Get singleton instance
-   */
-  public static getInstance(): ToolRegistry {
-    if (!ToolRegistry.instance) {
-      ToolRegistry.instance = new ToolRegistry();
-    }
-    return ToolRegistry.instance;
-  }
-  
-  /**
-   * Register a new tool in the registry
-   */
-  registerTool(tool: Tool): void {
-    if (this.tools.has(tool.name)) {
-      this.logActivity(`Tool with name '${tool.name}' already registered, replacing`, LogLevel.WARNING);
+  public registerTool(tool: Tool): void {
+    const toolName = tool.name;
+    
+    // Check if tool is already registered
+    if (this.tools.has(toolName)) {
+      console.warn(`Tool with name ${toolName} already registered`);
+      return;
     }
     
-    this.tools.set(tool.name, tool);
-    this.logActivity(`Registered tool: ${tool.name}`, LogLevel.INFO, {
-      description: tool.description,
-      requiredCapabilities: tool.requiredCapabilities
-    });
+    // Store the tool
+    this.tools.set(toolName, tool);
+    
+    // Index by category if available
+    if (tool.category) {
+      if (!this.categoryIndex.has(tool.category)) {
+        this.categoryIndex.set(tool.category, new Set());
+      }
+      this.categoryIndex.get(tool.category)?.add(toolName);
+    }
+    
+    console.log(`Tool registered: ${toolName} (${tool.description})`);
+  }
+  
+  /**
+   * Unregister a tool from the registry
+   */
+  public unregisterTool(toolName: string): boolean {
+    const tool = this.tools.get(toolName);
+    if (!tool) {
+      return false;
+    }
+    
+    // Remove from main store
+    this.tools.delete(toolName);
+    
+    // Remove from category index if available
+    if (tool.category) {
+      this.categoryIndex.get(tool.category)?.delete(toolName);
+      // Clean up empty sets
+      if (this.categoryIndex.get(tool.category)?.size === 0) {
+        this.categoryIndex.delete(tool.category);
+      }
+    }
+    
+    console.log(`Tool unregistered: ${toolName}`);
+    return true;
   }
   
   /**
    * Get a tool by name
    */
-  getTool(name: string): Tool | undefined {
-    return this.tools.get(name);
+  public getTool(toolName: string): Tool | undefined {
+    return this.tools.get(toolName);
   }
   
   /**
    * Get all registered tools
    */
-  getAllTools(): Tool[] {
+  public getAllTools(): Tool[] {
     return Array.from(this.tools.values());
   }
   
   /**
-   * Get tools that require specific capabilities
+   * Get tools by category
    */
-  getToolsForCapabilities(capabilities: AgentCapability[]): Tool[] {
-    return this.getAllTools().filter(tool => {
-      // Check if all required capabilities for this tool are present
-      return tool.requiredCapabilities.every(required => 
-        capabilities.includes(required)
-      );
-    });
-  }
-  
-  /**
-   * Remove a tool from the registry
-   */
-  unregisterTool(name: string): boolean {
-    const removed = this.tools.delete(name);
-    if (removed) {
-      this.logActivity(`Unregistered tool: ${name}`, LogLevel.INFO);
+  public getToolsByCategory(category: string): Tool[] {
+    const toolNames = this.categoryIndex.get(category);
+    if (!toolNames || toolNames.size === 0) {
+      return [];
     }
-    return removed;
-  }
-  
-  /**
-   * Log activity to the storage system
-   */
-  private async logActivity(message: string, level: LogLevel, details?: any): Promise<void> {
-    try {
-      await storage.createLog({
-        level,
-        category: LogCategory.SYSTEM,
-        message: `[ToolRegistry] ${message}`,
-        details: details ? JSON.stringify(details) : null,
-        source: 'tool-registry',
-        projectId: null,
-        userId: null,
-        sessionId: null,
-        duration: null,
-        statusCode: null,
-        endpoint: null,
-        tags: ['tool', 'registry', 'agent']
-      });
-    } catch (error) {
-      console.error('Failed to log tool registry activity:', error);
-    }
+    
+    return Array.from(toolNames)
+      .map(name => this.tools.get(name))
+      .filter((tool): tool is Tool => tool !== undefined);
   }
 }
 
-// Export singleton instance
-export const toolRegistry = ToolRegistry.getInstance();
+/**
+ * Singleton instance of the Tool Registry
+ */
+export const toolRegistry = new ToolRegistryImpl();
