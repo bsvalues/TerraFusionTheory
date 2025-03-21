@@ -1,85 +1,202 @@
 /**
- * IntelligentEstate Agent System
+ * Agent System Initialization
  * 
- * This module provides agent-based functionality for the IntelligentEstate platform.
- * Agents can work independently or collaboratively to perform various tasks related
- * to real estate analytics, software development, and data analysis.
+ * This file initializes the entire agent system including tools, agents,
+ * and services for the IntelligentEstate platform.
  */
 
-// Export core interfaces and types
-export * from './interfaces/agent-interface';
-
-// Export core components
-export { BaseAgent } from './core/agent-base';
-export { AgentFactory, agentFactory } from './core/agent-factory';
-export { AgentRegistry, agentRegistry } from './core/agent-registry';
-export { AgentCoordinator, agentCoordinator } from './core/agent-coordinator';
-
-// Export agent implementations
-export { RealEstateAgent } from './types/real-estate-agent';
-export { DeveloperAgent } from './types/developer-agent';
-export { AnalyticsAgent } from './types/analytics-agent';
+import { LogCategory, LogLevel } from '../shared/schema';
+import { storage } from '../server/storage';
+import { toolRegistry } from './core/tool-registry';
+import { agentRegistry } from './core/agent-registry';
+import { agentCoordinator } from './core/agent-coordinator';
+import { agentFactory, AgentType } from './core/agent-factory';
+import { vectorMemory } from './memory/vector';
+import { registerMCPTool } from './tools/mcp';
 
 /**
- * Initialize the agent system
- * 
- * This function initializes the agent system and creates default agents
- * for use in the application.
+ * Initialize the entire agent system
  */
 export async function initializeAgentSystem(): Promise<void> {
-  console.log('Initializing Agent System...');
-  
   try {
-    // Import the required components directly to avoid circular dependencies
-    const { AgentFactory } = await import('./core/agent-factory');
-    const { AgentRegistry } = await import('./core/agent-registry');
-    const { AgentCoordinator } = await import('./core/agent-coordinator');
-    const { AgentType } = await import('./interfaces/agent-interface');
+    console.log('Initializing Agent System...');
     
-    // Get singleton instances
-    const factory = AgentFactory.getInstance();
-    const registry = AgentRegistry.getInstance();
-    const coordinator = AgentCoordinator.getInstance();
+    // Log start
+    await logSystemActivity('Agent system initialization started', LogLevel.INFO);
     
-    // Create default real estate agent
-    const realEstateAgent = await factory.createAgent(
-      AgentType.REAL_ESTATE, 
-      'Property Advisor', 
-      'Provides real estate analytics and property insights'
-    );
+    // 1. Initialize the vector memory
+    // Nothing to do here, it self-initializes on first use
     
-    // Create default developer agent
-    const developerAgent = await factory.createAgent(
-      AgentType.DEVELOPER, 
-      'Code Assistant', 
-      'Assists with software development tasks'
-    );
+    // 2. Register tools
+    toolRegistry.registerTool(registerMCPTool());
+    // Add other tool registrations as they are implemented
     
-    // Create default analytics agent
-    const analyticsAgent = await factory.createAgent(
-      AgentType.ANALYTICS, 
-      'Data Analyst', 
-      'Analyzes data and provides visualizations and insights'
-    );
+    // 3. Initialize the agent factory
+    await agentFactory.initialize();
     
-    // Initialize the agents
-    await realEstateAgent.initialize();
-    await developerAgent.initialize();
-    await analyticsAgent.initialize();
+    // 4. Create and register system agents (lazy initialized, not started yet)
+    // These will be started on-demand when needed
     
-    // Register the agents
-    registry.registerAgent(realEstateAgent);
-    registry.registerAgent(developerAgent);
-    registry.registerAgent(analyticsAgent);
-    
-    // Add the agents to the coordinator
-    coordinator.addAgent(realEstateAgent);
-    coordinator.addAgent(developerAgent);
-    coordinator.addAgent(analyticsAgent);
-    
+    // Log completion
+    await logSystemActivity('Agent system initialized successfully', LogLevel.INFO);
     console.log('Agent System initialized successfully');
+    
+    return;
   } catch (error) {
-    console.error('Failed to initialize Agent System:', error);
+    // Log failure
+    await logSystemActivity('Agent system initialization failed', LogLevel.ERROR, {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    console.error('Failed to initialize agent system:', error);
     throw error;
+  }
+}
+
+/**
+ * Create demo agents for testing and development
+ */
+export async function createDemoAgents(): Promise<void> {
+  try {
+    // Create a developer agent
+    const developerAgent = await agentFactory.createAgent(AgentType.DEVELOPER, {
+      name: 'Dev Assistant',
+      description: 'Assists with development tasks and code generation',
+    });
+    
+    // Create a real estate analytics agent
+    const realEstateAgent = await agentFactory.createAgent(AgentType.REAL_ESTATE, {
+      name: 'PropertyAnalyst',
+      description: 'Analyzes real estate data and market trends',
+    });
+    
+    // Add agents to coordinator
+    agentCoordinator.addAgent(developerAgent);
+    agentCoordinator.addAgent(realEstateAgent);
+    
+    // Log creation
+    await logSystemActivity('Created demo agents', LogLevel.INFO, {
+      agents: [
+        {
+          id: developerAgent.getId(),
+          name: developerAgent.getName(),
+          type: 'developer'
+        },
+        {
+          id: realEstateAgent.getId(),
+          name: realEstateAgent.getName(),
+          type: 'real_estate'
+        }
+      ]
+    });
+  } catch (error) {
+    await logSystemActivity('Failed to create demo agents', LogLevel.ERROR, {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    console.error('Failed to create demo agents:', error);
+  }
+}
+
+/**
+ * Get a real estate agent instance
+ */
+export async function getRealEstateAgent(): Promise<any> {
+  // Find an existing real estate agent
+  const existingAgents = agentRegistry.getAgentsByCapability('real_estate_analysis');
+  if (existingAgents.length > 0) {
+    return existingAgents[0];
+  }
+  
+  // Create a new one if none exists
+  const agent = await agentFactory.createAgent(AgentType.REAL_ESTATE, {
+    name: 'PropertyAnalyst',
+    description: 'Analyzes real estate data and market trends',
+  });
+  
+  // Register with coordinator
+  agentCoordinator.addAgent(agent);
+  
+  return agent;
+}
+
+/**
+ * Get a developer agent instance
+ */
+export async function getDeveloperAgent(): Promise<any> {
+  // Find an existing developer agent
+  const existingAgents = agentRegistry.getAgentsByCapability('code_generation');
+  if (existingAgents.length > 0) {
+    return existingAgents[0];
+  }
+  
+  // Create a new one if none exists
+  const agent = await agentFactory.createAgent(AgentType.DEVELOPER, {
+    name: 'Dev Assistant',
+    description: 'Assists with development tasks and code generation',
+  });
+  
+  // Register with coordinator
+  agentCoordinator.addAgent(agent);
+  
+  return agent;
+}
+
+/**
+ * Shutdown the agent system
+ */
+export async function shutdownAgentSystem(): Promise<void> {
+  try {
+    console.log('Shutting down Agent System...');
+    
+    // Log start
+    await logSystemActivity('Agent system shutdown started', LogLevel.INFO);
+    
+    // Get all agents from registry
+    const agents = agentRegistry.getAllAgents();
+    
+    // Stop all agents
+    for (const agent of agents) {
+      try {
+        await agent.stop();
+      } catch (error) {
+        console.error(`Failed to stop agent ${agent.getId()}:`, error);
+      }
+    }
+    
+    // Shutdown vector memory to persist if needed
+    vectorMemory.shutdown();
+    
+    // Log completion
+    await logSystemActivity('Agent system shutdown completed', LogLevel.INFO);
+    console.log('Agent System shutdown completed');
+  } catch (error) {
+    // Log failure
+    await logSystemActivity('Agent system shutdown failed', LogLevel.ERROR, {
+      error: error instanceof Error ? error.message : String(error)
+    });
+    console.error('Failed to shutdown agent system:', error);
+  }
+}
+
+/**
+ * Log activity to the storage system
+ */
+async function logSystemActivity(message: string, level: LogLevel, details?: any): Promise<void> {
+  try {
+    await storage.createLog({
+      level,
+      category: LogCategory.SYSTEM,
+      message: `[AgentSystem] ${message}`,
+      details: details ? JSON.stringify(details) : null,
+      source: 'agent-system',
+      projectId: null,
+      userId: null,
+      sessionId: null,
+      duration: null,
+      statusCode: null,
+      endpoint: null,
+      tags: ['agent', 'system']
+    });
+  } catch (error) {
+    console.error('Failed to log agent system activity:', error);
   }
 }

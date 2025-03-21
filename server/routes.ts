@@ -11,12 +11,17 @@ import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "
 import { alertManager, AlertSeverity } from "./services/alert";
 import { realEstateAnalyticsService } from "./services/real-estate-analytics.service";
 import { 
-  agentRegistry, 
-  agentFactory, 
-  agentCoordinator, 
-  AgentType,
-  AgentCapability
+  initializeAgentSystem,
+  createDemoAgents,
+  getRealEstateAgent,
+  getDeveloperAgent,
+  shutdownAgentSystem
 } from "../agents";
+
+// Import specific types from the agent interfaces
+import { 
+  AgentCapability 
+} from "../agents/interfaces/agent-interface";
 
 // Track the memory monitor timer globally to allow proper cleanup
 

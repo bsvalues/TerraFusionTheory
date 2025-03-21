@@ -1,36 +1,45 @@
 /**
  * Agent Factory
  * 
- * This factory is responsible for creating instances of different types of agents
- * based on the requested agent type and configuration.
+ * This module provides a factory for creating different types of agents
+ * with their required configurations and tools.
  */
 
-import { 
-  Agent, 
-  AgentCapability, 
-  AgentConfig, 
-  AgentFactory as AgentFactoryInterface, 
-  AgentType 
-} from '../interfaces/agent-interface';
-
-// Import the different agent type implementations
-// These will be created in the next steps
-import { RealEstateAgent } from '../types/real-estate-agent';
-import { DeveloperAgent } from '../types/developer-agent';
-import { AnalyticsAgent } from '../types/analytics-agent';
+import { v4 as uuidv4 } from 'uuid';
+import { Agent, AgentCapability, AgentConfig } from '../interfaces/agent-interface';
+import { GenericAgent } from './agent-base';
+import { MCPAgent, MCPAgentConfig } from '../implementations/mcp-agent';
+import { toolRegistry } from './tool-registry';
+import { registerMCPTool } from '../tools/mcp';
+import { LogCategory, LogLevel } from '../../shared/schema';
+import { storage } from '../../server/storage';
 
 /**
- * Agent Factory implementation
+ * Agent types available for creation
  */
-export class AgentFactory implements AgentFactoryInterface {
-  // Singleton pattern
+export enum AgentType {
+  GENERIC = 'generic',
+  MCP = 'mcp',
+  REAL_ESTATE = 'real_estate',
+  DEVELOPER = 'developer',
+  ANALYTICS = 'analytics'
+}
+
+/**
+ * Agent factory for creating and managing different types of agents
+ */
+export class AgentFactory {
   private static instance: AgentFactory;
+  private agents: Map<string, Agent> = new Map();
+  private initialized = false;
   
-  // Private constructor for singleton
+  /**
+   * Private constructor for singleton pattern
+   */
   private constructor() {}
   
   /**
-   * Get the singleton instance of the factory
+   * Get singleton instance
    */
   public static getInstance(): AgentFactory {
     if (!AgentFactory.instance) {
@@ -40,162 +49,294 @@ export class AgentFactory implements AgentFactoryInterface {
   }
   
   /**
+   * Initialize the agent factory and register all tools
+   */
+  public async initialize(): Promise<void> {
+    if (this.initialized) {
+      return;
+    }
+    
+    try {
+      // Register all available tools
+      this.registerDefaultTools();
+      
+      this.initialized = true;
+      this.logActivity('Agent factory initialized', LogLevel.INFO);
+    } catch (error) {
+      this.logActivity('Failed to initialize agent factory', LogLevel.ERROR, {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      throw error;
+    }
+  }
+  
+  /**
    * Create a new agent of the specified type
-   * 
-   * @param type The type of agent to create
-   * @param name Human-readable name for the agent
-   * @param description Description of the agent's purpose
-   * @param capabilities Optional set of capabilities the agent should have
-   * @param config Optional configuration for the agent
-   * @returns A new agent instance
    */
-  public async createAgent(
-    type: AgentType,
-    name: string,
-    description: string,
-    capabilities: AgentCapability[] = [],
-    config: AgentConfig = {}
-  ): Promise<Agent> {
-    // Create the agent based on the requested type
-    switch (type) {
-      case AgentType.REAL_ESTATE:
-        return new RealEstateAgent(name, description, capabilities, config);
-        
-      case AgentType.DEVELOPER:
-        return new DeveloperAgent(name, description, capabilities, config);
-        
-      case AgentType.ANALYTICS:
-        return new AnalyticsAgent(name, description, capabilities, config);
+  public async createAgent(type: AgentType, config: Partial<AgentConfig> = {}): Promise<Agent> {
+    if (!this.initialized) {
+      await this.initialize();
+    }
+    
+    const id = config.id || uuidv4();
+    let agent: Agent;
+    
+    try {
+      switch (type) {
+        case AgentType.GENERIC:
+          agent = new GenericAgent(id, this.createGenericAgentConfig(config));
+          break;
+          
+        case AgentType.MCP:
+          agent = new MCPAgent(id, this.createMCPAgentConfig(config));
+          break;
+          
+        case AgentType.REAL_ESTATE:
+          agent = new MCPAgent(id, this.createRealEstateAgentConfig(config));
+          break;
+          
+        case AgentType.DEVELOPER:
+          agent = new MCPAgent(id, this.createDeveloperAgentConfig(config));
+          break;
+          
+        case AgentType.ANALYTICS:
+          agent = new MCPAgent(id, this.createAnalyticsAgentConfig(config));
+          break;
+          
+        default:
+          throw new Error(`Unknown agent type: ${type}`);
+      }
       
-      case AgentType.COORDINATOR:
-        // Coordinator agent implementation will be added in the future
-        throw new Error('Coordinator agent type not yet implemented');
+      // Initialize the agent
+      await agent.initialize();
       
-      case AgentType.ASSISTANT:
-        // Assistant agent implementation will be added in the future
-        throw new Error('Assistant agent type not yet implemented');
+      // Store the agent in the registry
+      this.agents.set(id, agent);
       
-      case AgentType.EXPERT:
-        // Expert agent implementation will be added in the future
-        throw new Error('Expert agent type not yet implemented');
+      this.logActivity(`Created agent of type ${type}`, LogLevel.INFO, {
+        agentId: id,
+        agentName: agent.getName(),
+        capabilities: agent.getCapabilities()
+      });
       
-      case AgentType.CUSTOM:
-        // Custom agent implementation will be added in the future
-        throw new Error('Custom agent type not yet implemented');
-        
-      default:
-        throw new Error(`Unknown agent type: ${type}`);
+      return agent;
+    } catch (error) {
+      this.logActivity(`Failed to create agent of type ${type}`, LogLevel.ERROR, {
+        error: error instanceof Error ? error.message : String(error),
+        agentId: id
+      });
+      throw error;
     }
   }
   
   /**
-   * Get default capabilities for a specific agent type
-   * 
-   * @param type The agent type
-   * @returns Array of default capabilities for that agent type
+   * Get an agent by ID
    */
-  public getDefaultCapabilities(type: AgentType): AgentCapability[] {
-    switch (type) {
-      case AgentType.REAL_ESTATE:
-        return [
-          AgentCapability.CONVERSATION,
-          AgentCapability.PROPERTY_ANALYSIS,
-          AgentCapability.MARKET_ANALYSIS,
-          AgentCapability.GEOSPATIAL_ANALYSIS,
-        ];
-        
-      case AgentType.DEVELOPER:
-        return [
-          AgentCapability.CONVERSATION,
-          AgentCapability.CODE_GENERATION,
-          AgentCapability.CODE_REVIEW,
-          AgentCapability.DEBUGGING,
-          AgentCapability.DOCUMENTATION,
-        ];
-        
-      case AgentType.ANALYTICS:
-        return [
-          AgentCapability.CONVERSATION,
-          AgentCapability.DATA_ANALYSIS,
-          AgentCapability.VISUALIZATION,
-          AgentCapability.PREDICTION,
-        ];
+  public getAgent(id: string): Agent | undefined {
+    return this.agents.get(id);
+  }
+  
+  /**
+   * Get all registered agents
+   */
+  public getAllAgents(): Agent[] {
+    return Array.from(this.agents.values());
+  }
+  
+  /**
+   * Remove an agent from the registry
+   */
+  public async removeAgent(id: string): Promise<boolean> {
+    const agent = this.agents.get(id);
+    if (!agent) {
+      return false;
+    }
+    
+    try {
+      // Stop the agent if it's running
+      await agent.stop();
       
-      case AgentType.COORDINATOR:
-        return [
-          AgentCapability.CONVERSATION,
-          AgentCapability.AGENT_COORDINATION,
-          AgentCapability.PLANNING,
-        ];
+      // Remove from registry
+      this.agents.delete(id);
       
-      case AgentType.ASSISTANT:
-        return [
-          AgentCapability.CONVERSATION,
-          AgentCapability.TEXT_GENERATION,
-          AgentCapability.TOOL_USE,
-        ];
+      this.logActivity(`Removed agent`, LogLevel.INFO, { agentId: id });
       
-      case AgentType.EXPERT:
-        return [
-          AgentCapability.CONVERSATION,
-          AgentCapability.TEXT_GENERATION,
-          AgentCapability.TOOL_USE,
-          AgentCapability.LEARNING,
-        ];
+      return true;
+    } catch (error) {
+      this.logActivity(`Failed to remove agent`, LogLevel.ERROR, {
+        error: error instanceof Error ? error.message : String(error),
+        agentId: id
+      });
       
-      case AgentType.CUSTOM:
-        // Custom agents have no default capabilities
-        return [];
-        
-      default:
-        return [];
+      return false;
     }
   }
   
   /**
-   * Get a default configuration for a specific agent type
-   * 
-   * @param type The agent type
-   * @returns Default configuration for that agent type
+   * Create a configuration for a generic agent
    */
-  public getDefaultConfig(type: AgentType): AgentConfig {
-    // Common default configuration
-    const baseConfig: AgentConfig = {
-      maxHistoryLength: 100,
-      maxMemoryItems: 1000,
-      timeoutMs: 30000,
-      autoSave: false,
-      persistMemory: false,
+  private createGenericAgentConfig(config: Partial<AgentConfig>): AgentConfig {
+    return {
+      name: config.name || 'Generic Agent',
+      description: config.description || 'A general-purpose agent',
+      capabilities: config.capabilities || [
+        AgentCapability.TEXT_GENERATION,
+        AgentCapability.TEXT_UNDERSTANDING
+      ],
+      tools: config.tools || [],
+      maxConcurrentTasks: config.maxConcurrentTasks || 5,
+      defaultTimeout: config.defaultTimeout || 60000,
+      autoRestart: config.autoRestart || false,
+      memory: config.memory || { useVectorMemory: false },
+      ...config
+    };
+  }
+  
+  /**
+   * Create a configuration for an MCP agent
+   */
+  private createMCPAgentConfig(config: Partial<MCPAgentConfig>): MCPAgentConfig {
+    const mcpConfig: MCPAgentConfig = {
+      name: config.name || 'MCP Agent',
+      description: config.description || 'An agent with Model Control Protocol capabilities',
+      capabilities: config.capabilities || [
+        AgentCapability.TEXT_GENERATION,
+        AgentCapability.TEXT_UNDERSTANDING,
+        AgentCapability.REASONING,
+        AgentCapability.TOOL_USE
+      ],
+      tools: config.tools || ['mcp'],
+      maxConcurrentTasks: config.maxConcurrentTasks || 5,
+      defaultTimeout: config.defaultTimeout || 60000,
+      autoRestart: config.autoRestart || false,
+      memory: config.memory || { useVectorMemory: true },
+      mcp: {
+        defaultModel: 'gpt-4-turbo',
+        temperature: 0.7,
+        ...config.mcp
+      },
+      promptTemplates: config.promptTemplates || {},
+      ...config
     };
     
-    // Add type-specific configuration
-    switch (type) {
-      case AgentType.REAL_ESTATE:
-        return {
-          ...baseConfig,
-          model: 'gpt-4',
-          tools: ['market-data', 'geospatial-analysis', 'property-valuation'],
-        };
-        
-      case AgentType.DEVELOPER:
-        return {
-          ...baseConfig,
-          model: 'gpt-4',
-          tools: ['code-generator', 'code-analyzer', 'documentation-writer'],
-        };
-        
-      case AgentType.ANALYTICS:
-        return {
-          ...baseConfig,
-          model: 'gpt-4',
-          tools: ['data-processor', 'chart-generator', 'predictive-modeling'],
-        };
-      
-      default:
-        return baseConfig;
+    return mcpConfig;
+  }
+  
+  /**
+   * Create a configuration for a real estate agent
+   */
+  private createRealEstateAgentConfig(config: Partial<MCPAgentConfig>): MCPAgentConfig {
+    return {
+      ...this.createMCPAgentConfig(config),
+      name: config.name || 'Real Estate Agent',
+      description: config.description || 'An agent specialized in real estate analysis and market insights',
+      capabilities: config.capabilities || [
+        AgentCapability.TEXT_GENERATION,
+        AgentCapability.TEXT_UNDERSTANDING,
+        AgentCapability.REASONING,
+        AgentCapability.TOOL_USE,
+        AgentCapability.REAL_ESTATE_ANALYSIS,
+        AgentCapability.MARKET_PREDICTION,
+        AgentCapability.GIS_DATA_PROCESSING,
+        AgentCapability.DOCUMENT_ANALYSIS,
+        AgentCapability.VECTOR_SEARCH
+      ],
+      tools: config.tools || ['mcp'],
+      mcp: {
+        defaultModel: 'gpt-4-turbo',
+        temperature: 0.5,
+        ...config.mcp
+      }
+    };
+  }
+  
+  /**
+   * Create a configuration for a developer agent
+   */
+  private createDeveloperAgentConfig(config: Partial<MCPAgentConfig>): MCPAgentConfig {
+    return {
+      ...this.createMCPAgentConfig(config),
+      name: config.name || 'Developer Agent',
+      description: config.description || 'An agent specialized in software development and code generation',
+      capabilities: config.capabilities || [
+        AgentCapability.TEXT_GENERATION,
+        AgentCapability.TEXT_UNDERSTANDING,
+        AgentCapability.REASONING,
+        AgentCapability.TOOL_USE,
+        AgentCapability.CODE_GENERATION,
+        AgentCapability.CODE_UNDERSTANDING,
+        AgentCapability.PLANNING,
+        AgentCapability.VECTOR_SEARCH
+      ],
+      tools: config.tools || ['mcp'],
+      mcp: {
+        defaultModel: 'gpt-4-turbo',
+        temperature: 0.3, // Lower temperature for coding tasks
+        ...config.mcp
+      }
+    };
+  }
+  
+  /**
+   * Create a configuration for an analytics agent
+   */
+  private createAnalyticsAgentConfig(config: Partial<MCPAgentConfig>): MCPAgentConfig {
+    return {
+      ...this.createMCPAgentConfig(config),
+      name: config.name || 'Analytics Agent',
+      description: config.description || 'An agent specialized in data analysis and visualization',
+      capabilities: config.capabilities || [
+        AgentCapability.TEXT_GENERATION,
+        AgentCapability.TEXT_UNDERSTANDING,
+        AgentCapability.REASONING,
+        AgentCapability.TOOL_USE,
+        AgentCapability.DATA_VISUALIZATION,
+        AgentCapability.VECTOR_SEARCH
+      ],
+      tools: config.tools || ['mcp'],
+      mcp: {
+        defaultModel: 'gpt-4-turbo',
+        temperature: 0.2, // Lower temperature for analytical tasks
+        ...config.mcp
+      }
+    };
+  }
+  
+  /**
+   * Register all default tools
+   */
+  private registerDefaultTools(): void {
+    // Register the MCP tool
+    toolRegistry.registerTool(registerMCPTool());
+    
+    // Register other tools as they're implemented
+    // This would include tools for specific agent types
+  }
+  
+  /**
+   * Log activity to the storage system
+   */
+  private async logActivity(message: string, level: LogLevel, details?: any): Promise<void> {
+    try {
+      await storage.createLog({
+        level,
+        category: LogCategory.SYSTEM,
+        message: `[AgentFactory] ${message}`,
+        details: details ? JSON.stringify(details) : null,
+        source: 'agent-factory',
+        projectId: null,
+        userId: null,
+        sessionId: null,
+        duration: null,
+        statusCode: null,
+        endpoint: null,
+        tags: ['agent', 'factory']
+      });
+    } catch (error) {
+      console.error('Failed to log agent factory activity:', error);
     }
   }
 }
 
-// Export a singleton instance
+// Export singleton instance
 export const agentFactory = AgentFactory.getInstance();

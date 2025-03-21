@@ -1,470 +1,308 @@
 /**
- * Base Agent Class
+ * Base Agent Implementation
  * 
- * This abstract class defines the core functionality and interface for all agents
- * in the IntelligentEstate system. All specialized agents should extend this class.
+ * This file provides a concrete implementation of the BaseAgent abstract class,
+ * with common functionality that can be inherited by specialized agent types.
  */
 
-import { EventEmitter } from 'events';
 import { v4 as uuidv4 } from 'uuid';
-import { 
-  Agent,
-  AgentCapability, 
-  AgentConfig, 
-  AgentContext, 
-  AgentMessage,
-  AgentState, 
-  AgentTask,
-  AgentType, 
-  ExecutionResult 
-} from '../interfaces/agent-interface';
+import { BaseAgent, AgentConfig, AgentStatus, AgentTask, AgentCapability } from '../interfaces/agent-interface';
+import { Tool } from '../interfaces/tool-interface';
+import { toolRegistry } from './tool-registry';
+import { vectorMemory } from '../memory/vector';
+import { LogCategory, LogLevel } from '../../shared/schema';
+import { storage } from '../../server/storage';
 
-export abstract class BaseAgent extends EventEmitter implements Agent {
-  protected id: string;
-  protected type: AgentType;
-  protected name: string;
-  protected description: string;
-  protected capabilities: Set<AgentCapability>;
-  protected state: AgentState;
-  protected context: AgentContext;
-  protected config: AgentConfig;
-  protected isActive: boolean;
-  protected createdAt: Date;
-  protected lastActive: Date;
-
-  /**
-   * Create a new agent instance
-   * 
-   * @param type The type of agent
-   * @param name Human-readable name for the agent
-   * @param description Description of the agent's purpose
-   * @param capabilities Set of capabilities this agent supports
-   * @param config Configuration options for the agent
-   */
-  constructor(
-    type: AgentType,
-    name: string,
-    description: string,
-    capabilities: AgentCapability[] = [],
-    config: AgentConfig = {}
-  ) {
-    super();
-    this.id = uuidv4();
-    this.type = type;
-    this.name = name;
-    this.description = description;
-    this.capabilities = new Set(capabilities);
-    this.state = AgentState.IDLE;
-    this.context = {
-      history: [],
-      memory: new Map(),
-      currentTask: null,
-      environment: {},
-      metadata: {}
-    };
-    this.config = {
-      maxHistoryLength: 100,
-      maxMemoryItems: 1000,
-      timeoutMs: 30000,
-      autoSave: false,
-      persistMemory: false,
-      ...config
-    };
-    this.isActive = false;
-    this.createdAt = new Date();
-    this.lastActive = new Date();
+/**
+ * Generic base agent implementation that can be extended by specialized agents
+ */
+export class GenericAgent extends BaseAgent {
+  private runningTasks: Set<string> = new Set();
+  private taskQueue: string[] = [];
+  private processingQueue = false;
+  
+  constructor(id: string = uuidv4(), config: AgentConfig) {
+    super(id, config);
+    
+    // Register event handlers
+    this.on('taskAdded', this.handleTaskAdded.bind(this));
+    this.on('taskCanceled', this.handleTaskCanceled.bind(this));
   }
-
+  
   /**
-   * Initialize the agent with any required setup
+   * Initialize the agent
    */
-  public async initialize(): Promise<boolean> {
+  async initialize(): Promise<void> {
     try {
-      this.setState(AgentState.INITIALIZING);
+      this.status = AgentStatus.INITIALIZING;
       
-      // Perform initialization tasks
-      // Subclasses should override this method to perform specific initialization
+      // Initialize vector memory if configured
+      if (this.config.memory?.useVectorMemory) {
+        // We'll use the shared vector memory instance, but could create a specialized one
+        // if needed with custom configuration
+      }
       
-      this.isActive = true;
-      this.setState(AgentState.READY);
+      this.status = AgentStatus.IDLE;
+      this.logActivity('Agent initialized', LogLevel.INFO);
+      
       this.emit('initialized', { agentId: this.id });
-      
-      return true;
     } catch (error) {
-      this.setState(AgentState.ERROR);
-      this.emit('error', { agentId: this.id, error });
-      return false;
+      this.status = AgentStatus.ERROR;
+      this.logActivity('Initialization failed', LogLevel.ERROR, {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
+      throw error;
     }
   }
-
+  
   /**
-   * Shutdown the agent and clean up resources
+   * Use a specific tool with the given inputs
    */
-  public async shutdown(): Promise<boolean> {
-    try {
-      // Perform cleanup tasks
-      // Subclasses should override this method to perform specific cleanup
-      
-      this.isActive = false;
-      this.setState(AgentState.TERMINATED);
-      this.emit('shutdown', { agentId: this.id });
-      
-      return true;
-    } catch (error) {
-      this.setState(AgentState.ERROR);
-      this.emit('error', { agentId: this.id, error });
-      return false;
+  async useTool(toolName: string, inputs: Record<string, any>): Promise<any> {
+    // Check if agent has permission to use the tool
+    if (!this.canUseTool(toolName)) {
+      throw new Error(`Agent ${this.id} does not have permission to use tool: ${toolName}`);
     }
-  }
-
-  /**
-   * Pause the agent's activity temporarily
-   */
-  public async pause(): Promise<boolean> {
-    try {
-      if (this.state === AgentState.BUSY) {
-        // Cannot pause while executing a task
-        throw new Error('Cannot pause agent while it is executing a task');
-      }
-      
-      this.isActive = false;
-      this.setState(AgentState.PAUSED);
-      this.emit('paused', { agentId: this.id });
-      
-      return true;
-    } catch (error) {
-      this.emit('error', { agentId: this.id, error });
-      return false;
+    
+    // Get the tool from the registry
+    const tool = toolRegistry.getTool(toolName);
+    if (!tool) {
+      throw new Error(`Tool not found: ${toolName}`);
     }
-  }
-
-  /**
-   * Resume the agent after being paused
-   */
-  public async resume(): Promise<boolean> {
-    try {
-      if (this.state !== AgentState.PAUSED) {
-        throw new Error('Agent is not paused');
-      }
-      
-      this.isActive = true;
-      this.setState(AgentState.READY);
-      this.emit('resumed', { agentId: this.id });
-      
-      return true;
-    } catch (error) {
-      this.emit('error', { agentId: this.id, error });
-      return false;
+    
+    // Validate inputs if the tool has a validator
+    if (tool.validateInputs && !tool.validateInputs(inputs)) {
+      throw new Error(`Invalid inputs for tool: ${toolName}`);
     }
-  }
-
-  /**
-   * Execute a task with the agent
-   * 
-   * This method must be implemented by each agent type with its specific logic
-   * 
-   * @param task The task to execute
-   * @param inputs The inputs for the task
-   * @param options Additional options for execution
-   */
-  public abstract execute(
-    task: string,
-    inputs: Record<string, any>,
-    options?: Record<string, any>
-  ): Promise<ExecutionResult>;
-
-  /**
-   * Get the agent's ID
-   */
-  public getId(): string {
-    return this.id;
-  }
-
-  /**
-   * Get the agent's type
-   */
-  public getType(): AgentType {
-    return this.type;
-  }
-
-  /**
-   * Get the agent's name
-   */
-  public getName(): string {
-    return this.name;
-  }
-
-  /**
-   * Get the agent's description
-   */
-  public getDescription(): string {
-    return this.description;
-  }
-
-  /**
-   * Check if the agent has a specific capability
-   * 
-   * @param capability The capability to check for
-   */
-  public hasCapability(capability: AgentCapability): boolean {
-    return this.capabilities.has(capability);
-  }
-
-  /**
-   * Get all capabilities of the agent
-   */
-  public getCapabilities(): AgentCapability[] {
-    return Array.from(this.capabilities);
-  }
-
-  /**
-   * Add a capability to the agent
-   * 
-   * @param capability The capability to add
-   */
-  public addCapability(capability: AgentCapability): void {
-    this.capabilities.add(capability);
-    this.emit('capability-added', { agentId: this.id, capability });
-  }
-
-  /**
-   * Remove a capability from the agent
-   * 
-   * @param capability The capability to remove
-   */
-  public removeCapability(capability: AgentCapability): boolean {
-    const removed = this.capabilities.delete(capability);
-    if (removed) {
-      this.emit('capability-removed', { agentId: this.id, capability });
-    }
-    return removed;
-  }
-
-  /**
-   * Get the current state of the agent
-   */
-  public getState(): AgentState {
-    return this.state;
-  }
-
-  /**
-   * Set the agent's state
-   * 
-   * @param state The new state
-   */
-  protected setState(state: AgentState): void {
-    const previousState = this.state;
-    this.state = state;
-    this.lastActive = new Date();
-    this.emit('state-changed', { 
-      agentId: this.id, 
-      previousState, 
-      newState: state 
+    
+    // Log tool usage
+    this.logActivity(`Using tool: ${toolName}`, LogLevel.INFO, {
+      inputs: JSON.stringify(inputs)
     });
-  }
-
-  /**
-   * Get the current context of the agent
-   */
-  public getContext(): AgentContext {
-    return this.context;
-  }
-
-  /**
-   * Update the agent's context
-   * 
-   * @param contextUpdate Partial context update to merge
-   */
-  public updateContext(contextUpdate: Partial<AgentContext>): void {
-    // Deep merge the context update with the current context
-    if (contextUpdate.history) {
-      this.context.history = [...this.context.history, ...contextUpdate.history];
-      
-      // Trim history if it exceeds the maximum length
-      if (this.config.maxHistoryLength && this.context.history.length > this.config.maxHistoryLength) {
-        this.context.history = this.context.history.slice(-this.config.maxHistoryLength);
-      }
-    }
     
-    if (contextUpdate.memory) {
-      // Convert Map to Object for merging
-      const newMemoryEntries = Array.from(contextUpdate.memory.entries());
-      for (const [key, value] of newMemoryEntries) {
-        this.context.memory.set(key, value);
+    try {
+      // Execute the tool with the agent's context
+      const toolContext = {
+        agent: this,
+        agentContext: this.getContext(),
+        inputs
+      };
+      
+      const result = await tool.execute(toolContext);
+      
+      // Log success
+      this.logActivity(`Tool execution succeeded: ${toolName}`, LogLevel.INFO, {
+        success: result.success,
+        hasResult: !!result.result
+      });
+      
+      if (!result.success) {
+        throw new Error(result.error || 'Tool execution failed without specific error');
       }
       
-      // Trim memory if it exceeds the maximum size
-      if (this.config.maxMemoryItems && this.context.memory.size > this.config.maxMemoryItems) {
-        const keysToRemove = Array.from(this.context.memory.keys())
-          .slice(0, this.context.memory.size - this.config.maxMemoryItems);
-        
-        for (const key of keysToRemove) {
-          this.context.memory.delete(key);
-        }
+      return result.result;
+    } catch (error) {
+      // Log failure
+      this.logActivity(`Tool execution failed: ${toolName}`, LogLevel.ERROR, {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      
+      throw error;
+    }
+  }
+  
+  /**
+   * Process a task from the queue
+   */
+  protected async processTask(taskId: string): Promise<void> {
+    const task = this.tasks.get(taskId);
+    if (!task) {
+      this.logActivity(`Task not found: ${taskId}`, LogLevel.WARNING);
+      return;
+    }
+    
+    // Skip if task is not pending
+    if (task.status !== 'pending') {
+      return;
+    }
+    
+    try {
+      // Mark as running and record start time
+      task.status = 'running';
+      task.startTime = Date.now();
+      this.runningTasks.add(taskId);
+      
+      this.emit('taskStarted', { agentId: this.id, taskId, task });
+      this.logActivity(`Started task: ${taskId}`, LogLevel.INFO, {
+        type: task.type,
+        description: task.description
+      });
+      
+      // Delegate to task-specific handler
+      const result = await this.handleTask(task);
+      
+      // Mark as completed
+      task.status = 'completed';
+      task.endTime = Date.now();
+      task.result = result;
+      this.runningTasks.delete(taskId);
+      
+      this.emit('taskCompleted', { agentId: this.id, taskId, task, result });
+      this.logActivity(`Completed task: ${taskId}`, LogLevel.INFO, {
+        type: task.type,
+        duration: task.endTime - (task.startTime || task.endTime)
+      });
+    } catch (error) {
+      // Mark as failed
+      task.status = 'failed';
+      task.endTime = Date.now();
+      task.error = error instanceof Error ? error.message : String(error);
+      this.runningTasks.delete(taskId);
+      
+      this.emit('taskFailed', { agentId: this.id, taskId, task, error });
+      this.logActivity(`Failed task: ${taskId}`, LogLevel.ERROR, {
+        type: task.type,
+        error: task.error,
+        duration: task.endTime - (task.startTime || task.endTime)
+      });
+    }
+    
+    // Process next task in queue
+    this.processNextTask();
+  }
+  
+  /**
+   * Process the next task in the queue if available
+   */
+  private async processNextTask(): Promise<void> {
+    // Don't process if already processing or if we've hit the concurrency limit
+    if (this.processingQueue || 
+        (this.config.maxConcurrentTasks !== undefined && 
+         this.runningTasks.size >= this.config.maxConcurrentTasks)) {
+      return;
+    }
+    
+    this.processingQueue = true;
+    
+    try {
+      // Get next task from queue
+      const nextTaskId = this.taskQueue.shift();
+      if (nextTaskId) {
+        // Process in background without waiting
+        this.processTask(nextTaskId).catch(error => {
+          console.error(`Error processing task ${nextTaskId}:`, error);
+        });
       }
+    } finally {
+      this.processingQueue = false;
     }
     
-    if (contextUpdate.currentTask) {
-      this.context.currentTask = contextUpdate.currentTask;
-    }
-    
-    if (contextUpdate.environment) {
-      this.context.environment = { 
-        ...this.context.environment, 
-        ...contextUpdate.environment 
-      };
-    }
-    
-    if (contextUpdate.metadata) {
-      this.context.metadata = { 
-        ...this.context.metadata, 
-        ...contextUpdate.metadata 
-      };
-    }
-    
-    this.lastActive = new Date();
-    this.emit('context-updated', { agentId: this.id });
-  }
-
-  /**
-   * Add a message to the agent's history
-   * 
-   * @param role The role of the message sender
-   * @param content The content of the message
-   * @param metadata Additional metadata for the message
-   */
-  protected addMessage(role: 'user' | 'agent' | 'system', content: string, metadata?: Record<string, any>): AgentMessage {
-    const message: AgentMessage = {
-      id: uuidv4(),
-      timestamp: new Date(),
-      role,
-      content,
-      metadata
-    };
-    
-    this.context.history.push(message);
-    
-    // Trim history if it exceeds the maximum length
-    if (this.config.maxHistoryLength && this.context.history.length > this.config.maxHistoryLength) {
-      this.context.history = this.context.history.slice(-this.config.maxHistoryLength);
-    }
-    
-    this.emit('message-added', { agentId: this.id, message });
-    
-    return message;
-  }
-
-  /**
-   * Update the current task of the agent
-   * 
-   * @param task The task to set as current
-   */
-  protected setCurrentTask(task: AgentTask | null): void {
-    this.context.currentTask = task;
-    
-    if (task) {
-      this.emit('task-assigned', { agentId: this.id, taskId: task.id });
-    } else {
-      this.emit('task-cleared', { agentId: this.id });
+    // If there are more tasks and we have capacity, process another
+    if (this.taskQueue.length > 0 && 
+        (this.config.maxConcurrentTasks === undefined || 
+         this.runningTasks.size < this.config.maxConcurrentTasks)) {
+      // Process next task after a small delay to prevent tight loops
+      setTimeout(() => this.processNextTask(), 10);
     }
   }
-
+  
   /**
-   * Store a value in the agent's memory
-   * 
-   * @param key The key to store the value under
-   * @param value The value to store
+   * Handle a specific task - must be implemented by subclasses
    */
-  public remember(key: string, value: any): void {
-    this.context.memory.set(key, value);
+  protected async handleTask(task: AgentTask): Promise<any> {
+    // Base implementation just returns an unsupported task error
+    throw new Error(`Task type '${task.type}' is not supported by agent '${this.getName()}'`);
+  }
+  
+  /**
+   * Handler for taskAdded event
+   */
+  private handleTaskAdded({ taskId }: { taskId: string }): void {
+    // Add task to queue
+    this.taskQueue.push(taskId);
     
-    // Trim memory if it exceeds the maximum size
-    if (this.config.maxMemoryItems && this.context.memory.size > this.config.maxMemoryItems) {
-      const oldestKey = Array.from(this.context.memory.keys())[0];
-      this.context.memory.delete(oldestKey);
+    // Try to process it if we have capacity
+    if (this.status === AgentStatus.WORKING) {
+      this.processNextTask();
+    }
+  }
+  
+  /**
+   * Handler for taskCanceled event
+   */
+  private handleTaskCanceled({ taskId }: { taskId: string }): void {
+    // Remove from running tasks
+    this.runningTasks.delete(taskId);
+    
+    // Remove from queue if present
+    const index = this.taskQueue.indexOf(taskId);
+    if (index >= 0) {
+      this.taskQueue.splice(index, 1);
+    }
+  }
+  
+  /**
+   * Add an item to vector memory
+   */
+  protected async addToVectorMemory(content: string, metadata: Record<string, any> = {}, ttl?: number): Promise<string | null> {
+    if (!this.hasCapability(AgentCapability.VECTOR_SEARCH)) {
+      return null;
     }
     
-    this.emit('memory-updated', { agentId: this.id, key });
+    try {
+      return await vectorMemory.add(content, metadata, ttl);
+    } catch (error) {
+      this.logActivity('Failed to add to vector memory', LogLevel.ERROR, {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
   }
-
+  
   /**
-   * Retrieve a value from the agent's memory
-   * 
-   * @param key The key to retrieve
+   * Search vector memory for similar content
    */
-  public recall(key: string): any {
-    return this.context.memory.get(key);
-  }
-
-  /**
-   * Forget a value in the agent's memory
-   * 
-   * @param key The key to forget
-   */
-  public forget(key: string): boolean {
-    const deleted = this.context.memory.delete(key);
-    
-    if (deleted) {
-      this.emit('memory-item-deleted', { agentId: this.id, key });
+  protected async searchVectorMemory(
+    query: string, 
+    options: { limit?: number; threshold?: number; } = {}
+  ): Promise<any[] | null> {
+    if (!this.hasCapability(AgentCapability.VECTOR_SEARCH)) {
+      return null;
     }
     
-    return deleted;
+    try {
+      const results = await vectorMemory.search(query, options);
+      return results.items;
+    } catch (error) {
+      this.logActivity('Failed to search vector memory', LogLevel.ERROR, {
+        error: error instanceof Error ? error.message : String(error)
+      });
+      return null;
+    }
   }
-
+  
   /**
-   * Clear all values from the agent's memory
+   * Log activity to the storage system
    */
-  public clearMemory(): void {
-    this.context.memory.clear();
-    this.emit('memory-cleared', { agentId: this.id });
-  }
-
-  /**
-   * Check if the agent is currently active
-   */
-  public isActiveAgent(): boolean {
-    return this.isActive;
-  }
-
-  /**
-   * Get configuration information about the agent
-   */
-  public getConfig(): AgentConfig {
-    return this.config;
-  }
-
-  /**
-   * Update the agent's configuration
-   * 
-   * @param configUpdate Partial configuration update to merge
-   */
-  public updateConfig(configUpdate: Partial<AgentConfig>): void {
-    this.config = { ...this.config, ...configUpdate };
-    this.emit('config-updated', { agentId: this.id });
-  }
-
-  /**
-   * Get diagnostics information about the agent
-   */
-  public getDiagnostics(): Record<string, any> {
-    return {
-      id: this.id,
-      type: this.type,
-      name: this.name,
-      state: this.state,
-      isActive: this.isActive,
-      capabilities: Array.from(this.capabilities),
-      createdAt: this.createdAt,
-      lastActive: this.lastActive,
-      contextSize: {
-        historyLength: this.context.history.length,
-        memorySize: this.context.memory.size
-      },
-      currentTask: this.context.currentTask ? {
-        id: this.context.currentTask.id,
-        name: this.context.currentTask.name,
-        status: this.context.currentTask.status
-      } : null
-    };
+  protected async logActivity(message: string, level: LogLevel, details?: any): Promise<void> {
+    try {
+      await storage.createLog({
+        level,
+        category: LogCategory.AI,
+        message: `[Agent:${this.getName()}] ${message}`,
+        details: details ? JSON.stringify(details) : null,
+        source: `agent-${this.id}`,
+        projectId: null,
+        userId: null,
+        sessionId: null,
+        duration: null,
+        statusCode: null,
+        endpoint: null,
+        tags: ['agent', this.getName(), ...this.getCapabilities()]
+      });
+    } catch (error) {
+      console.error(`Failed to log agent activity:`, error);
+    }
   }
 }
