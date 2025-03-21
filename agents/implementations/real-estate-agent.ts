@@ -50,20 +50,18 @@ export class RealEstateAgent extends BaseAgent implements Agent {
   protected marketKnowledge: Map<string, any> = new Map();
   
   constructor(id: string, config: RealEstateAgentConfig) {
-    super(id, {
-      ...config,
-      capabilities: [
-        ...(config.capabilities || []),
-        AgentCapability.REAL_ESTATE_ANALYSIS,
-        AgentCapability.MARKET_PREDICTION,
-        AgentCapability.GIS_DATA_PROCESSING,
-        AgentCapability.TEXT_GENERATION,
-        AgentCapability.TEXT_UNDERSTANDING,
-        AgentCapability.TOOL_USE
-      ]
-    });
+    // Create a local copy of capabilities array for modification
+    const capabilities = [
+      ...(config.capabilities || []),
+      AgentCapability.REAL_ESTATE_ANALYSIS,
+      AgentCapability.MARKET_PREDICTION,
+      AgentCapability.GIS_DATA_PROCESSING,
+      AgentCapability.TEXT_GENERATION,
+      AgentCapability.TEXT_UNDERSTANDING,
+      AgentCapability.TOOL_USE
+    ];
     
-    this.config = config;
+    // Store configuration properties first
     this.regions = config.regions || [];
     this.propertyTypes = config.propertyTypes || ['residential', 'commercial'];
     this.dataSourcePreference = config.dataSourcePreference || 'both';
@@ -77,10 +75,16 @@ export class RealEstateAgent extends BaseAgent implements Agent {
       }
     };
     
-    // Register additional capabilities based on configuration
+    // Add additional capabilities based on configuration
     if (this.propertyTypes.includes('commercial')) {
-      this.config.capabilities.push(AgentCapability.REASONING);
+      capabilities.push(AgentCapability.REASONING);
     }
+    
+    // Initialize the base agent with the enhanced capabilities
+    super(id, {
+      ...config,
+      capabilities
+    });
   }
   
   /**

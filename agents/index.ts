@@ -179,6 +179,11 @@ export async function shutdownAgentSystem(): Promise<void> {
 }
 
 /**
+ * Export the agent demo function
+ */
+export { runAgentDemo } from './demo';
+
+/**
  * Log activity to the storage system
  */
 async function logSystemActivity(message: string, level: LogLevel, details?: any): Promise<void> {
