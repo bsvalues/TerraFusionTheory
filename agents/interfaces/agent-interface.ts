@@ -138,7 +138,7 @@ export interface AgentFactory {
 /**
  * Core agent interface
  */
-export interface Agent {
+export interface Agent extends NodeJS.EventEmitter {
   getId(): string;
   getType(): AgentType;
   getName(): string;

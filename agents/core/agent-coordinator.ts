@@ -181,10 +181,21 @@ export class AgentCoordinator extends EventEmitter implements AgentCoordinatorIn
       });
       
       // Log failure
-      await this.logTaskCompletion(agent, task, taskId, false, error);
+      await this.logTaskCompletion(
+        agent, 
+        task, 
+        taskId, 
+        false, 
+        error instanceof Error ? error : new Error(String(error))
+      );
       
       // Emit failure event
-      this.emit('task-failed', { agentId, taskId, task, error });
+      this.emit('task-failed', { 
+        agentId, 
+        taskId, 
+        task, 
+        error: error instanceof Error ? error : new Error(String(error)) 
+      });
       
       throw error;
     }
