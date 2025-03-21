@@ -269,9 +269,10 @@ export class AgentCoordinator extends EventEmitter implements AgentCoordinatorIn
   public getAllAgentStatuses(): Record<string, AgentState> {
     const statuses: Record<string, AgentState> = {};
     
-    for (const [agentId, agent] of this.agents.entries()) {
+    // Convert map entries to array to avoid iterator issues
+    Array.from(this.agents.entries()).forEach(([agentId, agent]) => {
       statuses[agentId] = agent.getState();
-    }
+    });
     
     return statuses;
   }
@@ -313,7 +314,8 @@ export class AgentCoordinator extends EventEmitter implements AgentCoordinatorIn
       };
     }> = {};
     
-    for (const [agentId, assignment] of this.assignments.entries()) {
+    // Convert map entries to array to avoid iterator issues
+    Array.from(this.assignments.entries()).forEach(([agentId, assignment]) => {
       const agent = this.agents.get(agentId);
       
       if (agent) {
@@ -326,7 +328,7 @@ export class AgentCoordinator extends EventEmitter implements AgentCoordinatorIn
           }
         };
       }
-    }
+    });
     
     return assignments;
   }
