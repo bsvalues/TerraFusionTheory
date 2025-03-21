@@ -610,14 +610,17 @@ export class AnalyticsAgent extends BaseAgent {
    */
   private calculateConfidenceIntervals(prediction: Partial<MarketMetricsSnapshot>): Record<string, any> {
     // Placeholder implementation
+    const medianPrice = prediction.medianPrice ?? 0;
+    const averagePrice = prediction.averagePrice ?? 0;
+    
     return {
       medianPrice: {
-        lower95: prediction.medianPrice * 0.9,
-        upper95: prediction.medianPrice * 1.1
+        lower95: medianPrice * 0.9,
+        upper95: medianPrice * 1.1
       },
       averagePrice: {
-        lower95: prediction.averagePrice * 0.9,
-        upper95: prediction.averagePrice * 1.1
+        lower95: averagePrice * 0.9,
+        upper95: averagePrice * 1.1
       }
     };
   }
@@ -627,18 +630,22 @@ export class AnalyticsAgent extends BaseAgent {
    * 
    * @param prediction Market prediction data
    */
-  private generateScenarios(prediction: MarketMetricsSnapshot): Record<string, any> {
+  private generateScenarios(prediction: Partial<MarketMetricsSnapshot>): Record<string, any> {
     // Placeholder implementation
+    const medianPrice = prediction.medianPrice ?? 0;
+    const averagePrice = prediction.averagePrice ?? 0;
+    const totalSales = prediction.totalSales ?? 0;
+    
     return {
       optimistic: {
-        medianPrice: prediction.medianPrice * 1.15,
-        averagePrice: prediction.averagePrice * 1.15,
-        totalSales: prediction.totalSales * 1.2
+        medianPrice: medianPrice * 1.15,
+        averagePrice: averagePrice * 1.15,
+        totalSales: totalSales * 1.2
       },
       pessimistic: {
-        medianPrice: prediction.medianPrice * 0.85,
-        averagePrice: prediction.averagePrice * 0.85,
-        totalSales: prediction.totalSales * 0.8
+        medianPrice: medianPrice * 0.85,
+        averagePrice: averagePrice * 0.85,
+        totalSales: totalSales * 0.8
       },
       neutral: prediction
     };
@@ -651,7 +658,7 @@ export class AnalyticsAgent extends BaseAgent {
    * @param scenarios Scenario analysis data
    */
   private generatePredictionInsights(
-    prediction: MarketMetricsSnapshot,
+    prediction: Partial<MarketMetricsSnapshot>,
     scenarios: Record<string, any>
   ): Array<string> {
     // Placeholder implementation
