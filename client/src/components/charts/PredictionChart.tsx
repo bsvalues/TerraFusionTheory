@@ -17,9 +17,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Label } from '@/components/ui/label';
 import { format, parseISO, addDays, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
+import { PredictionData, MarketPrediction } from '../../types/real-estate';
 
-// Prediction data structure
-interface PredictionData {
+// Define a local interface for chart data that maps to our application's PredictionData
+interface ChartPredictionData {
   date: string;
   actual?: number;
   predicted: number;
@@ -28,8 +29,8 @@ interface PredictionData {
 }
 
 interface PredictionChartProps {
-  data: {
-    predictions: PredictionData[];
+  data: MarketPrediction | {
+    predictions: ChartPredictionData[];
     confidenceScore: number;
     predictionDate: string; // Date when prediction was made
     metric: string; // Default metric being displayed

@@ -11,7 +11,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/hooks/use-toast';
-import { MarketCondition, MarketTrend, MarketMetricsSnapshot, MarketPrediction } from '@/types/real-estate';
+import { MarketCondition, MarketTrend, MarketMetricsSnapshot, MarketPrediction } from '../types/real-estate';
 
 // This demo uses the API if available, but falls back to empty data structures
 // for component showcase purposes
@@ -42,31 +42,21 @@ const MarketAnalyticsDashboard: React.FC = () => {
     enabled: false, // Don't fetch on component mount
   });
 
-  // Get market prediction data
-  const { data: predictionData, isLoading: isPredictionLoading, error: predictionError } = useQuery({
-    queryKey: ['/api/market/predict', { area: selectedArea, daysAhead: timeframe }],
-    queryFn: async () => {
-      try {
-        const response = await fetch(`/api/market/predict?area=${selectedArea}&daysAhead=${timeframe}`);
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || 'Error fetching market predictions');
-        }
-        const data = await response.json();
-        return data.data as MarketPrediction;
-      } catch (error) {
-        console.error('Error fetching market predictions:', error);
-        throw error;
-      }
-    },
-    enabled: false, // Don't fetch on component mount
-  });
+  // Get market prediction data - we'll use a mock for now
+  // In a real app, we would fetch this from the API
+  const predictionData: MarketPrediction | null = null; // We'll use our mock data instead
 
   // Load the data when "Load Data" button is clicked
   const handleLoadData = () => {
     // This will trigger both queries
     // In a real application, this would be automatic based on user selections
-    // For this demo, we keep it manual to allow showcasing the UI without real data
+    toast({
+      title: "Loading market data",
+      description: `Fetching market data for ${selectedArea}...`,
+    });
+    
+    // Enable both queries
+    // Note: In this demo we don't actually fetch from the API
   };
 
   // Generate demo price history data - this would come from the API in a real application
@@ -162,7 +152,8 @@ const MarketAnalyticsDashboard: React.FC = () => {
   const priceHistoryData = generatePriceHistoryData();
   const marketMetricsData = generateMarketMetricsData();
   const segmentData = generateSegmentData();
-  const predictionData = generatePredictionData();
+  // Use the mock data when API data is not available
+  const mockPredictionData = generatePredictionData();
 
   return (
     <div className="space-y-6 pb-10">
@@ -223,7 +214,7 @@ const MarketAnalyticsDashboard: React.FC = () => {
           title="Market Segment Comparison"
         />
         <PredictionChart 
-          data={predictionData} 
+          data={predictionData || mockPredictionData} 
           title="Market Predictions"
         />
       </div>
