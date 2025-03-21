@@ -55,8 +55,16 @@ const MarketAnalyticsDashboard: React.FC = () => {
       description: `Fetching market data for ${selectedArea}...`,
     });
     
-    // Enable both queries
-    // Note: In this demo we don't actually fetch from the API
+    // In a real application, we would enable API fetching here
+    // and the data would be refreshed from the server
+    
+    // For now, we'll just show a success message after a short delay
+    setTimeout(() => {
+      toast({
+        title: "Data loaded successfully",
+        description: "Using locally generated market data for demonstration",
+      });
+    }, 1000);
   };
 
   // Generate demo price history data - this would come from the API in a real application
@@ -126,16 +134,16 @@ const MarketAnalyticsDashboard: React.FC = () => {
       const baseValue = 425000;
       const trend = 5000; // Monthly price increase
       
-      const predicted = baseValue + (i * trend);
-      const actual = isPast ? baseValue + (i * trend) * (0.9 + Math.random() * 0.2) : undefined;
-      const variance = predicted * 0.05; // 5% variance
+      const value = baseValue + (i * trend);
+      const confidenceLow = isPast ? undefined : value * 0.95; // 5% variance
+      const confidenceHigh = isPast ? undefined : value * 1.05; // 5% variance
       
+      // Return data in the format expected by our shared PredictionData type
       return {
         date: format(date, 'yyyy-MM-dd'),
-        actual,
-        predicted,
-        lowerBound: !isPast ? predicted - variance : undefined,
-        upperBound: !isPast ? predicted + variance : undefined
+        value,
+        confidenceLow,
+        confidenceHigh
       };
     });
 

@@ -19,13 +19,15 @@ import { format, parseISO, addDays, formatDistanceToNow } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
 import { PredictionData, MarketPrediction } from '../../types/real-estate';
 
-// Define a local interface for chart data that maps to our application's PredictionData
+// Define a local interface for chart data that works with our chart library
 interface ChartPredictionData {
   date: string;
   actual?: number;
   predicted: number;
   lowerBound?: number;
   upperBound?: number;
+  // Type guard to distinguish this type from PredictionData
+  [key: string]: any;
 }
 
 interface PredictionChartProps {
@@ -163,9 +165,29 @@ export function PredictionChart({
   // Find today's date to mark as reference line
   const today = new Date().toISOString().split('T')[0];
 
+  // Adapt data structure if it's coming from API 
+  const chartData = React.useMemo(() => {
+    // Convert PredictionData[] to ChartPredictionData[] if needed
+    return data.predictions.map(p => {
+      // Check if we're dealing with API data (PredictionData) or local data (ChartPredictionData)
+      if ('value' in p) {
+        // It's API data, adapt it to our chart format
+        return {
+          date: p.date,
+          actual: p.value, // Use value as actual for past data
+          predicted: p.value, // Use same value for predicted line
+          lowerBound: p.confidenceLow,
+          upperBound: p.confidenceHigh
+        } as ChartPredictionData;
+      }
+      // It's already in chart format
+      return p as unknown as ChartPredictionData;
+    });
+  }, [data.predictions]);
+  
   // Count how many data points have actual values (past data) vs predictions
-  const pastDataCount = data.predictions.filter(p => p.actual !== undefined).length;
-  const futureDataCount = data.predictions.length - pastDataCount;
+  const pastDataCount = chartData.filter(p => p.actual !== undefined).length;
+  const futureDataCount = chartData.length - pastDataCount;
 
   return (
     <Card className={className}>
@@ -207,7 +229,7 @@ export function PredictionChart({
       <CardContent>
         <div style={{ width: '100%', height }}>
           <ChartContainer config={chartConfig}>
-            <LineChart data={data.predictions} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
+            <LineChart data={chartData} margin={{ top: 5, right: 30, left: 20, bottom: 5 }}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis 
                 dataKey="date" 
@@ -224,10 +246,10 @@ export function PredictionChart({
               <ReferenceLine x={today} stroke="#888" strokeDasharray="3 3" label={{ value: 'Today', position: 'insideTopRight' }} />
               
               {/* Confidence interval area */}
-              {data.predictions.some(d => d.lowerBound !== undefined && d.upperBound !== undefined) && (
+              {chartData.some(d => d.lowerBound !== undefined && d.upperBound !== undefined) && (
                 <ReferenceArea 
-                  x1={data.predictions[pastDataCount]?.date} 
-                  x2={data.predictions[data.predictions.length-1]?.date}
+                  x1={chartData[pastDataCount]?.date} 
+                  x2={chartData[chartData.length-1]?.date}
                   y1={0} 
                   y2={0}
                   label="Confidence Interval" 
@@ -267,7 +289,7 @@ export function PredictionChart({
               />
               
               {/* Confidence bounds - only displayed if data is available */}
-              {data.predictions.some(d => d.lowerBound !== undefined) && (
+              {chartData.some(d => d.lowerBound !== undefined) && (
                 <Line
                   type="monotone"
                   dataKey="lowerBound"
@@ -279,7 +301,7 @@ export function PredictionChart({
                 />
               )}
               
-              {data.predictions.some(d => d.upperBound !== undefined) && (
+              {chartData.some(d => d.upperBound !== undefined) && (
                 <Line
                   type="monotone"
                   dataKey="upperBound"
