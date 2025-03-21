@@ -329,24 +329,24 @@ export class AnalyticsAgent extends BaseAgent {
       );
       
       // Extract the predicted metrics (partial MarketMetricsSnapshot)
-      const prediction = predictionResult.predictedMetrics as MarketMetricsSnapshot;
+      const predictedMetrics = predictionResult.predictedMetrics;
       
-      // Calculate confidence intervals
-      const confidenceIntervals = this.calculateConfidenceIntervals(prediction);
+      // Calculate confidence intervals based on the predicted metrics
+      const confidenceIntervals = this.calculateConfidenceIntervals(predictedMetrics);
       
-      // Generate scenario analysis
-      const scenarios = this.generateScenarios(prediction);
+      // Generate scenario analysis based on the predicted metrics
+      const scenarios = this.generateScenarios(predictedMetrics);
       
       // Return prediction results
       return {
         area,
         timeframe,
         predictionHorizon,
-        prediction,
+        prediction: predictedMetrics,
         confidenceScore: predictionResult.confidenceScore,
         confidenceIntervals,
         scenarios,
-        insights: this.generatePredictionInsights(prediction, scenarios)
+        insights: this.generatePredictionInsights(predictedMetrics, scenarios)
       };
     } catch (error) {
       await this.logError('Trend prediction failed', error);
@@ -608,7 +608,7 @@ export class AnalyticsAgent extends BaseAgent {
    * 
    * @param prediction Market prediction data
    */
-  private calculateConfidenceIntervals(prediction: MarketMetricsSnapshot): Record<string, any> {
+  private calculateConfidenceIntervals(prediction: Partial<MarketMetricsSnapshot>): Record<string, any> {
     // Placeholder implementation
     return {
       medianPrice: {
