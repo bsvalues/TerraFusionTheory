@@ -240,16 +240,23 @@ export class DeveloperAgent extends BaseAgent {
       this.addMessage('user', `Generate ${language} code for: ${requirements}`);
       
       // Generate code using AI service
-      const generatedCode = await enhancedAIService.generateCode(
+      const result = await enhancedAIService.generateCode(
         requirements,
-        language
+        language,
+        options.userId || null,
+        options.sessionId || null
       );
       
+      // Extract the code text from the result
+      const codeResult = result && typeof result === 'object' && result.code
+        ? result.code
+        : (typeof result === 'string' ? result : JSON.stringify(result));
+      
       // Add AI response to history
-      this.addMessage('agent', typeof generatedCode === 'string' ? generatedCode : JSON.stringify(generatedCode));
+      this.addMessage('agent', codeResult);
       
       // Parse and format the response
-      const formattedCode = this.formatCodeResponse(generatedCode, language, fileType);
+      const formattedCode = this.formatCodeResponse(codeResult, language, fileType);
       
       // Return the result
       return {
@@ -301,11 +308,18 @@ Please provide:
       // Generate review using AI service
       const review = await enhancedAIService.analyzeMessage(
         reviewPrompt, 
-        options.projectId || null
+        options.projectId || null,
+        options.userId || null,
+        options.sessionId || null
       );
       
+      // Extract review text
+      const reviewText = typeof review === 'string' 
+        ? review 
+        : (typeof review === 'object' ? JSON.stringify(review) : String(review));
+      
       // Add AI response to history
-      this.addMessage('agent', typeof review === 'string' ? review : JSON.stringify(review));
+      this.addMessage('agent', reviewText);
       
       // Extract the improved code from the review
       const improvedCode = this.extractCodeFromReview(review, language);
@@ -313,7 +327,7 @@ Please provide:
       // Return the result
       return {
         originalCode: code,
-        review,
+        review: reviewText,
         improvedCode,
         language
       };
@@ -342,11 +356,18 @@ Please provide:
       // Debug code using AI service
       const debugResult = await enhancedAIService.debugCode(
         code,
-        error
+        error,
+        options.userId || null,
+        options.sessionId || null
       );
       
+      // Extract the analysis text from the debug result
+      const analysisText = debugResult && typeof debugResult === 'object' && debugResult.analysis 
+        ? debugResult.analysis 
+        : JSON.stringify(debugResult);
+      
       // Add AI response to history
-      this.addMessage('agent', typeof debugResult === 'string' ? debugResult : JSON.stringify(debugResult));
+      this.addMessage('agent', analysisText);
       
       // Extract the fixed code from the debug result
       const fixedCode = this.extractCodeFromDebug(debugResult, language);
@@ -355,7 +376,7 @@ Please provide:
       return {
         originalCode: code,
         error,
-        debugAnalysis: debugResult,
+        debugAnalysis: analysisText,
         fixedCode,
         language
       };
@@ -382,18 +403,25 @@ Please provide:
       this.addMessage('user', `Generate ${docType} documentation for this ${language} code`);
       
       // Generate documentation using AI service
-      const documentation = await enhancedAIService.generateDocumentation(
+      const docResult = await enhancedAIService.generateDocumentation(
         code,
-        docType
+        docType,
+        options.userId || null,
+        options.sessionId || null
       );
       
+      // Extract the documentation text
+      const docText = docResult && typeof docResult === 'object' && docResult.documentation
+        ? docResult.documentation
+        : (typeof docResult === 'string' ? docResult : JSON.stringify(docResult));
+      
       // Add AI response to history
-      this.addMessage('agent', typeof documentation === 'string' ? documentation : JSON.stringify(documentation));
+      this.addMessage('agent', docText);
       
       // Return the result
       return {
         code,
-        documentation,
+        documentation: docText,
         docType,
         language
       };
@@ -420,18 +448,25 @@ Please provide:
       this.addMessage('user', question);
       
       // Generate answer using AI service
-      const answer = await enhancedAIService.analyzeMessage(
+      const result = await enhancedAIService.analyzeMessage(
         question,
-        options.projectId || null
+        options.projectId || null,
+        options.userId || null,
+        options.sessionId || null
       );
       
+      // Extract the answer text
+      const answerText = result && typeof result === 'string' 
+        ? result 
+        : (typeof result === 'object' ? JSON.stringify(result) : String(result));
+      
       // Add AI response to history
-      this.addMessage('agent', typeof answer === 'string' ? answer : JSON.stringify(answer));
+      this.addMessage('agent', answerText);
       
       // Return the result
       return {
         question,
-        answer
+        answer: answerText
       };
     } catch (error) {
       await this.logError('Question answering failed', error);
