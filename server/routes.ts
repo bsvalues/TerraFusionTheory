@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import * as openaiController from "./controllers/openai.controller";
 import * as aiController from "./controllers/ai.controller";
 import * as connectorsController from "./controllers/connectors.controller";
-import * as marketController from "./controllers/market.controller";
+import { marketController } from "./controllers/market.controller";
 import * as analyticsController from "./controllers/analytics.controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
@@ -364,6 +364,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/market/listings", asyncHandler(marketController.getMarketListings));
   app.get("/api/market/listings/:mlsNumber", asyncHandler(marketController.getMarketListingByMLS));
   app.get("/api/market/stats", asyncHandler(marketController.getMarketStats));
+  app.get("/api/market/snapshot", asyncHandler(marketController.getMarketSnapshot));
+  app.get("/api/market/predict", asyncHandler(marketController.predictMarketMetrics));
+  app.get("/api/market/alerts", asyncHandler(marketController.getMarketAlerts));
+  app.get("/api/market/neighborhoods", asyncHandler(marketController.analyzeNeighborhoodTrends));
+  app.get("/api/market/spatial", asyncHandler(marketController.getPropertySpatialRelationships));
 
   // Enhanced Analytics API routes
   app.get("/api/analytics/market/:area?", asyncHandler(analyticsController.getMarketSnapshot));
