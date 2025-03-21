@@ -246,7 +246,7 @@ export class DeveloperAgent extends BaseAgent {
       );
       
       // Add AI response to history
-      this.addMessage('agent', generatedCode);
+      this.addMessage('agent', typeof generatedCode === 'string' ? generatedCode : JSON.stringify(generatedCode));
       
       // Parse and format the response
       const formattedCode = this.formatCodeResponse(generatedCode, language, fileType);
@@ -305,7 +305,7 @@ Please provide:
       );
       
       // Add AI response to history
-      this.addMessage('agent', review);
+      this.addMessage('agent', typeof review === 'string' ? review : JSON.stringify(review));
       
       // Extract the improved code from the review
       const improvedCode = this.extractCodeFromReview(review, language);
@@ -346,7 +346,7 @@ Please provide:
       );
       
       // Add AI response to history
-      this.addMessage('agent', debugResult);
+      this.addMessage('agent', typeof debugResult === 'string' ? debugResult : JSON.stringify(debugResult));
       
       // Extract the fixed code from the debug result
       const fixedCode = this.extractCodeFromDebug(debugResult, language);
@@ -388,7 +388,7 @@ Please provide:
       );
       
       // Add AI response to history
-      this.addMessage('agent', documentation);
+      this.addMessage('agent', typeof documentation === 'string' ? documentation : JSON.stringify(documentation));
       
       // Return the result
       return {
@@ -426,7 +426,7 @@ Please provide:
       );
       
       // Add AI response to history
-      this.addMessage('agent', answer);
+      this.addMessage('agent', typeof answer === 'string' ? answer : JSON.stringify(answer));
       
       // Return the result
       return {
@@ -447,13 +447,16 @@ Please provide:
    * @param fileType Type of file
    */
   private formatCodeResponse(
-    response: string,
+    response: any,
     language: string,
     fileType?: string
   ): { code: string; explanation: string } {
+    // Convert response to string if it's not already
+    const responseStr = typeof response === 'string' ? response : JSON.stringify(response);
+    
     // Simple regex to extract code blocks from markdown
     const codeBlockRegex = /```(?:[\w-]+)?\n([\s\S]*?)```/g;
-    const matches = [...response.matchAll(codeBlockRegex)];
+    const matches = Array.from(responseStr.matchAll(codeBlockRegex));
     
     let code = '';
     if (matches.length > 0) {
@@ -461,11 +464,11 @@ Please provide:
       code = matches[0][1].trim();
     } else {
       // If no code block found, use the whole response
-      code = response;
+      code = responseStr;
     }
     
     // Remove code blocks from explanation
-    let explanation = response.replace(codeBlockRegex, '').trim();
+    let explanation = responseStr.replace(codeBlockRegex, '').trim();
     
     return { code, explanation };
   }
@@ -476,10 +479,13 @@ Please provide:
    * @param review Review response
    * @param language Programming language
    */
-  private extractCodeFromReview(review: string, language: string): string {
+  private extractCodeFromReview(review: any, language: string): string {
+    // Convert review to string if it's not already
+    const reviewStr = typeof review === 'string' ? review : JSON.stringify(review);
+    
     // Extract code blocks from the review
     const codeBlockRegex = new RegExp(`\`\`\`(?:${language})?\\n([\\s\\S]*?)\`\`\``, 'g');
-    const matches = [...review.matchAll(codeBlockRegex)];
+    const matches = Array.from(reviewStr.matchAll(codeBlockRegex));
     
     // Return the last code block (improved code)
     if (matches.length > 0) {
@@ -495,10 +501,13 @@ Please provide:
    * @param debugResult Debug response
    * @param language Programming language
    */
-  private extractCodeFromDebug(debugResult: string, language: string): string {
+  private extractCodeFromDebug(debugResult: any, language: string): string {
+    // Convert debugResult to string if it's not already
+    const debugStr = typeof debugResult === 'string' ? debugResult : JSON.stringify(debugResult);
+    
     // Extract code blocks from the debug result
     const codeBlockRegex = new RegExp(`\`\`\`(?:${language})?\\n([\\s\\S]*?)\`\`\``, 'g');
-    const matches = [...debugResult.matchAll(codeBlockRegex)];
+    const matches = Array.from(debugStr.matchAll(codeBlockRegex));
     
     // Return the last code block (fixed code)
     if (matches.length > 0) {
