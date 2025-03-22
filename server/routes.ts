@@ -6,6 +6,7 @@ import * as aiController from "./controllers/ai.controller";
 import * as connectorsController from "./controllers/connectors.controller";
 import { marketController } from "./controllers/market.controller";
 import * as analyticsController from "./controllers/analytics.controller";
+import * as gisController from "./controllers/gis.controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
@@ -366,6 +367,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/connectors/:name/query/cama", asyncHandler(connectorsController.queryCAMAData));
   app.post("/api/connectors/:name/query/gis", asyncHandler(connectorsController.queryGISData));
   
+  // GIS routes
+  app.post("/api/gis/geocode", asyncHandler(gisController.geocodeAddress));
+  app.get("/api/gis/geojson", asyncHandler(gisController.getGeoJSONData));
+
   // Market Data routes
   app.get("/api/market/snapshot", asyncHandler(marketController.getMarketSnapshot));
   app.get("/api/market/predict", asyncHandler(marketController.predictMarketMetrics));
