@@ -13,9 +13,10 @@ import {
 } from '../../agents';
 import { agentCoordinator } from '../../agents/core/agent-coordinator';
 import { agentRegistry } from '../../agents/core/agent-registry';
-import { vectorMemory } from '../../agents/memory/vector';
+import { vectorMemory, AdvancedSearchOptions } from '../../agents/memory/vector';
 import { asyncHandler } from '../middleware/errorHandler';
 import { testVectorMemory } from '../../agents/memory/vector-test';
+import { LogLevel } from '../../shared/schema';
 
 const router = Router();
 
@@ -424,27 +425,36 @@ router.post('/agent-collaboration', asyncHandler(async (req, res) => {
   }
   
   try {
-    // Use the agentCoordinator imported at the top
+    // Get the target agent from the registry
+    const targetAgent = agentRegistry.getAgent(target_agent_id);
+    if (!targetAgent) {
+      return res.status(404).json({
+        success: false,
+        error: `Target agent with ID ${target_agent_id} not found`
+      });
+    }
     
-    // Prepare the collaboration request
-    const collaborationRequest = {
-      sourceAgentId: source_agent_id,
-      message,
-      task: task || 'answer_question', // Default task
-      inputs: inputs || { question: message },
-      context: context || {},
-      priority: 'normal'
+    // Prepare task inputs
+    const taskInputs = inputs || { 
+      question: message,
+      context: `This question was forwarded from agent ${source_agent_id}`
     };
     
-    // Send the request to the target agent
-    const result = await agentCoordinator.delegateToAgent(target_agent_id, collaborationRequest);
+    // Use the assignTask method from agentCoordinator
+    const result = await agentCoordinator.assignTask(
+      target_agent_id, 
+      task || 'answer_question',
+      taskInputs,
+      { priority: 'normal' }
+    );
     
     res.json({
       success: true,
       source_agent_id,
       target_agent_id,
-      request: collaborationRequest,
-      result: result.success ? result.data : { error: result.error?.message || 'Collaboration failed' }
+      task: task || 'answer_question',
+      inputs: taskInputs,
+      result: result
     });
   } catch (error) {
     res.status(500).json({
@@ -459,30 +469,24 @@ router.post('/agent-collaboration', asyncHandler(async (req, res) => {
  */
 router.get('/agents', asyncHandler(async (req, res) => {
   try {
-    const agentIds = agentRegistry.getAllAgentIds();
+    // Get all agents from the registry
+    const allAgents = agentRegistry.getAllAgents();
     
-    const agents = await Promise.all(
-      agentIds.map(async (id: string) => {
-        const agent = await agentRegistry.getAgentById(id);
-        if (!agent) return null;
-        
-        return {
-          id: agent.getId(),
-          name: agent.getName(),
-          description: agent.getDescription(),
-          capabilities: agent.getCapabilities(),
-          type: agent.getType()
-        };
-      })
-    );
-    
-    // Filter out null values (in case any agents failed to load)
-    const validAgents = agents.filter((a: any) => a !== null);
+    // Map agent objects to simplified representations
+    const agents = allAgents.map(agent => {
+      const id = agent.getId ? agent.getId() : 'unknown-id';
+      const name = agent.getName ? agent.getName() : 'Unknown Agent';
+      const description = agent.getDescription ? agent.getDescription() : 'No description available';
+      const capabilities = agent.getCapabilities ? agent.getCapabilities() : [];
+      const type = agent.getType ? agent.getType() : 'unknown';
+      
+      return { id, name, description, capabilities, type };
+    });
     
     res.json({
       success: true,
-      count: validAgents.length,
-      agents: validAgents
+      count: agents.length,
+      agents: agents
     });
   } catch (error) {
     res.status(500).json({
@@ -496,7 +500,7 @@ router.get('/agents', asyncHandler(async (req, res) => {
  * Search vector memory
  */
 router.post('/search-memory', asyncHandler(async (req, res) => {
-  const { query, count, diversityFactor } = req.body;
+  const { query, limit, threshold, diversityFactor } = req.body;
   
   if (!query) {
     return res.status(400).json({
@@ -507,14 +511,26 @@ router.post('/search-memory', asyncHandler(async (req, res) => {
   
   try {
     // Search the vector memory with the provided query
-    const searchResults = await vectorMemory.search(query, {
-      count: count || 5, // Default to 5 results
-      diversityFactor: diversityFactor || 0.5 // Default diversity factor
-    });
+    const searchOptions: AdvancedSearchOptions = {
+      limit: limit || 5, // Default to 5 results
+      threshold: threshold || 0.2 // Default threshold
+    };
+    
+    // Add hybridSearch options if diversityFactor is provided
+    if (diversityFactor !== undefined) {
+      searchOptions.hybridSearch = {
+        enabled: true,
+        keywordWeight: diversityFactor,
+        semanticWeight: 1 - diversityFactor
+      };
+    }
+    
+    const searchResults = await vectorMemory.search(query, searchOptions);
     
     res.json({
       success: true,
       query,
+      options: searchOptions,
       results: searchResults
     });
   } catch (error) {
