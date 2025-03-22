@@ -7,6 +7,7 @@ import Home from "@/pages/Home";
 import GISDemo from "@/pages/GISDemo";
 import Badges from "@/pages/Badges";
 import CodeSnippets from "@/pages/CodeSnippets";
+import AgentTestPage from "@/pages/AgentTestPage";
 import { ErrorProvider } from "@/hooks/useErrors";
 import { FeedbackProvider } from "@/hooks/useFeedback";
 import ErrorDashboard from "@/components/debug/ErrorDashboard";
@@ -19,6 +20,7 @@ function Router() {
       <Route path="/gis-demo" component={GISDemo} />
       <Route path="/badges" component={Badges} />
       <Route path="/code-snippets" component={CodeSnippets} />
+      <Route path="/agents" component={AgentTestPage} />
       {/* Fallback to 404 */}
       <Route component={NotFound} />
     </Switch>
