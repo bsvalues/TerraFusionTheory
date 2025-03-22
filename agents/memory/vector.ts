@@ -654,7 +654,7 @@ class EnhancedVectorStore {
   ): Promise<MemorySearchResult[]> {
     // Default options
     const limit = options?.limit || 5;
-    const threshold = options?.threshold || 0.7;
+    const threshold = options?.threshold || 0.3; // Lower default threshold for enhanced embeddings
     
     // Generate query embedding
     const queryEmbedding = await this.generateEmbedding(query);
@@ -1199,6 +1199,13 @@ class EnhancedVectorStore {
     return Array.from(this.entries.values())
       .filter(filter)
       .length;
+  }
+  
+  /**
+   * Get all entries (for debugging and testing)
+   */
+  getEntries(): MemoryEntry[] {
+    return Array.from(this.entries.values());
   }
   
   /**

@@ -225,8 +225,8 @@ async function performBasicSearch() {
   const query = "What's happening in the Grandview real estate market?";
   
   // Log candidate entries before search
-  const candidateCount = Array.from(vectorMemory.getEntries()).length;
-  console.log(`[TEST DEBUG] Total entries in memory: ${candidateCount}`);
+  const entries = await vectorMemory.getAllEntries();
+  console.log(`[TEST DEBUG] Total entries in memory: ${entries.length}`);
   
   // Use lower threshold for testing
   const results = await vectorMemory.search(query, {
