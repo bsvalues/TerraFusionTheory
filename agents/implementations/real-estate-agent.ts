@@ -363,34 +363,97 @@ export class RealEstateAgent extends BaseAgent implements Agent {
    */
   private async handleMarketAnalysisTask(task: AgentTask): Promise<void> {
     const { region, propertyType, timeframe } = task.inputs;
+    const effectiveTimeframe = timeframe || this.marketMetricsConfig.defaultTimeframe;
+    
+    // Log the start of market analysis
+    await this.logActivity(`Starting market analysis for ${region} ${propertyType}`, LogLevel.INFO, {
+      region,
+      propertyType,
+      timeframe: effectiveTimeframe
+    });
     
     // Prepare the prompt for market analysis
-    const prompt = this.buildMarketAnalysisPrompt(region, propertyType, timeframe || this.marketMetricsConfig.defaultTimeframe);
+    const prompt = this.buildMarketAnalysisPrompt(region, propertyType, effectiveTimeframe);
     
-    // Use MCP tool for market analysis
+    // Create a custom memory query to find relevant market data
+    const memoryQuery = `${region} ${propertyType} real estate market ${effectiveTimeframe} trends analysis`;
+    
+    // Use enhanced MCP tool for market analysis with vector memory integration
     const result = await this.useTool('mcp', {
       model: 'gpt-4',
       prompt,
       temperature: 0.3,
-      system_message: `You are a real estate market analyst with expertise in ${region} ${propertyType} properties. Provide an insightful analysis focusing on market trends, pricing, inventory, and future outlook.`
+      system_message: `You are a real estate market analyst with expertise in ${region} ${propertyType} properties. Provide an insightful analysis focusing on market trends, pricing, inventory, and future outlook.`,
+      
+      // Enhanced context-aware parameters
+      use_vector_memory: true,
+      memory_query: memoryQuery,
+      memory_options: {
+        limit: 5,
+        threshold: 0.25,  // Lower threshold to get more potential matches for market data
+        diversityFactor: 0.4,
+        includeSources: true,
+        timeWeighting: {
+          enabled: true,
+          halfLifeDays: 15,  // Market data becomes outdated more quickly
+          maxBoost: 2.0
+        }
+      },
+      context_integration: 'smart'
     });
     
     if (!result.success) {
       throw new Error(`Market analysis failed: ${result.error}`);
     }
     
+    // Extract context sources and metadata
+    const contextSourcesUsed = result.result.metadata?.contextSources || [];
+    const contextEnhanced = result.result.metadata?.contextEnhanced || false;
+    
     // Store the analysis in market knowledge
     const analysis = result.result.response;
     this.marketKnowledge.set(`market_analysis_${region}_${propertyType}_${Date.now()}`, analysis);
     
-    // Set the task result
+    // Set the task result with enhanced metadata
     task.result = {
       analysis,
       region,
       propertyType,
-      timeframe: timeframe || this.marketMetricsConfig.defaultTimeframe,
-      timestamp: new Date().toISOString()
+      timeframe: effectiveTimeframe,
+      timestamp: new Date().toISOString(),
+      metadata: {
+        contextEnhanced,
+        contextSources: contextSourcesUsed,
+        responseTime: result.metadata?.responseTime || null,
+        modelUsed: result.result.model,
+        fromCache: result.result.fromCache || false
+      }
     };
+    
+    // Store the analysis in vector memory for future reference
+    await vectorMemory.addEntry(
+      `Market Analysis for ${region} ${propertyType} (${effectiveTimeframe}): ${analysis}`,
+      {
+        source: 'market-analysis',
+        agentId: this.getId(),
+        timestamp: new Date().toISOString(),
+        category: 'market-analysis',
+        tags: ['market-analysis', region, propertyType, effectiveTimeframe],
+        region,
+        propertyType,
+        timeframe: effectiveTimeframe
+      }
+    );
+    
+    await this.logActivity(`Completed market analysis for ${region} ${propertyType}`, LogLevel.INFO, {
+      region,
+      propertyType,
+      timeframe: effectiveTimeframe,
+      analysisLength: analysis.length,
+      contextSourcesUsed: contextSourcesUsed.length,
+      contextEnhanced,
+      responseTime: result.metadata?.responseTime
+    });
   }
   
   /**
@@ -539,74 +602,72 @@ export class RealEstateAgent extends BaseAgent implements Agent {
   private async handleQuestionTask(task: AgentTask): Promise<void> {
     const { question, context } = task.inputs;
     
-    // Search relevant information in vector memory with lower threshold
-    const memoryResults = await vectorMemory.search(question, { 
-      limit: 5, 
-      threshold: 0.3,  // Lower threshold to match our improved vector memory
-      diversityOptions: {
-        enabled: true,
-        minDistance: 0.2  // Add diversity to get a range of relevant content
-      }
+    // Log that we're processing a question
+    await this.logActivity(`Processing question: "${question.substring(0, 30)}..."`, LogLevel.INFO, {
+      questionLength: question.length,
+      hasAdditionalContext: !!context
     });
     
-    // Log memory search results
-    await this.logActivity(`Vector memory search results for question: "${question.substring(0, 30)}..."`, LogLevel.DEBUG, {
-      resultCount: memoryResults.length,
-      topResults: memoryResults.slice(0, 3).map(r => ({
-        preview: r.entry.text.substring(0, 50) + '...',
-        score: r.score
-      }))
-    });
-    
-    // Build context from relevant memories
-    let contextFromMemory = '';
-    if (memoryResults.length > 0) {
-      contextFromMemory = "Relevant information from my knowledge base:\n" + 
-        memoryResults.map(result => `- ${result.entry.text} (relevance: ${result.score.toFixed(2)})`).join('\n');
-    }
-    
-    // Prepare the prompt with enhanced structure
+    // Prepare a base prompt that will be enhanced with context by the MCP tool
     const prompt = `
 Question about real estate: ${question}
 
-${memoryResults.length > 0 ? '## Relevant Context\n' + contextFromMemory + '\n\n' : ''}
-${context ? `## Additional Context\n${context}\n\n` : ''}
+${context ? `## Additional Context Provided By User\n${context}\n\n` : ''}
 
 ## Task
 Please provide a clear, accurate, and helpful answer to the question based on:
 1. Your expertise in real estate
-2. The provided context information (if any)
+2. The relevant information from your knowledge base
 3. Current market understanding
+4. The additional context (if provided)
 
 Focus on providing actionable insights that would be valuable to someone interested in real estate.
 `;
     
-    // Use enhanced MCP tool to answer the question
+    // Use enhanced MCP tool with vector memory integration
     const result = await this.useTool('mcp', {
       model: 'gpt-4',
       prompt,
       temperature: 0.4,  // Slightly lower temperature for more focused responses
       system_message: 'You are a knowledgeable real estate professional with expertise in market analysis, property valuation, and investment strategies. Your specialty is the Grandview, WA market and surrounding areas in the Pacific Northwest. Provide clear, accurate, and helpful answers to real estate questions.',
-      cache: true  // Enable caching for efficiency
+      cache: true,  // Enable caching for efficiency
+      
+      // Enhanced context-aware parameters
+      use_vector_memory: true,  // Enable vector memory context enhancement
+      memory_query: question,   // Use the exact question for memory search
+      memory_options: {
+        limit: 5,               // Get up to 5 relevant memory entries
+        threshold: 0.3,         // Lower threshold to get more potential matches
+        diversityFactor: 0.5,   // Balance between relevance and diversity
+        includeSources: true,   // Include source information in results
+        timeWeighting: {        // Prioritize more recent information
+          enabled: true,
+          halfLifeDays: 30,     // Information "half-life" of 30 days
+          maxBoost: 1.5         // Max boost factor for very recent information
+        }
+      },
+      context_integration: 'smart'  // Use smart integration strategy
     });
     
     if (!result.success) {
       throw new Error(`Failed to answer question: ${result.error}`);
     }
     
+    // Extract context sources used from the result metadata
+    const contextSourcesUsed = result.result.metadata?.contextSources || [];
+    const contextStrategy = result.result.metadata?.contextStrategy || 'none';
+    
     // Set the task result with enhanced metadata
     task.result = {
       answer: result.result.response,
-      sourcesUsed: memoryResults.map(result => ({
-        text: result.entry.text.substring(0, 100) + (result.entry.text.length > 100 ? '...' : ''),
-        relevanceScore: result.score,
-        category: result.entry.metadata?.category || 'unknown',
-        timestamp: result.entry.metadata?.timestamp || 'unknown'
-      })),
+      sourcesUsed: contextSourcesUsed,
       metadata: {
         responseTime: result.metadata?.responseTime || null,
         modelUsed: result.result.model,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        contextEnhanced: result.result.metadata?.contextEnhanced || false,
+        contextStrategy: contextStrategy,
+        fromCache: result.result.fromCache || false
       }
     };
     
@@ -621,15 +682,18 @@ Focus on providing actionable insights that would be valuable to someone interes
         tags: ['question', 'answer', 'real-estate'],
         questionType: this.categorizeQuestion(question),
         responseQuality: 1.0,  // Can be updated later with user feedback
-        modelUsed: result.result.model
+        modelUsed: result.result.model,
+        contextEnhanced: result.result.metadata?.contextEnhanced || false
       }
     );
     
     await this.logActivity(`Answered question: "${question.substring(0, 30)}..."`, LogLevel.INFO, {
       questionLength: question.length,
       responseLength: result.result.response.length,
-      memoryResultCount: memoryResults.length,
-      responseTime: result.metadata?.responseTime
+      contextSourcesUsed: contextSourcesUsed.length,
+      contextStrategy: contextStrategy,
+      responseTime: result.metadata?.responseTime,
+      fromCache: result.result.fromCache || false
     });
   }
   
