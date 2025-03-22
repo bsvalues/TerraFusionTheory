@@ -1,69 +1,35 @@
-import { useMascot } from '@/components/mascot/MascotManager';
-import { MascotMood, MascotAction, MascotTip } from '@/components/mascot/MascotCharacter';
-
-// Re-export for convenience
-export type { MascotMood, MascotAction, MascotTip };
+import { useContext } from 'react';
+import { MascotTip, MascotMood, MascotAction } from '@/components/mascot/MascotCharacter';
+import { useMascot as useMascotContext } from '@/components/mascot/MascotManager';
 
 /**
- * Hook to use the mascot functionality
+ * Custom hook to access and control the mascot system
  * 
- * This hook provides easy access to mascot operations like:
- * - Adding tips
- * - Setting mood and actions
- * - Toggling mascot visibility
+ * This hook provides access to the mascot context and exposes functions
+ * to add tips, change the mascot's mood and actions, and control visibility.
  */
-export function useMascotHelper() {
-  const mascot = useMascot();
+export const useMascot = () => {
+  // Get the mascot context
+  const context = useMascotContext();
   
   /**
-   * Show an informational tip from the mascot
+   * Add a new coding tip
+   * @param tip The tip to add (will automatically get an ID assigned)
    */
-  const showInfoTip = (text: string, code?: string, link?: string) => {
-    mascot.addTip({
-      type: 'info',
-      text,
-      code,
-      link,
-      mood: 'happy',
-      action: 'wave'
-    });
+  const addTip = (tip: Omit<MascotTip, 'id'>) => {
+    context.addTip(tip);
   };
   
   /**
-   * Show a success tip from the mascot
+   * Add an error tip with the specified message and optional code example
+   * @param message The error message
+   * @param code Optional code snippet
+   * @param link Optional link to documentation
    */
-  const showSuccessTip = (text: string, code?: string, link?: string) => {
-    mascot.addTip({
-      type: 'success',
-      text,
-      code,
-      link,
-      mood: 'excited',
-      action: 'dance'
-    });
-  };
-  
-  /**
-   * Show a warning tip from the mascot
-   */
-  const showWarningTip = (text: string, code?: string, link?: string) => {
-    mascot.addTip({
-      type: 'warning',
-      text,
-      code,
-      link,
-      mood: 'thinking',
-      action: 'jump'
-    });
-  };
-  
-  /**
-   * Show an error tip from the mascot
-   */
-  const showErrorTip = (text: string, code?: string, link?: string) => {
-    mascot.addTip({
+  const addErrorTip = (message: string, code?: string, link?: string) => {
+    context.addTip({
       type: 'error',
-      text,
+      text: message,
       code,
       link,
       mood: 'surprised',
@@ -72,92 +38,103 @@ export function useMascotHelper() {
   };
   
   /**
-   * Show a debugging tip for common issues
+   * Add a warning tip with the specified message and optional code example
+   * @param message The warning message
+   * @param code Optional code snippet
+   * @param link Optional link to documentation
    */
-  const showDebuggingTip = (errorType: 'network' | 'typo' | 'state' | 'props' | 'syntax') => {
-    switch (errorType) {
-      case 'network':
-        mascot.addTip({
-          type: 'warning',
-          text: 'Having network issues? Check your API endpoints and error handling.',
-          code: `try {\n  const response = await fetch(url);\n  if (!response.ok) throw new Error('Network response was not ok');\n  const data = await response.json();\n} catch (error) {\n  console.error('Fetch error:', error);\n}`,
-          mood: 'thinking',
-          action: 'wave'
-        });
-        break;
-      case 'typo':
-        mascot.addTip({
-          type: 'info',
-          text: 'Often bugs are just simple typos! Double-check variable and property names.',
-          mood: 'happy',
-          action: 'wave'
-        });
-        break;
-      case 'state':
-        mascot.addTip({
-          type: 'warning',
-          text: 'React state updates are asynchronous. Use useEffect or callbacks to respond to state changes.',
-          code: `useEffect(() => {\n  // Code that depends on someState\n  console.log('State value:', someState);\n}, [someState]);`,
-          mood: 'thinking',
-          action: 'wave'
-        });
-        break;
-      case 'props':
-        mascot.addTip({
-          type: 'warning',
-          text: 'Check if you\'re passing all required props to your components.',
-          code: `// Use prop destructuring with default values\nfunction MyComponent({ prop1 = 'default', prop2 }) {\n  // Component code\n}`,
-          mood: 'thinking',
-          action: 'wave'
-        });
-        break;
-      case 'syntax':
-        mascot.addTip({
-          type: 'error',
-          text: 'Syntax errors are hard to spot! Check for missing brackets, semicolons, or quotes.',
-          mood: 'surprised',
-          action: 'jump'
-        });
-        break;
-    }
-  };
-  
-  /**
-   * Show a fun coding fact or tip
-   */
-  const showFunFact = () => {
-    const funFacts = [
-      "Did you know? The term 'bug' comes from an actual moth found in Harvard's Mark II computer in 1947!",
-      "JavaScript was created in just 10 days by Brendan Eich in 1995.",
-      "The first computer programmer was Ada Lovelace, who wrote the first algorithm in the 1840s.",
-      "The world's first computer game was 'Spacewar!' developed in 1962.",
-      "The average programmer writes 10-50 lines of production code per day.",
-      "There are over 700 different programming languages!",
-      "Python was named after Monty Python, not the snake.",
-      "The first computer mouse was made of wood in 1964.",
-      "HTML is not technically a programming language; it's a markup language.",
-      "About 70% of a developer's time is spent debugging."
-    ];
-    
-    const randomFact = funFacts[Math.floor(Math.random() * funFacts.length)];
-    
-    mascot.addTip({
-      type: 'info',
-      text: randomFact,
-      mood: 'excited',
-      action: 'jump'
+  const addWarningTip = (message: string, code?: string, link?: string) => {
+    context.addTip({
+      type: 'warning',
+      text: message,
+      code,
+      link,
+      mood: 'thinking',
+      action: 'wave'
     });
   };
   
-  return {
-    ...mascot,
-    showInfoTip,
-    showSuccessTip,
-    showWarningTip,
-    showErrorTip,
-    showDebuggingTip,
-    showFunFact
+  /**
+   * Add an info tip with the specified message and optional code example
+   * @param message The info message
+   * @param code Optional code snippet
+   * @param link Optional link to documentation
+   */
+  const addInfoTip = (message: string, code?: string, link?: string) => {
+    context.addTip({
+      type: 'info',
+      text: message,
+      code,
+      link,
+      mood: 'happy',
+      action: 'idle'
+    });
   };
-}
+  
+  /**
+   * Add a success tip with the specified message and optional code example
+   * @param message The success message
+   * @param code Optional code snippet
+   * @param link Optional link to documentation
+   */
+  const addSuccessTip = (message: string, code?: string, link?: string) => {
+    context.addTip({
+      type: 'success',
+      text: message,
+      code,
+      link,
+      mood: 'excited',
+      action: 'dance'
+    });
+  };
+  
+  /**
+   * Clear all tips
+   */
+  const clearTips = () => {
+    context.clearTips();
+  };
+  
+  /**
+   * Set the mascot's mood
+   * @param mood The mood to set
+   */
+  const setMascotMood = (mood: MascotMood) => {
+    context.setMascotMood(mood);
+  };
+  
+  /**
+   * Set the mascot's action/animation
+   * @param action The action to perform
+   */
+  const setMascotAction = (action: MascotAction) => {
+    context.setMascotAction(action);
+  };
+  
+  /**
+   * Toggle whether the mascot is enabled or disabled
+   */
+  const toggleMascotEnabled = () => {
+    context.toggleMascotEnabled();
+  };
+  
+  /**
+   * Check if the mascot is currently enabled
+   */
+  const isMascotEnabled = context.isMascotEnabled;
+  
+  return {
+    addTip,
+    addErrorTip,
+    addWarningTip,
+    addInfoTip,
+    addSuccessTip,
+    clearTips,
+    setMascotMood,
+    setMascotAction,
+    toggleMascotEnabled,
+    isMascotEnabled
+  };
+};
 
-export default useMascotHelper;
+export default useMascot;
