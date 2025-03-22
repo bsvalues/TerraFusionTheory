@@ -92,9 +92,11 @@ async function testCollaboration(question) {
     console.log(`${colors.dim}Expecting collaboration: ${question.expectsCollaboration ? 'Yes' : 'No'}${colors.reset}`);
     
     const startTime = Date.now();
+    // Set a timeout for the request to prevent hanging
     const response = await axios.post(`${API_BASE_URL}/test-cross-domain-collaboration`, {
       question: question.text
-    });
+    }, { timeout: 5000 }); // 5 second timeout
+    
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
     const data = response.data;
