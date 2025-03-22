@@ -100,21 +100,16 @@ router.post('/run-developer-agent', asyncHandler(async (req, res) => {
   
   try {
     const agent = await getDeveloperAgent();
-    const taskId = await agent.assignTask({
-      type: 'answer_question',
-      priority: 'normal',
-      inputs: {
-        question: task,
-        context: 'The question is related to software development.'
-      }
-    });
     
-    // Wait for task completion
-    const taskResult = await agent.waitForTaskCompletion(taskId);
+    // Execute the task directly
+    const result = await agent.execute('answer_question', {
+      question: task,
+      context: 'The question is related to software development.'
+    }, { priority: 'normal' });
     
     res.json({
       success: true,
-      result: taskResult
+      result: result.success ? result.data : { error: result.error?.message || 'Task execution failed' }
     });
   } catch (error) {
     res.status(500).json({
@@ -139,21 +134,16 @@ router.post('/run-real-estate-agent', asyncHandler(async (req, res) => {
   
   try {
     const agent = await getRealEstateAgent();
-    const taskId = await agent.assignTask({
-      type: 'answer_question',
-      priority: 'normal',
-      inputs: {
-        question: task,
-        context: 'The question is related to real estate.'
-      }
-    });
     
-    // Wait for task completion
-    const taskResult = await agent.waitForTaskCompletion(taskId);
+    // Execute the task directly
+    const result = await agent.execute('answer_question', {
+      question: task,
+      context: 'The question is related to real estate.'
+    }, { priority: 'normal' });
     
     res.json({
       success: true,
-      result: taskResult
+      result: result.success ? result.data : { error: result.error?.message || 'Task execution failed' }
     });
   } catch (error) {
     res.status(500).json({
