@@ -187,4 +187,40 @@ router.post('/run-real-estate-agent', asyncHandler(async (req, res) => {
   }
 }));
 
+/**
+ * Test MCP tool implementation
+ */
+router.post('/test-mcp', asyncHandler(async (req, res) => {
+  const { prompt, model, temperature } = req.body;
+  
+  if (!prompt) {
+    return res.status(400).json({
+      success: false,
+      error: 'Prompt is required in request body'
+    });
+  }
+  
+  try {
+    const agent = await getRealEstateAgent();
+    
+    // Use the MCP tool directly
+    const result = await agent.useTool('mcp', {
+      model: model || 'gpt-4',
+      prompt,
+      temperature: temperature || 0.5,
+      system_message: 'You are an AI assistant with expertise in real estate.'
+    });
+    
+    res.json({
+      success: true,
+      result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
+
 export default router;
