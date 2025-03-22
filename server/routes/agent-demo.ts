@@ -8,6 +8,7 @@ import { Router } from 'express';
 import { runAgentDemo } from '../../agents/demo';
 import { createDemoAgents, getDeveloperAgent, getRealEstateAgent } from '../../agents';
 import { asyncHandler } from '../middleware/errorHandler';
+import { testVectorMemory } from '../../agents/memory/vector-test';
 
 const router = Router();
 
@@ -82,6 +83,39 @@ router.get('/real-estate-agent', asyncHandler(async (req, res) => {
       capabilities: agent.getCapabilities(),
       type: agent.getType()
     }
+  });
+}));
+
+/**
+ * Test enhanced vector memory system
+ */
+router.get('/test-vector-memory', asyncHandler(async (req, res) => {
+  // Create a variable to capture the log output
+  const logCapture: string[] = [];
+  
+  // Replace console.log temporarily to capture output
+  const originalConsoleLog = console.log;
+  console.log = (...args) => {
+    // Call the original console.log
+    originalConsoleLog(...args);
+    
+    // Capture the output
+    logCapture.push(args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+    ).join(' '));
+  };
+  
+  // Run the vector memory tests
+  await testVectorMemory();
+  
+  // Restore console.log
+  console.log = originalConsoleLog;
+  
+  // Return the captured logs
+  res.json({
+    success: true,
+    message: 'Vector memory tests completed',
+    logs: logCapture
   });
 }));
 
