@@ -574,11 +574,56 @@ export class DeveloperAgent extends BaseAgent implements Agent {
       }
     }
     
-    // Build context from relevant memories
+    // Build context from relevant memories with better organization
     let contextFromMemory = '';
     if (memoryResults.length > 0) {
-      contextFromMemory = "Relevant information from my knowledge base:\n" + 
-        memoryResults.map(result => `- ${result.entry.text} (relevance: ${result.score.toFixed(2)})`).join('\n');
+      // Group entries by their search source for better organization
+      const groupedEntries: Record<string, Array<{entry: MemoryEntry, score: number}>> = {};
+      
+      for (const result of memoryResults) {
+        const source = result.entry.metadata?.sourceSearch || 'other';
+        if (!groupedEntries[source]) {
+          groupedEntries[source] = [];
+        }
+        groupedEntries[source].push(result);
+      }
+      
+      // Format grouped entries
+      const sections = [];
+      
+      if (groupedEntries['pastCollaborations']?.length) {
+        sections.push("### Previous Collaborations\n" + 
+          groupedEntries['pastCollaborations']
+            .map(result => `- ${result.entry.text.substring(0, 500)}... (relevance: ${result.score.toFixed(2)})`)
+            .join('\n')
+        );
+      }
+      
+      if (groupedEntries['domainKnowledge']?.length) {
+        sections.push("### Domain Knowledge\n" + 
+          groupedEntries['domainKnowledge']
+            .map(result => `- ${result.entry.text} (relevance: ${result.score.toFixed(2)})`)
+            .join('\n')
+        );
+      }
+      
+      if (groupedEntries['developerKnowledge']?.length) {
+        sections.push("### Technical Knowledge\n" + 
+          groupedEntries['developerKnowledge']
+            .map(result => `- ${result.entry.text} (relevance: ${result.score.toFixed(2)})`)
+            .join('\n')
+        );
+      }
+      
+      if (groupedEntries['other']?.length) {
+        sections.push("### Other Relevant Information\n" + 
+          groupedEntries['other']
+            .map(result => `- ${result.entry.text} (relevance: ${result.score.toFixed(2)})`)
+            .join('\n')
+        );
+      }
+      
+      contextFromMemory = sections.join('\n\n');
     }
     
     // Prepare the enhanced prompt with multi-agent knowledge
@@ -636,7 +681,15 @@ Focus on providing actionable insights and solutions that would be valuable to a
         responseTime: result.metadata?.responseTime || null,
         modelUsed: 'gpt-4',
         timestamp: new Date().toISOString(),
-        collaborativeProcess: consultationUsed ? 'Consulted with real estate agent' : undefined
+        collaborativeProcess: consultationUsed 
+          ? `Consulted with real estate agent (${consultationSource === 'memory' ? 'retrieved from memory' : 'live consultation'})` 
+          : undefined,
+        memoryStats: {
+          pastCollaborationsCount: pastCollaborations.length,
+          domainKnowledgeCount: domainKnowledge.length,
+          developerKnowledgeCount: developerKnowledge.length,
+          totalResultsUsed: memoryResults.length
+        }
       }
     };
     

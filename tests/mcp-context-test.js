@@ -8,8 +8,8 @@
  */
 
 // Import required modules using ES modules
-import { vectorMemory } from '../agents/memory/vector.js';
-import { registerMCPTool } from '../agents/tools/mcp.js';
+import { vectorMemory } from '../agents/memory/vector.ts';
+import { registerMCPTool } from '../agents/tools/mcp.ts';
 
 async function runTest() {
   try {
@@ -137,9 +137,13 @@ async function runTest() {
  */
 async function checkMemoryEntries(vectorMemory) {
   try {
-    const stats = await vectorMemory.getStats();
-    console.log(`📊 Vector memory currently has ${stats.count} entries`);
-    return stats.count;
+    // Search with a very generic query to get all entries
+    const results = await vectorMemory.search("*", { 
+      threshold: 0.01,
+      limit: 100
+    });
+    console.log(`📊 Vector memory currently has approximately ${results.length} entries`);
+    return results.length;
   } catch (error) {
     console.error('Error checking vector memory:', error);
     return 0;
