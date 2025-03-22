@@ -269,7 +269,7 @@ export async function logMemoryOptimization(
       endpoint: null,
       tags: ['memory', 'vector', 'optimization']
     });
-  } catch (error) {
+  } catch (error: any) {
     // Fail silently - this is optimization logging
     console.error('Failed to log memory optimization:', error);
   }
