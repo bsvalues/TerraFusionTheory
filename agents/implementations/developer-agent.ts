@@ -150,6 +150,136 @@ export class DeveloperAgent extends BaseAgent implements Agent {
   }
   
   /**
+   * Assign a task to the agent
+   * This implementation extends the base addTask with type-specific handling
+   */
+  public async assignTask(taskRequest: {
+    type: string;
+    priority: 'low' | 'normal' | 'high';
+    inputs: Record<string, any>;
+  }): Promise<string> {
+    // Convert priority string to numeric value
+    let priorityValue = 5; // default to normal
+    if (taskRequest.priority === 'low') priorityValue = 3;
+    if (taskRequest.priority === 'high') priorityValue = 8;
+    
+    // Create description based on task type and inputs
+    let description = '';
+    
+    switch (taskRequest.type) {
+      case 'generate_code':
+        description = `Generate ${taskRequest.inputs.language} code for: ${taskRequest.inputs.requirements?.substring(0, 30)}...`;
+        break;
+      
+      case 'review_code':
+        description = `Review ${taskRequest.inputs.language} code`;
+        break;
+      
+      case 'debug_code':
+        description = `Debug ${taskRequest.inputs.language} code issue`;
+        break;
+      
+      case 'answer_question':
+        description = `Answer question: ${taskRequest.inputs.question?.substring(0, 30)}...`;
+        break;
+      
+      default:
+        description = `Execute ${taskRequest.type} task`;
+    }
+    
+    // Call the base class method to add the task
+    return this.addTask({
+      type: taskRequest.type,
+      description,
+      inputs: taskRequest.inputs,
+      priority: priorityValue,
+    });
+  }
+  
+  /**
+   * Execute a task (for agent coordinator)
+   * This method overrides the one in BaseAgent to use our specialized task handling
+   */
+  public async execute(task: string, inputs: Record<string, any>, options?: Record<string, any>): Promise<ExecutionResult> {
+    const startTime = Date.now();
+    
+    try {
+      // Create a task request
+      const priority = options?.priority || 'normal';
+      
+      // Create a new task
+      const taskId = await this.assignTask({
+        type: task,
+        priority,
+        inputs
+      });
+      
+      // Start the agent if it's idle
+      if (this.status === AgentStatus.IDLE) {
+        await this.start();
+      }
+      
+      // Get the task result using the private method from the base class
+      const taskResult = await this.executeTask(taskId);
+      
+      // Format result
+      return {
+        success: true,
+        data: taskResult,
+        metadata: {
+          taskId,
+          task,
+          duration: Date.now() - startTime
+        },
+        duration: Date.now() - startTime
+      };
+    } catch (error) {
+      return {
+        success: false,
+        error: error instanceof Error ? error : new Error(String(error)),
+        metadata: {
+          task,
+          duration: Date.now() - startTime
+        },
+        duration: Date.now() - startTime
+      };
+    }
+  }
+
+  /**
+   * Execute a task and wait for result
+   * This method handles task execution and monitoring
+   */
+  private async executeTask(taskId: string): Promise<any> {
+    return new Promise<any>((resolve, reject) => {
+      const checkTaskStatus = async () => {
+        const task = await this.getTask(taskId);
+        
+        if (!task) {
+          reject(new Error(`Task ${taskId} not found`));
+          return;
+        }
+        
+        if (task.status === 'completed') {
+          resolve(task.result);
+          return;
+        } else if (task.status === 'failed') {
+          reject(new Error(task.error || 'Task failed without error message'));
+          return;
+        } else if (task.status === 'canceled') {
+          reject(new Error('Task was canceled'));
+          return;
+        }
+        
+        // Check again after a short delay
+        setTimeout(checkTaskStatus, 100);
+      };
+      
+      checkTaskStatus();
+    });
+  }
+  
+  /**
    * Process a task assigned to the agent
    */
   protected async processTask(taskId: string): Promise<void> {
