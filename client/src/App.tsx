@@ -11,6 +11,7 @@ import AgentTestPage from "@/pages/AgentTestPage";
 import { ErrorProvider } from "@/hooks/useErrors";
 import { FeedbackProvider } from "@/hooks/useFeedback";
 import ErrorDashboard from "@/components/debug/ErrorDashboard";
+import { MascotProvider } from "@/providers/MascotProvider";
 
 function Router() {
   return (
@@ -32,9 +33,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ErrorProvider>
         <FeedbackProvider>
-          <Router />
-          <ErrorDashboard />
-          <Toaster />
+          <MascotProvider>
+            <Router />
+            <ErrorDashboard />
+            <Toaster />
+          </MascotProvider>
         </FeedbackProvider>
       </ErrorProvider>
     </QueryClientProvider>
