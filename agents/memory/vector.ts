@@ -445,56 +445,86 @@ class EnhancedVectorStore {
     // For development, we'll use a deterministic mock embedding
     // based on text hash to ensure consistent results
     // In production, this would call OpenAI API or similar
-    return this.enhancedMockEmbedding(text);
+    return this.improvedMockEmbedding(text);
   }
 
   /**
    * Create a deterministic mock embedding based on text hash
    * This ensures consistent behavior in development
    * 
-   * Enhanced version to improve semantic representation
+   * Improved version with better semantic analysis and similarity modeling
    */
-  private enhancedMockEmbedding(text: string): number[] {
-    // Create a simple hash of the text
-    let hash = 0;
-    for (let i = 0; i < text.length; i++) {
-      hash = ((hash << 5) - hash) + text.charCodeAt(i);
-      hash = hash & hash; // Convert to 32bit integer
+  private improvedMockEmbedding(text: string): number[] {
+    // Normalize and tokenize the text
+    const normalizedText = text.toLowerCase().trim();
+    const words = normalizedText.split(/\s+/).filter(w => w.length > 0);
+    
+    // Extract key terms (keep words that are 3+ chars)
+    const keyTerms = words.filter(w => w.length >= 3);
+    
+    // Calculate word frequencies for term weighting
+    const wordFrequency: Record<string, number> = {};
+    for (const word of keyTerms) {
+      wordFrequency[word] = (wordFrequency[word] || 0) + 1;
     }
     
-    // Use the hash as a seed for a pseudo-random number generator
-    const seededRandom = (seed: number) => {
-      const x = Math.sin(seed) * 10000;
-      return x - Math.floor(x);
-    };
+    // Create a dense vector representation
+    const embedding: number[] = new Array(this.dimensions).fill(0);
     
-    // Simple text analysis for better semantic representation
-    const words = text.toLowerCase().split(/\s+/);
-    const uniqueWords = new Set(words);
-    
-    // Generate embedding with some word-level influence
-    const embedding = [];
-    for (let i = 0; i < this.dimensions; i++) {
-      // Base value from seeded random
-      let value = seededRandom(hash + i) * 2 - 1; // Range -1 to 1
+    // Assign regions of the embedding to key terms
+    // Each term influences a consistent region of the vector
+    for (const term of Object.keys(wordFrequency)) {
+      // Create a deterministic hash for this term
+      const termHash = this.simpleHash(term);
       
-      // Influence embedding with word presence
-      // Each word affects a specific dimension range
-      for (const word of uniqueWords) {
-        const wordHash = this.simpleHash(word);
-        const dimensionInfluence = wordHash % 100; // Each word affects ~100 dimensions
+      // Determine which embedding regions this term affects
+      const startDimension = termHash % (this.dimensions / 2);
+      const regionSize = Math.min(30, this.dimensions / 10);
+      
+      // Term frequency weight
+      const termWeight = wordFrequency[term] / words.length;
+      
+      // Apply the term's influence to its region
+      for (let i = 0; i < regionSize; i++) {
+        const dimension = (startDimension + i) % this.dimensions;
         
-        if (i % 100 === dimensionInfluence) {
-          // Amplify this dimension if the word is present
-          value *= 1.5;
-        }
+        // Use hash to generate consistent values for this term
+        const value = (Math.sin(termHash * (i + 1)) + 1) / 2; // 0 to 1 range
+        
+        // Apply the weighted influence
+        embedding[dimension] += value * (0.5 + termWeight);
       }
+    }
+    
+    // Add a small amount of semantic context based on term order
+    for (let i = 0; i < words.length - 1; i++) {
+      const bigram = words[i] + " " + words[i + 1];
+      const bigramHash = this.simpleHash(bigram);
+      const startDim = bigramHash % (this.dimensions / 3);
       
-      embedding.push(value);
+      // Bigrams influence fewer dimensions but with higher intensity
+      for (let j = 0; j < 10; j++) {
+        const dimension = (startDim + j) % this.dimensions;
+        embedding[dimension] += 0.5;
+      }
+    }
+    
+    // Add small amount of noise for uniqueness
+    for (let i = 0; i < this.dimensions; i++) {
+      embedding[i] += (Math.sin(i * 0.1) * 0.05);
     }
     
     // Normalize the vector (unit length)
     const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
+    
+    // Prevent division by zero if embedding is all zeros
+    if (magnitude === 0) {
+      // Fill with small random values if no meaningful embedding created
+      return Array(this.dimensions).fill(0).map((_, i) => 
+        Math.sin(i) * 0.01
+      );
+    }
+    
     return embedding.map(val => val / magnitude);
   }
   
