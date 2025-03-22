@@ -681,7 +681,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const agents = agentRegistry.getActiveAgents().map(agent => ({
         id: agent.getId(),
-        type: agent.getType(),
+        type: agent.getType?.() || 'unknown',
         name: agent.getName(),
         description: agent.getDescription(),
         state: agent.getState(),
@@ -696,15 +696,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/agents/type/:type", asyncHandler(async (req, res) => {
     try {
-      const type = req.params.type as AgentType;
+      const type = req.params.type;
       const agents = agentRegistry.getAgentsByType(type).map(agent => ({
         id: agent.getId(),
-        type: agent.getType(),
+        type: agent.getType?.() || 'unknown',
         name: agent.getName(),
         description: agent.getDescription(),
         state: agent.getState(),
         capabilities: agent.getCapabilities(),
-        isActive: agent.isActiveAgent()
+        isActive: agent.isActiveAgent?.() || (agent.getStatus() !== 'terminated' && agent.getStatus() !== 'error')
       }));
       res.json(agents);
     } catch (error) {
@@ -722,13 +722,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const agentDetails = {
         id: agent.getId(),
-        type: agent.getType(),
+        type: agent.getType?.() || 'unknown',
         name: agent.getName(),
         description: agent.getDescription(),
         state: agent.getState(),
         capabilities: agent.getCapabilities(),
-        isActive: agent.isActiveAgent(),
-        diagnostics: agent.getDiagnostics()
+        isActive: agent.isActiveAgent?.() || (agent.getStatus() !== 'terminated' && agent.getStatus() !== 'error'),
+        diagnostics: agent.getDiagnostics?.() || {
+          status: agent.getStatus(),
+          capabilities: agent.getCapabilities()
+        }
       };
       
       res.json(agentDetails);
@@ -749,6 +752,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const agent = agentRegistry.getAgent(req.params.id);
       if (!agent) {
         return res.status(404).json({ error: "Agent not found" });
+      }
+      
+      if (!agent.execute) {
+        return res.status(400).json({ error: "Agent does not support direct execution" });
       }
       
       const result = await agent.execute(task, inputs || {}, options || {});
@@ -775,31 +782,41 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Agent not found" });
       }
       
-      let success = false;
+      let operationSucceeded = true;
       
-      switch (action) {
-        case 'pause':
-          success = await agent.pause();
-          break;
-        case 'resume':
-          success = await agent.resume();
-          break;
-        case 'shutdown':
-          success = await agent.shutdown();
-          break;
+      try {
+        switch (action) {
+          case 'pause':
+            await agent.pause();
+            break;
+          case 'resume':
+            await agent.resume();
+            break;
+          case 'shutdown':
+            if (agent.shutdown) {
+              await agent.shutdown();
+            } else {
+              await agent.stop();
+            }
+            break;
+        }
+      } catch (actionError) {
+        console.error(`Error performing ${action} action:`, actionError);
+        operationSucceeded = false;
       }
       
-      if (success) {
+      if (operationSucceeded) {
         res.json({ 
           id: agent.getId(),
           state: agent.getState(),
           action,
-          success
+          success: true
         });
       } else {
         res.status(400).json({ 
           error: `Failed to ${action} agent`,
-          currentState: agent.getState()
+          currentState: agent.getState(),
+          success: false
         });
       }
     } catch (error) {
