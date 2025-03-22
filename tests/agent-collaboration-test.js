@@ -10,7 +10,7 @@
  */
 
 import axios from 'axios';
-const API_BASE_URL = 'http://localhost:5000/api/agents';
+const API_BASE_URL = 'http://localhost:5000/api/agent-demo';
 
 /**
  * Test questions that combine technical and real estate knowledge
