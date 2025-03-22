@@ -27,6 +27,7 @@ import {
 
 import swaggerUi from 'swagger-ui-express';
 import { openApiSpec } from './openapi';
+import agentDemoRoutes from './routes/agent-demo';
 
 let memoryMonitorTimer: NodeJS.Timeout | null = null;
 
@@ -798,6 +799,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     }
   }));
+
+  // Agent Demo Routes
+  app.use('/api/agent-demo', agentDemoRoutes);
 
   app.post("/api/coordinator/execute", asyncHandler(async (req, res) => {
     try {

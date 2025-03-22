@@ -7,113 +7,160 @@
 import { Router } from 'express';
 import { runAgentDemo } from '../../agents/demo';
 import { createDemoAgents, getDeveloperAgent, getRealEstateAgent } from '../../agents';
+import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
 /**
  * Endpoint to run the agent demo
  */
-router.get('/run-demo', async (req, res) => {
-  try {
-    // Create a variable to capture the log output
-    const logCapture: string[] = [];
+router.get('/run-demo', asyncHandler(async (req, res) => {
+  // Create a variable to capture the log output
+  const logCapture: string[] = [];
+  
+  // Replace console.log temporarily to capture output
+  const originalConsoleLog = console.log;
+  console.log = (...args) => {
+    // Call the original console.log
+    originalConsoleLog(...args);
     
-    // Replace console.log temporarily to capture output
-    const originalConsoleLog = console.log;
-    console.log = (...args) => {
-      // Call the original console.log
-      originalConsoleLog(...args);
-      
-      // Capture the output
-      logCapture.push(args.map(arg => 
-        typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
-      ).join(' '));
-    };
-    
-    // Run the demo
-    await runAgentDemo();
-    
-    // Restore console.log
-    console.log = originalConsoleLog;
-    
-    // Return the captured logs
-    res.json({
-      success: true,
-      logs: logCapture
-    });
-  } catch (error) {
-    console.error('Error running agent demo:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
+    // Capture the output
+    logCapture.push(args.map(arg => 
+      typeof arg === 'object' ? JSON.stringify(arg) : String(arg)
+    ).join(' '));
+  };
+  
+  // Run the demo
+  await runAgentDemo();
+  
+  // Restore console.log
+  console.log = originalConsoleLog;
+  
+  // Return the captured logs
+  res.json({
+    success: true,
+    logs: logCapture
+  });
+}));
 
 /**
  * Create sample agents
  */
-router.post('/create-agents', async (req, res) => {
-  try {
-    await createDemoAgents();
-    res.json({ success: true, message: 'Demo agents created successfully' });
-  } catch (error) {
-    console.error('Error creating demo agents:', error);
-    res.status(500).json({
-      success: false, 
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
+router.post('/create-agents', asyncHandler(async (req, res) => {
+  await createDemoAgents();
+  res.json({ success: true, message: 'Demo agents created successfully' });
+}));
 
 /**
  * Get developer agent details
  */
-router.get('/developer-agent', async (req, res) => {
-  try {
-    const agent = await getDeveloperAgent();
-    res.json({
-      success: true,
-      agent: {
-        id: agent.getId(),
-        name: agent.getName(),
-        description: agent.getDescription(),
-        capabilities: agent.getCapabilities(),
-        type: agent.getType()
-      }
-    });
-  } catch (error) {
-    console.error('Error getting developer agent:', error);
-    res.status(500).json({
-      success: false,
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-});
+router.get('/developer-agent', asyncHandler(async (req, res) => {
+  const agent = await getDeveloperAgent();
+  res.json({
+    success: true,
+    agent: {
+      id: agent.getId(),
+      name: agent.getName(),
+      description: agent.getDescription(),
+      capabilities: agent.getCapabilities(),
+      type: agent.getType()
+    }
+  });
+}));
 
 /**
  * Get real estate agent details
  */
-router.get('/real-estate-agent', async (req, res) => {
+router.get('/real-estate-agent', asyncHandler(async (req, res) => {
+  const agent = await getRealEstateAgent();
+  res.json({
+    success: true,
+    agent: {
+      id: agent.getId(),
+      name: agent.getName(),
+      description: agent.getDescription(),
+      capabilities: agent.getCapabilities(),
+      type: agent.getType()
+    }
+  });
+}));
+
+/**
+ * Run developer agent task
+ */
+router.post('/run-developer-agent', asyncHandler(async (req, res) => {
+  const { task } = req.body;
+  
+  if (!task) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Task is required in request body' 
+    });
+  }
+  
   try {
-    const agent = await getRealEstateAgent();
-    res.json({
-      success: true,
-      agent: {
-        id: agent.getId(),
-        name: agent.getName(),
-        description: agent.getDescription(),
-        capabilities: agent.getCapabilities(),
-        type: agent.getType()
+    const agent = await getDeveloperAgent();
+    const taskId = await agent.assignTask({
+      type: 'answer_question',
+      priority: 'normal',
+      inputs: {
+        question: task,
+        context: 'The question is related to software development.'
       }
     });
+    
+    // Wait for task completion
+    const taskResult = await agent.waitForTaskCompletion(taskId);
+    
+    res.json({
+      success: true,
+      result: taskResult
+    });
   } catch (error) {
-    console.error('Error getting real estate agent:', error);
     res.status(500).json({
       success: false,
       error: error instanceof Error ? error.message : String(error)
     });
   }
-});
+}));
+
+/**
+ * Run real estate agent task
+ */
+router.post('/run-real-estate-agent', asyncHandler(async (req, res) => {
+  const { task } = req.body;
+  
+  if (!task) {
+    return res.status(400).json({
+      success: false,
+      error: 'Task is required in request body'
+    });
+  }
+  
+  try {
+    const agent = await getRealEstateAgent();
+    const taskId = await agent.assignTask({
+      type: 'answer_question',
+      priority: 'normal',
+      inputs: {
+        question: task,
+        context: 'The question is related to real estate.'
+      }
+    });
+    
+    // Wait for task completion
+    const taskResult = await agent.waitForTaskCompletion(taskId);
+    
+    res.json({
+      success: true,
+      result: taskResult
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
 
 export default router;

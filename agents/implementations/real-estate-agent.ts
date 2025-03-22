@@ -50,6 +50,20 @@ export class RealEstateAgent extends BaseAgent implements Agent {
   protected marketKnowledge: Map<string, any> = new Map();
   
   constructor(id: string, config: RealEstateAgentConfig) {
+    // Store local variable copies first
+    const regions = config.regions || [];
+    const propertyTypes = config.propertyTypes || ['residential', 'commercial'];
+    const dataSourcePreference = config.dataSourcePreference || 'both';
+    const marketMetricsConfig = {
+      defaultTimeframe: config.marketMetricsConfig?.defaultTimeframe || 'monthly',
+      trackTrends: config.marketMetricsConfig?.trackTrends ?? true,
+      alertThresholds: {
+        priceChangePct: config.marketMetricsConfig?.alertThresholds?.priceChangePct || 5,
+        inventoryChangePct: config.marketMetricsConfig?.alertThresholds?.inventoryChangePct || 10,
+        daysOnMarketChangePct: config.marketMetricsConfig?.alertThresholds?.daysOnMarketChangePct || 15
+      }
+    };
+    
     // Create a local copy of capabilities array for modification
     const capabilities = [
       ...(config.capabilities || []),
@@ -61,22 +75,8 @@ export class RealEstateAgent extends BaseAgent implements Agent {
       AgentCapability.TOOL_USE
     ];
     
-    // Store configuration properties first
-    this.regions = config.regions || [];
-    this.propertyTypes = config.propertyTypes || ['residential', 'commercial'];
-    this.dataSourcePreference = config.dataSourcePreference || 'both';
-    this.marketMetricsConfig = {
-      defaultTimeframe: config.marketMetricsConfig?.defaultTimeframe || 'monthly',
-      trackTrends: config.marketMetricsConfig?.trackTrends ?? true,
-      alertThresholds: {
-        priceChangePct: config.marketMetricsConfig?.alertThresholds?.priceChangePct || 5,
-        inventoryChangePct: config.marketMetricsConfig?.alertThresholds?.inventoryChangePct || 10,
-        daysOnMarketChangePct: config.marketMetricsConfig?.alertThresholds?.daysOnMarketChangePct || 15
-      }
-    };
-    
     // Add additional capabilities based on configuration
-    if (this.propertyTypes.includes('commercial')) {
+    if (propertyTypes.includes('commercial')) {
       capabilities.push(AgentCapability.REASONING);
     }
     
@@ -85,6 +85,12 @@ export class RealEstateAgent extends BaseAgent implements Agent {
       ...config,
       capabilities
     });
+    
+    // Now we can safely initialize instance properties
+    this.regions = regions;
+    this.propertyTypes = propertyTypes;
+    this.dataSourcePreference = dataSourcePreference;
+    this.marketMetricsConfig = marketMetricsConfig;
   }
   
   /**

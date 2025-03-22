@@ -34,6 +34,12 @@ export class DeveloperAgent extends BaseAgent implements Agent {
   protected codeKnowledgeBase: Map<string, string> = new Map();
   
   constructor(id: string, config: DeveloperAgentConfig) {
+    // Store local variable copies first
+    const specializations = config.specializations || [];
+    const preferredLanguages = config.preferredLanguages || [];
+    const defaultStyle = config.defaultStyle || 'detailed';
+    const customPromptTemplate = config.customPromptTemplate;
+    
     // Create a local copy of capabilities array for modification
     const capabilities = [
       ...(config.capabilities || []),
@@ -44,18 +50,12 @@ export class DeveloperAgent extends BaseAgent implements Agent {
       AgentCapability.TOOL_USE
     ];
     
-    // Store the specializations first so we can use them for capability determination
-    this.specializations = config.specializations || [];
-    this.preferredLanguages = config.preferredLanguages || [];
-    this.defaultStyle = config.defaultStyle || 'detailed';
-    this.customPromptTemplate = config.customPromptTemplate;
-    
     // Add specialization-specific capabilities
-    if (this.specializations.includes('frontend')) {
+    if (specializations.includes('frontend')) {
       capabilities.push(AgentCapability.DATA_VISUALIZATION);
     }
     
-    if (this.specializations.includes('devops')) {
+    if (specializations.includes('devops')) {
       capabilities.push(AgentCapability.PLANNING);
     }
     
@@ -64,6 +64,12 @@ export class DeveloperAgent extends BaseAgent implements Agent {
       ...config,
       capabilities
     });
+    
+    // Now we can safely initialize instance properties
+    this.specializations = specializations;
+    this.preferredLanguages = preferredLanguages;
+    this.defaultStyle = defaultStyle;
+    this.customPromptTemplate = customPromptTemplate;
   }
   
   /**
