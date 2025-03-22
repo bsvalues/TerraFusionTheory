@@ -534,53 +534,51 @@ export function registerMCPTool(): Tool {
           context_integration = 'smart'
         } = args;
 
-        // Create a cache key if caching is enabled
+        // Create a memory-efficient cache key if caching is enabled
         const cacheKey = cache ? 
-          `${model}:${prompt.substring(0, 50)}:${system_message.substring(0, 20)}:${temperature}` : 
-          null;
+          `${model}:${prompt.substring(0, 30)}:${temperature}` : 
+          null; // Shorter key to reduce memory usage
         
-        // Check cache for existing response
+        // Check cache for existing response with memory-efficient implementation
         if (cacheKey && responseCache.has(cacheKey)) {
           const cachedResult = responseCache.get(cacheKey);
           
           // If cache entry hasn't expired
           if (cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_EXPIRATION) {
-            console.log(`[MCP Tool] Using cached response for: ${prompt.substring(0, 30)}${prompt.length > 30 ? '...' : ''}`);
+            // Use shorter log message to reduce memory
+            console.log(`[MCP] Cache hit: ${prompt.length > 20 ? prompt.substring(0, 20) + '...' : prompt}`);
             
-            await logMCPActivity('Retrieved response from cache', LogLevel.INFO, {
+            // Minimal logging with only essential information
+            await logMCPActivity('Cache hit', LogLevel.INFO, {
               model,
-              promptPreview: prompt.substring(0, 50) + (prompt.length > 50 ? '...' : ''),
-              cacheHit: true,
               responseTime: Date.now() - startTime
             });
             
+            // Streamlined response object with minimal metadata
             return {
               success: true,
               result: {
-                id: `mcp-cached-${uuidv4()}`,
+                id: `mcp-cached-${uuidv4().split('-')[0]}`, // Use shorter UUID
                 model,
-                prompt,
                 response: cachedResult.response,
                 fromCache: true,
                 metadata: {
-                  ...cachedResult.metadata,
-                  original_timestamp: cachedResult.timestamp,
-                  current_timestamp: new Date().toISOString(),
                   responseTime: Date.now() - startTime
                 }
               },
               metadata: {
                 tool: 'mcp',
                 timestamp: new Date().toISOString(),
-                cache: true
+                cached: true
               }
             };
           }
         }
 
-        // Log MCP call
-        console.log(`[MCP Tool] Executing with model: ${model}`);
-        console.log(`[MCP Tool] Prompt: ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}`);
+        // Log MCP call - memory-efficient logging
+        console.log(`[MCP] Executing: ${model}`);
+        // Reduce log verbosity by truncating prompt to just 40 chars
+        console.log(`[MCP] Prompt: ${prompt.substring(0, 40)}${prompt.length > 40 ? '...' : ''}`);
         
         // Track if we're using enhanced context for metadata
         let usedMemoryContext = false;
@@ -602,7 +600,7 @@ export function registerMCPTool(): Tool {
               usedMemoryContext = true;
               memorySourcesUsed = sources;
               
-              console.log(`[MCP Tool] Enhanced prompt with vector memory context from ${sources.length} sources`);
+              console.log(`[MCP] Enhanced context: ${sources.length} sources`);
             }
           } catch (error) {
             console.error('[MCP Tool] Error enhancing prompt with vector memory:', error);
@@ -610,57 +608,44 @@ export function registerMCPTool(): Tool {
           }
         }
         
-        await logMCPActivity('Executing model request', LogLevel.INFO, {
+        // Reduced activity logging for memory efficiency
+        await logMCPActivity('Model request', LogLevel.INFO, {
           model,
-          promptPreview: prompt.substring(0, 50) + (prompt.length > 50 ? '...' : ''),
-          enhancedWithContext: usedMemoryContext,
-          systemMessagePreview: system_message.substring(0, 30) + (system_message.length > 30 ? '...' : ''),
-          temperature,
-          max_tokens
+          enhanced: usedMemoryContext,
+          temp: temperature
         });
         
         // Generate response (in a real implementation, this would call the model API)
         const response = generateModelResponse(enhancedPrompt, system_message, model);
         
-        // Create result object
+        // Create memory-efficient result object with reduced metadata
         const result = {
-          id: `mcp-${uuidv4()}`,
+          id: `mcp-${uuidv4().split('-')[0]}`, // Using shorter UUID
           model,
-          prompt,
           response,
           metadata: {
-            temperature,
-            max_tokens,
-            system_message: system_message.substring(0, 50) + (system_message.length > 50 ? '...' : ''),
-            function_calling,
-            timestamp: new Date().toISOString(),
-            responseTime: Date.now() - startTime,
-            enhancedWithContext: usedMemoryContext,
-            contextSources: usedMemoryContext ? memorySourcesUsed : undefined,
-            contextStrategy: usedMemoryContext ? context_integration : undefined
+            temp: temperature,
+            enhanced: usedMemoryContext,
+            ms: Date.now() - startTime
           }
         };
         
-        // Cache the response if caching is enabled
+        // Store in cache with minimal metadata if caching is enabled
         if (cacheKey) {
           responseCache.set(cacheKey, {
             response,
             timestamp: Date.now(),
             metadata: {
-              temperature,
-              max_tokens,
               model,
-              enhancedWithContext: usedMemoryContext,
-              contextSources: usedMemoryContext ? memorySourcesUsed : undefined
+              enhanced: usedMemoryContext
             }
           });
         }
         
-        await logMCPActivity('Model response generated', LogLevel.INFO, {
+        // Minimized logging for response generation
+        await logMCPActivity('Response generated', LogLevel.INFO, {
           model,
-          promptPreview: prompt.substring(0, 50) + (prompt.length > 50 ? '...' : ''),
-          responsePreview: response.substring(0, 50) + (response.length > 50 ? '...' : ''),
-          responseTime: Date.now() - startTime
+          ms: Date.now() - startTime
         });
 
         return {
