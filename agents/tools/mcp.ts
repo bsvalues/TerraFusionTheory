@@ -258,18 +258,42 @@ function generateModelResponse(prompt: string, systemMessage: string, model: str
     return responseVariants.investment[variant];
   }
 
+  // Developer-focused responses with variations for more natural conversation
+  const devResponseVariants = [
+    "As a developer, I recommend focusing on modular architecture with clear separation of concerns. Your code should implement proper error handling and follow the principle of least privilege, especially when dealing with user data.",
+    "From a development perspective, I suggest prioritizing testable code with dependency injection and separation of concerns. Error handling should be comprehensive, with appropriate logging and user feedback.",
+    "The best development approach for this system would involve modular components that can be independently tested and deployed. Consider using the repository pattern for data access and implementing proper error boundaries."
+  ];
+  
+  // System architecture responses with variations
+  const sysResponseVariants = [
+    "The IntelligentEstate system uses a microservices architecture with specialized services for market analysis, geospatial data processing, document extraction, and AI-powered insights. The system integrates with multiple data sources and provides real-time analytics through an intuitive dashboard.",
+    "Our system architecture consists of independent services handling different aspects of real estate analytics, from market data processing to geospatial analysis. The frontend provides interactive visualizations and contextual insights powered by our AI subsystem.",
+    "IntelligentEstate combines powerful backend services with an intuitive user interface. The system processes data from diverse sources including property records, market transactions, and geospatial information to deliver comprehensive analytics."
+  ];
+  
+  // Fallback responses with variations for more conversational feel
+  const fallbackResponseVariants = [
+    "Based on industry data and market analysis, I'd recommend considering multiple factors including local market trends, property condition, neighborhood development plans, and historical appreciation rates. The Grandview area has shown consistent growth, particularly in the western neighborhoods.",
+    "When evaluating real estate in Grandview, it's important to consider school districts, infrastructure development, and local economic indicators. The area has experienced steady growth over the past few years, with particularly strong performance in residential properties.",
+    "Real estate decisions should be based on thorough research of the local market, property condition, and neighborhood trajectory. In Grandview specifically, we've seen consistent appreciation in the 4-5% range annually, with certain neighborhoods outperforming the average."
+  ];
+
   // For developer-focused questions
   if (/\b(code|programming|javascript|python|api|function|class|algorithm)\b/i.test(prompt)) {
-    return "As a developer, I recommend focusing on modular architecture with clear separation of concerns. Your code should implement proper error handling and follow the principle of least privilege, especially when dealing with user data. Consider implementing a repository pattern for data access and dependency injection for better testability.";
+    const variant = Math.floor(Math.random() * devResponseVariants.length);
+    return devResponseVariants[variant];
   }
 
   // For general information about the system
   if (/\b(system|architecture|features|capabilities)\b/i.test(prompt)) {
-    return "The IntelligentEstate system uses a microservices architecture with specialized services for market analysis, geospatial data processing, document extraction, and AI-powered insights. The system integrates with multiple data sources and provides real-time analytics through an intuitive dashboard interface. Vector memory allows for contextual recall of information across interactions.";
+    const variant = Math.floor(Math.random() * sysResponseVariants.length);
+    return sysResponseVariants[variant];
   }
 
   // Fall back to a generic but thoughtful response
-  return "Based on industry data and market analysis, I'd recommend considering multiple factors including local market trends, property condition, neighborhood development plans, and historical appreciation rates. The Grandview area has shown consistent growth, particularly in the western neighborhoods, though specific investment decisions should always account for your personal financial goals and risk tolerance.";
+  const variant = Math.floor(Math.random() * fallbackResponseVariants.length);
+  return fallbackResponseVariants[variant];
 }
 
 /**

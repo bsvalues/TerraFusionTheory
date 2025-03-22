@@ -229,6 +229,74 @@ async function testSearchVectorMemory() {
   }
 }
 
+// Test 8: Ask real estate questions and verify different responses
+async function testRealEstateQuestions() {
+  // Set of different but related questions about property values
+  const questions = [
+    "What is the average price per square foot in Grandview?",
+    "How much do homes typically cost per square foot in Grandview?",
+    "What's the typical property value per square foot in this area?"
+  ];
+  
+  const responses = [];
+  
+  // Process each question and store responses
+  for (const question of questions) {
+    console.log(`   Asking: "${question}"`);
+    
+    try {
+      const response = await axios.post(
+        `${AGENT_DEMO_BASE}/run-real-estate-agent`,
+        { task: question },
+        { timeout: 20000 } // 20 second timeout for each question
+      );
+      
+      if (!response.data.success) {
+        console.log(`   Question failed: ${question}`);
+        console.log(`   Error: ${JSON.stringify(response.data)}`);
+        continue;
+      }
+      
+      // Extract and trim the answer
+      const answer = response.data.result?.answer || "No answer provided";
+      const trimmedAnswer = answer.substring(0, 100) + (answer.length > 100 ? "..." : "");
+      
+      console.log(`   Answer: ${trimmedAnswer}`);
+      responses.push({ question, answer: trimmedAnswer });
+      
+    } catch (error) {
+      console.log(`   Request failed for question: "${question}"`);
+      console.log(`   Error: ${error.message}`);
+      
+      if (error.response) {
+        console.log(`   Status: ${error.response.status}`);
+        console.log(`   Response: ${JSON.stringify(error.response.data, null, 2)}`);
+      }
+    }
+  }
+  
+  // Compare responses to check if they're different
+  if (responses.length >= 2) {
+    let allSame = true;
+    const firstResponse = responses[0].answer;
+    
+    for (let i = 1; i < responses.length; i++) {
+      if (responses[i].answer !== firstResponse) {
+        allSame = false;
+        break;
+      }
+    }
+    
+    if (allSame) {
+      throw new Error('All responses are identical, suggesting pattern matching is still occurring');
+    } else {
+      console.log('   ✅ Responses vary, indicating successful fix of pattern matching issue');
+    }
+  } else {
+    console.log('   ⚠️ Not enough successful responses to compare');
+  }
+}
+
 // Main test function
 async function runTests() {
   console.log("==========================");
@@ -251,12 +319,13 @@ async function runTests() {
       
       // These tests take longer because they involve AI processing
       await runTest("Search vector memory", testSearchVectorMemory);
+      await runTest("Test real estate questions for vector memory", testRealEstateQuestions);
       await runTest("Ask technical question", testAskTechnicalQuestion);
       await runTest("Generate code", testGenerateCode);
       await runTest("Test agent collaboration", testAgentCollaboration);
     } else {
       console.log("\n⚠️ Skipping advanced tests due to failures in basic tests");
-      results.skipped = 4; // 4 tests skipped
+      results.skipped = 5; // 5 tests skipped
     }
     
   } catch (error) {
@@ -277,5 +346,6 @@ export {
   testAskTechnicalQuestion,
   testGenerateCode,
   testAgentCollaboration,
-  testSearchVectorMemory
+  testSearchVectorMemory,
+  testRealEstateQuestions
 };
