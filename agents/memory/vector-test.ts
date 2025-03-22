@@ -40,7 +40,11 @@ async function logTestResult(message: string, data?: any) {
 export async function testVectorMemory() {
   await logTestResult('Starting vector memory test');
   
-  // Clear any existing entries
+  // First initialize vector memory to make sure it's loaded
+  await initializeVectorMemory();
+  await logTestResult('Vector memory initialized');
+  
+  // Clear any existing entries for a fresh test
   await vectorMemory.clear();
   await logTestResult('Memory cleared');
   

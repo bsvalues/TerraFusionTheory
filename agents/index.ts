@@ -11,7 +11,7 @@ import { toolRegistry } from './core/tool-registry';
 import { agentRegistry } from './core/agent-registry';
 import { agentCoordinator } from './core/agent-coordinator';
 import { agentFactory, AgentType } from './core/agent-factory';
-import { vectorMemory } from './memory/vector';
+import { vectorMemory, initializeVectorMemory } from './memory/vector';
 import { registerMCPTool } from './tools/mcp';
 import { AgentCapability } from './interfaces/agent-interface';
 
@@ -26,7 +26,8 @@ export async function initializeAgentSystem(): Promise<void> {
     await logSystemActivity('Agent system initialization started', LogLevel.INFO);
     
     // 1. Initialize the vector memory
-    // Nothing to do here, it self-initializes on first use
+    await initializeVectorMemory();
+    console.log('Vector memory initialized')
     
     // 2. Register tools
     toolRegistry.registerTool(registerMCPTool());
