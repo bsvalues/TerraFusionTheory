@@ -471,6 +471,16 @@ export class RealEstateAgent extends BaseAgent implements Agent {
       additionalFeatures 
     } = task.inputs;
     
+    // Log the start of property valuation
+    await this.logActivity(`Starting property valuation for ${address}`, LogLevel.INFO, {
+      address,
+      propertyType,
+      squareFeet,
+      bedrooms,
+      bathrooms,
+      yearBuilt
+    });
+    
     // Prepare the prompt for property valuation
     const prompt = this.buildPropertyValuationPrompt(
       address, 
@@ -483,19 +493,45 @@ export class RealEstateAgent extends BaseAgent implements Agent {
       additionalFeatures
     );
     
-    // Use MCP tool for property valuation
+    // Create a custom memory query for finding similar properties
+    // Extract the location from the address for better context retrieval
+    const addressParts = address.split(',').map((part: string) => part.trim());
+    const city = addressParts.length > 1 ? addressParts[1] : '';
+    const memoryQuery = `${propertyType} property valuation ${city} ${squareFeet} square feet ${bedrooms} bedrooms ${bathrooms} bathrooms ${yearBuilt}`;
+    
+    // Use enhanced MCP tool for property valuation with vector memory integration
     const result = await this.useTool('mcp', {
       model: 'gpt-4',
       prompt,
       temperature: 0.2,
-      system_message: 'You are a professional real estate appraiser with deep knowledge of property valuation methodologies. Provide a detailed and accurate valuation analysis with confidence intervals.'
+      system_message: 'You are a professional real estate appraiser with deep knowledge of property valuation methodologies. Provide a detailed and accurate valuation analysis with confidence intervals.',
+      
+      // Enhanced context-aware parameters
+      use_vector_memory: true,
+      memory_query: memoryQuery,
+      memory_options: {
+        limit: 5,
+        threshold: 0.3,
+        diversityFactor: 0.4,
+        includeSources: true,
+        timeWeighting: {
+          enabled: true,
+          halfLifeDays: 30,
+          maxBoost: 1.5
+        }
+      },
+      context_integration: 'smart'
     });
     
     if (!result.success) {
       throw new Error(`Property valuation failed: ${result.error}`);
     }
     
-    // Set the task result
+    // Extract context sources and metadata
+    const contextSourcesUsed = result.result.metadata?.contextSources || [];
+    const contextEnhanced = result.result.metadata?.contextEnhanced || false;
+    
+    // Set the task result with enhanced metadata
     task.result = {
       valuation: result.result.response,
       property: {
@@ -508,8 +544,42 @@ export class RealEstateAgent extends BaseAgent implements Agent {
         lotSize,
         additionalFeatures
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      metadata: {
+        contextEnhanced,
+        contextSources: contextSourcesUsed,
+        responseTime: result.metadata?.responseTime || null,
+        modelUsed: result.result.model,
+        fromCache: result.result.fromCache || false
+      }
     };
+    
+    // Store the valuation in vector memory for future reference
+    await vectorMemory.addEntry(
+      `Property Valuation for ${address} (${propertyType}, ${squareFeet} sq ft, ${bedrooms}BD/${bathrooms}BA, built ${yearBuilt}): ${result.result.response}`,
+      {
+        source: 'property-valuation',
+        agentId: this.getId(),
+        timestamp: new Date().toISOString(),
+        category: 'property-valuation',
+        tags: ['property-valuation', propertyType, city],
+        address,
+        propertyType,
+        squareFeet,
+        bedrooms,
+        bathrooms,
+        yearBuilt
+      }
+    );
+    
+    await this.logActivity(`Completed property valuation for ${address}`, LogLevel.INFO, {
+      address,
+      propertyType,
+      valuationLength: result.result.response.length,
+      contextSourcesUsed: contextSourcesUsed.length,
+      contextEnhanced,
+      responseTime: result.metadata?.responseTime
+    });
   }
   
   /**
@@ -517,23 +587,55 @@ export class RealEstateAgent extends BaseAgent implements Agent {
    */
   private async handleNeighborhoodAnalysisTask(task: AgentTask): Promise<void> {
     const { neighborhood, city, state, factors } = task.inputs;
+    const requestedFactors = factors || ['schools', 'crime', 'amenities', 'transportation', 'growth'];
+    
+    // Log the start of neighborhood analysis
+    await this.logActivity(`Starting neighborhood analysis for ${neighborhood}, ${city}, ${state}`, LogLevel.INFO, {
+      neighborhood,
+      city,
+      state,
+      factors: requestedFactors
+    });
     
     // Prepare the prompt for neighborhood analysis
-    const prompt = this.buildNeighborhoodAnalysisPrompt(neighborhood, city, state, factors);
+    const prompt = this.buildNeighborhoodAnalysisPrompt(neighborhood, city, state, requestedFactors);
     
-    // Use MCP tool for neighborhood analysis
+    // Create a custom memory query for finding relevant neighborhood information
+    const memoryQuery = `${neighborhood} ${city} ${state} neighborhood analysis ${requestedFactors.join(' ')}`;
+    
+    // Use enhanced MCP tool for neighborhood analysis with vector memory integration
     const result = await this.useTool('mcp', {
       model: 'gpt-4',
       prompt,
       temperature: 0.4,
-      system_message: 'You are a neighborhood analysis expert with knowledge of urban planning, demographics, and community development. Provide a comprehensive analysis of the specified neighborhood.'
+      system_message: 'You are a neighborhood analysis expert with knowledge of urban planning, demographics, and community development. Provide a comprehensive analysis of the specified neighborhood.',
+      
+      // Enhanced context-aware parameters
+      use_vector_memory: true,
+      memory_query: memoryQuery,
+      memory_options: {
+        limit: 6, // Get more context entries for neighborhood analysis
+        threshold: 0.25,
+        diversityFactor: 0.5,
+        includeSources: true,
+        timeWeighting: {
+          enabled: true,
+          halfLifeDays: 60, // Neighborhood information stays relevant longer
+          maxBoost: 1.2
+        }
+      },
+      context_integration: 'smart'
     });
     
     if (!result.success) {
       throw new Error(`Neighborhood analysis failed: ${result.error}`);
     }
     
-    // Set the task result
+    // Extract context sources and metadata
+    const contextSourcesUsed = result.result.metadata?.contextSources || [];
+    const contextEnhanced = result.result.metadata?.contextEnhanced || false;
+    
+    // Set the task result with enhanced metadata
     task.result = {
       analysis: result.result.response,
       location: {
@@ -541,9 +643,42 @@ export class RealEstateAgent extends BaseAgent implements Agent {
         city,
         state
       },
-      factors: factors || ['schools', 'crime', 'amenities', 'transportation', 'growth'],
-      timestamp: new Date().toISOString()
+      factors: requestedFactors,
+      timestamp: new Date().toISOString(),
+      metadata: {
+        contextEnhanced,
+        contextSources: contextSourcesUsed,
+        responseTime: result.metadata?.responseTime || null,
+        modelUsed: result.result.model,
+        fromCache: result.result.fromCache || false
+      }
     };
+    
+    // Store the neighborhood analysis in vector memory for future reference
+    await vectorMemory.addEntry(
+      `Neighborhood Analysis for ${neighborhood}, ${city}, ${state}: ${result.result.response.substring(0, 1000)}${result.result.response.length > 1000 ? '...' : ''}`,
+      {
+        source: 'neighborhood-analysis',
+        agentId: this.getId(),
+        timestamp: new Date().toISOString(),
+        category: 'neighborhood-analysis',
+        tags: ['neighborhood-analysis', neighborhood, city, state, ...requestedFactors],
+        neighborhood,
+        city,
+        state,
+        factors: requestedFactors
+      }
+    );
+    
+    await this.logActivity(`Completed neighborhood analysis for ${neighborhood}, ${city}, ${state}`, LogLevel.INFO, {
+      neighborhood,
+      city,
+      state,
+      analysisLength: result.result.response.length,
+      contextSourcesUsed: contextSourcesUsed.length,
+      contextEnhanced,
+      responseTime: result.metadata?.responseTime
+    });
   }
   
   /**
@@ -559,6 +694,16 @@ export class RealEstateAgent extends BaseAgent implements Agent {
       goals
     } = task.inputs;
     
+    // Log the start of investment recommendation
+    await this.logActivity(`Starting investment recommendation for ${region}`, LogLevel.INFO, {
+      budget,
+      investmentType,
+      region,
+      timeline,
+      riskTolerance,
+      goalsCount: goals ? goals.length : 0
+    });
+    
     // Prepare the prompt for investment recommendation
     const prompt = this.buildInvestmentRecommendationPrompt(
       budget, 
@@ -569,19 +714,42 @@ export class RealEstateAgent extends BaseAgent implements Agent {
       goals
     );
     
-    // Use MCP tool for investment recommendation
+    // Create a custom memory query for investment recommendations
+    const memoryQuery = `${region} real estate investment ${investmentType} ${budget} ${riskTolerance} risk ${timeline} ${goals ? goals.join(' ') : ''}`;
+    
+    // Use enhanced MCP tool for investment recommendation with vector memory integration
     const result = await this.useTool('mcp', {
       model: 'gpt-4',
       prompt,
       temperature: 0.3,
-      system_message: 'You are a real estate investment advisor with expertise in helping clients make sound investment decisions. Provide targeted recommendations based on the client\'s financial situation, goals, and risk tolerance.'
+      system_message: 'You are a real estate investment advisor with expertise in helping clients make sound investment decisions. Provide targeted recommendations based on the client\'s financial situation, goals, and risk tolerance.',
+      
+      // Enhanced context-aware parameters
+      use_vector_memory: true,
+      memory_query: memoryQuery,
+      memory_options: {
+        limit: 6,
+        threshold: 0.3,
+        diversityFactor: 0.6, // Higher diversity for investment options
+        includeSources: true,
+        timeWeighting: {
+          enabled: true,
+          halfLifeDays: 45,
+          maxBoost: 1.3
+        }
+      },
+      context_integration: 'smart'
     });
     
     if (!result.success) {
       throw new Error(`Investment recommendation failed: ${result.error}`);
     }
     
-    // Set the task result
+    // Extract context sources and metadata
+    const contextSourcesUsed = result.result.metadata?.contextSources || [];
+    const contextEnhanced = result.result.metadata?.contextEnhanced || false;
+    
+    // Set the task result with enhanced metadata
     task.result = {
       recommendations: result.result.response,
       investmentProfile: {
@@ -592,8 +760,41 @@ export class RealEstateAgent extends BaseAgent implements Agent {
         riskTolerance,
         goals
       },
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      metadata: {
+        contextEnhanced,
+        contextSources: contextSourcesUsed,
+        responseTime: result.metadata?.responseTime || null,
+        modelUsed: result.result.model,
+        fromCache: result.result.fromCache || false
+      }
     };
+    
+    // Store the investment recommendation in vector memory for future reference
+    await vectorMemory.addEntry(
+      `Investment Recommendation for ${region} (${investmentType}, Budget: ${budget}, Timeline: ${timeline}, Risk: ${riskTolerance}): ${result.result.response.substring(0, 1000)}${result.result.response.length > 1000 ? '...' : ''}`,
+      {
+        source: 'investment-recommendation',
+        agentId: this.getId(),
+        timestamp: new Date().toISOString(),
+        category: 'investment-recommendation',
+        tags: ['investment', region, investmentType, riskTolerance],
+        budget: typeof budget === 'string' ? budget : budget.toString(),
+        investmentType,
+        region,
+        timeline,
+        riskTolerance
+      }
+    );
+    
+    await this.logActivity(`Completed investment recommendation for ${region}`, LogLevel.INFO, {
+      region,
+      investmentType,
+      recommendationsLength: result.result.response.length,
+      contextSourcesUsed: contextSourcesUsed.length,
+      contextEnhanced,
+      responseTime: result.metadata?.responseTime
+    });
   }
   
   /**
