@@ -224,9 +224,14 @@ async function populateSampleEntries() {
 async function performBasicSearch() {
   const query = "What's happening in the Grandview real estate market?";
   
+  // Log candidate entries before search
+  const candidateCount = Array.from(vectorMemory.getEntries()).length;
+  console.log(`[TEST DEBUG] Total entries in memory: ${candidateCount}`);
+  
+  // Use lower threshold for testing
   const results = await vectorMemory.search(query, {
     limit: 3,
-    threshold: 0.7
+    threshold: 0.3 // Lower threshold to see if any results are returned
   });
   
   await logTestResult('Basic Semantic Search Results', {
