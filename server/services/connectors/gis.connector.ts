@@ -495,6 +495,120 @@ export class GISConnector extends BaseDataConnector {
   }
   
   /**
+   * Geocode an address to get its coordinates
+   * @param address The address to geocode
+   * @returns GeoJSON feature with the coordinates
+   */
+  async geocodeAddress(address: string): Promise<GeoJSONFeatureCollection> {
+    try {
+      const startTime = Date.now();
+      
+      // Get configuration
+      const gisConfig = this.config as GISConnectorConfig;
+      const baseUrl = gisConfig.baseUrl;
+      
+      // Determine geocoding endpoint based on service type
+      let geocodeUrl = '';
+      let geocodeParams: Record<string, any> = {};
+      
+      if (gisConfig.serviceType === 'arcgis') {
+        // ArcGIS geocoding endpoint
+        geocodeUrl = `${baseUrl}/findAddressCandidates`;
+        geocodeParams = {
+          f: 'json',
+          singleLine: address,
+          outFields: '*',
+          outSR: 4326,
+          maxLocations: 5
+        };
+      } else if (gisConfig.serviceType === 'mapbox') {
+        // Mapbox geocoding endpoint
+        geocodeUrl = `https://api.mapbox.com/geocoding/v5/mapbox.places/${encodeURIComponent(address)}.json`;
+        geocodeParams = {
+          access_token: gisConfig.apiKey || '',
+          limit: 5
+        };
+      } else {
+        // Generic geocoding endpoint
+        geocodeUrl = `${baseUrl}/geocode`;
+        geocodeParams = {
+          address: address,
+          format: 'geojson'
+        };
+      }
+      
+      // Add API key if needed (for ArcGIS and generic services)
+      if (gisConfig.apiKey && gisConfig.serviceType !== 'mapbox') {
+        geocodeParams.token = gisConfig.apiKey;
+      }
+      
+      // Log the request
+      await this.logRequest('GET', geocodeUrl, this.sanitizeParams(geocodeParams));
+      
+      // Prepare request configuration
+      const config: AxiosRequestConfig = {
+        params: geocodeParams
+      };
+      
+      // Make the request with timeout
+      const response = await this.withTimeout(
+        this.client.get(geocodeUrl, config),
+        this.config.timeout as number,
+        'Geocoding request timed out'
+      );
+      
+      const duration = Date.now() - startTime;
+      
+      // Log the response
+      await this.logResponse('GET', geocodeUrl, geocodeParams, response.data, duration);
+      
+      // Process response based on service type
+      let features: GeoJSONFeature[] = [];
+      
+      if (gisConfig.serviceType === 'arcgis') {
+        // Convert ArcGIS candidates to GeoJSON features
+        if (response.data && response.data.candidates && response.data.candidates.length > 0) {
+          features = response.data.candidates.map((candidate: any) => ({
+            type: 'Feature',
+            geometry: {
+              type: 'Point',
+              coordinates: [candidate.location.x, candidate.location.y]
+            },
+            properties: {
+              address: candidate.address,
+              score: candidate.score,
+              locator: candidate.attributes?.Loc_name || 'ArcGIS',
+              ...candidate.attributes
+            }
+          }));
+        }
+      } else if (gisConfig.serviceType === 'mapbox') {
+        // Extract Mapbox features (they're already in GeoJSON format)
+        if (response.data && response.data.features && response.data.features.length > 0) {
+          features = response.data.features;
+        }
+      } else if (response.data && response.data.features) {
+        // Use features directly if they're already in GeoJSON format
+        features = response.data.features;
+      }
+      
+      // Return as GeoJSON FeatureCollection
+      return {
+        type: 'FeatureCollection',
+        features: features
+      };
+    } catch (error) {
+      await this.logError('GET', '/geocode', { address }, error);
+      
+      // Return empty feature collection instead of throwing to make error recovery more graceful
+      return {
+        type: 'FeatureCollection',
+        features: []
+      };
+    }
+  }
+  
+  /**
    * Get parcels within a bounding box
    */
   async getParcelsInBoundingBox(

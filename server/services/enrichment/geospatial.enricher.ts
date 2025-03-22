@@ -2,7 +2,7 @@ import { LogLevel, LogCategory } from '@shared/schema';
 import { storage } from '../../storage';
 import { PropertyListing } from '../connectors/market.connector';
 import { PropertyData } from '../connectors/cama.connector';
-import { GeoJSONFeature, GeoJSONFeatureCollection } from '../connectors/gis.connector';
+import { GeoJSONFeature, GeoJSONFeatureCollection, GISConnector } from '../connectors/gis.connector';
 import { AppError } from '../../errors';
 import { connectorFactory } from '../connectors/connector.factory';
 
@@ -392,17 +392,14 @@ export class GeospatialEnricher {
   private async geocodeAddress(address: string): Promise<GeocodingResult | null> {
     try {
       // Get the GIS connector
-      const gisConnector = connectorFactory.getConnectorsByType('gis')[0];
+      const gisConnector = connectorFactory.getConnectorsByType('gis')[0] as GISConnector;
       
       if (!gisConnector) {
         throw new Error('No GIS connector available for geocoding');
       }
       
-      // Use the GIS connector to geocode the address
-      const result = await gisConnector.fetchData({
-        address: address,
-        limit: 1
-      });
+      // Use the GIS connector's dedicated geocodeAddress method
+      const result = await gisConnector.geocodeAddress(address);
       
       if (!result.features || result.features.length === 0) {
         return null;
@@ -419,18 +416,22 @@ export class GeospatialEnricher {
       // Extract properties
       const props = feature.properties;
       
+      // Calculate confidence score (default to 0.8 if none in properties)
+      const confidence = typeof props.score === 'number' ? props.score / 100 : 
+                        (typeof props.confidence === 'number' ? props.confidence : 0.8);
+      
       return {
         latitude: coords[1],
         longitude: coords[0],
-        confidence: 0.8, // Default confidence
-        formattedAddress: props.address || address,
-        neighborhood: props.neighborhood || undefined,
+        confidence: confidence,
+        formattedAddress: props.address || props.formatted_address || address,
+        neighborhood: props.neighborhood || props.district_name || undefined,
         district: props.district || undefined,
-        city: props.city || undefined,
-        county: props.county || undefined,
-        state: props.state || undefined,
-        zip: props.zip || undefined,
-        country: props.country || 'USA'
+        city: props.city || props.place_name || props.locality || undefined,
+        county: props.county || props.county_name || undefined,
+        state: props.state || props.region || props.administrative_area || undefined,
+        zip: props.zip || props.postal_code || props.postalCode || undefined,
+        country: props.country || props.country_code || 'USA'
       };
     } catch (error) {
       console.error(`Failed to geocode address ${address}:`, error);
