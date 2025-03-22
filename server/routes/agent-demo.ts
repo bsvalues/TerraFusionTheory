@@ -412,6 +412,93 @@ router.post('/test-mcp', asyncHandler(async (req, res) => {
 }));
 
 /**
+ * Test agent collaboration with real estate expertise
+ * This endpoint specifically tests the developer agent's ability to
+ * recognize real estate questions and consult with the real estate agent
+ */
+router.post('/test-cross-domain-collaboration', asyncHandler(async (req, res) => {
+  const { question } = req.body;
+  
+  if (!question) {
+    return res.status(400).json({
+      success: false,
+      error: 'Question is required in request body'
+    });
+  }
+  
+  try {
+    // First ensure both agents exist
+    const developerAgent = await getDeveloperAgent();
+    const realEstateAgent = await getRealEstateAgent();
+    
+    // Create capture for detailed logs
+    const operationLogs = [];
+    
+    // Log the beginning of the process
+    operationLogs.push(`Testing cross-domain collaboration with question: "${question.substring(0, 50)}..."`);
+    
+    // First analyze if the developer agent thinks this is real estate related
+    // We'll use the private method via JavaScript reflection technique
+    // (In a production app, you might want to expose this method publicly)
+    const isRealEstateRelated = (developerAgent as any).isRealEstateRelatedQuestion(question);
+    operationLogs.push(`Developer agent determined question is${isRealEstateRelated ? '' : ' not'} real estate related`);
+    
+    // Detailed log about the identification result
+    if (isRealEstateRelated) {
+      operationLogs.push('Real estate keywords detected in question');
+    }
+    
+    // Run the developer agent processing logic for the question
+    operationLogs.push('Executing developer agent question answering with potential collaboration...');
+    const result = await developerAgent.execute('answer_question', {
+      question,
+      context: 'This question may involve technical and/or real estate concepts.'
+    }, { priority: 'high' });
+    
+    // Log the completion of the operation
+    operationLogs.push(`Developer agent processing completed with status: ${result.success ? 'success' : 'failure'}`);
+    
+    // Check vector memory for collaboration entries
+    const collaborationEntries = await vectorMemory.search(
+      question,
+      {
+        limit: 5,
+        filter: { tags: ['collaboration', 'real-estate'] },
+        timeWeighting: { enabled: true, halfLifeDays: 1, maxBoost: 2.0 }
+      }
+    );
+    
+    const collaborationFound = collaborationEntries.length > 0;
+    operationLogs.push(`Found ${collaborationEntries.length} recent collaboration entries in vector memory`);
+    
+    // Return comprehensive results
+    res.json({
+      success: true,
+      question,
+      isRealEstateRelated,
+      collaborationFound,
+      developerResult: result.success ? result.data : { error: result.error?.message },
+      logs: operationLogs,
+      collaborationMemoryEntries: collaborationEntries.slice(0, 3).map(entry => ({
+        id: entry.id,
+        content: entry.content.substring(0, 150) + '...',
+        metadata: {
+          source: entry.metadata.source,
+          timestamp: entry.metadata.timestamp,
+          tags: entry.metadata.tags
+        },
+        score: entry.score
+      }))
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
+
+/**
  * Agent collaboration endpoint for inter-agent communication
  */
 router.post('/agent-collaboration', asyncHandler(async (req, res) => {
