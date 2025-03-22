@@ -7,7 +7,7 @@
  * Run with: node tests/gis-geocoding-test.js
  */
 
-const axios = require('axios');
+import axios from 'axios';
 const colors = {
   reset: '\x1b[0m',
   bright: '\x1b[1m',

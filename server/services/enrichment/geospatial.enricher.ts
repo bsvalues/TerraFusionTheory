@@ -420,9 +420,25 @@ export class GeospatialEnricher {
       const confidence = typeof props.score === 'number' ? props.score / 100 : 
                         (typeof props.confidence === 'number' ? props.confidence : 0.8);
       
+      // Make sure coordinates are valid
+      let lat = 0;
+      let lng = 0;
+      
+      if (Array.isArray(coords) && coords.length >= 2) {
+        if (typeof coords[0] === 'number' && typeof coords[1] === 'number') {
+          lng = coords[0];
+          lat = coords[1];
+        } else if (Array.isArray(coords[0]) && Array.isArray(coords[1])) {
+          // Handle nested arrays if needed
+          console.warn('Nested coordinate arrays not fully supported');
+          lng = 0;
+          lat = 0;
+        }
+      }
+      
       return {
-        latitude: coords[1],
-        longitude: coords[0],
+        latitude: lat,
+        longitude: lng,
         confidence: confidence,
         formattedAddress: props.address || props.formatted_address || address,
         neighborhood: props.neighborhood || props.district_name || undefined,
