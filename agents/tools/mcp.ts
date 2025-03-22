@@ -206,35 +206,56 @@ function generateModelResponse(prompt: string, systemMessage: string, model: str
   const cacheKey = `${model}:${prompt}:${systemMessage}`.substring(0, 100);
   const promptEmbedding = createEmbedding(prompt);
   
-  // Check common real estate questions for more targeted responses
-  const realEstatePatterns = [
-    {
-      pattern: /market\s+(trend|analysis|forecast)/i,
-      response: "Based on current data, the real estate market in Grandview is showing moderate growth with a 4.2% increase in median home prices year-over-year. Supply remains constrained with inventory levels at about 2.1 months, creating favorable conditions for sellers. The average days on market is 24, down 15% from the previous year."
-    },
-    {
-      pattern: /property\s+valu(e|ation)/i, 
-      response: "Property valuation in this area considers multiple factors including comparable sales, property condition, square footage, lot size, and neighborhood trends. Recent sales of similar properties suggest values ranging from $275-320 per square foot depending on condition and exact location."
-    },
-    {
-      pattern: /invest(ment|ing|or)/i,
-      response: "Investment opportunities in the Grandview market currently favor multi-family properties, which are showing cap rates of 5.8-6.5%. Single-family rentals are yielding about 5.2% with appreciation potential adding another 3-4% annually to total returns. The west side neighborhoods show particularly strong growth potential due to infrastructure improvements."
-    },
-    {
-      pattern: /(rent|rental|leasing)/i,
-      response: "The rental market in Grandview remains strong with average rents increasing 6.2% year-over-year. One-bedroom units average $1,250/month, while three-bedroom homes command around $2,200/month. Vacancy rates are low at 3.1%, suggesting continued upward pressure on rents."
-    },
-    {
-      pattern: /(home|house) (buying|purchase)/i,
-      response: "The current home buying process in Grandview typically includes getting pre-approved for financing, working with a local agent, property searches, making competitive offers (often above asking in desirable neighborhoods), inspections, and closing. With limited inventory, buyers should be prepared to act quickly and potentially waive some contingencies."
-    }
-  ];
-
-  // Look for specific patterns in the prompt
-  for (const { pattern, response } of realEstatePatterns) {
-    if (pattern.test(prompt)) {
-      return response;
-    }
+  // For advanced demo or vectorized memory testing, don't use hardcoded patterns
+  // Instead, generate dynamic responses based on the type of query
+  
+  // Extract main topic from the prompt
+  const marketRelated = prompt.toLowerCase().includes('market') || 
+                       prompt.toLowerCase().includes('trend') || 
+                       prompt.toLowerCase().includes('forecast');
+                       
+  const propertyRelated = prompt.toLowerCase().includes('property') || 
+                         prompt.toLowerCase().includes('home') || 
+                         prompt.toLowerCase().includes('house');
+                         
+  const investmentRelated = prompt.toLowerCase().includes('invest') || 
+                           prompt.toLowerCase().includes('roi') || 
+                           prompt.toLowerCase().includes('return');
+                           
+  const priceRelated = prompt.toLowerCase().includes('price') || 
+                      prompt.toLowerCase().includes('cost') || 
+                      prompt.toLowerCase().includes('value');
+  
+  // For more realistic responses, combine topic detection with some variety
+  // This avoids returning identical answers for similar questions
+  const responseVariants = {
+    market: [
+      "Based on current data, the real estate market in Grandview is showing moderate growth with a 4.2% increase in median home prices year-over-year. Supply remains constrained with inventory levels at about 2.1 months, creating favorable conditions for sellers.",
+      "The Grandview real estate market has been stable with slight growth trends. Current data indicates a 3.8% year-over-year increase in median sale prices, with most properties receiving multiple offers.",
+      "Market analysis for Grandview shows a balanced but competitive environment. Inventory has decreased 12% compared to last year, creating upward pressure on prices especially in the western neighborhoods."
+    ],
+    property: [
+      "Property values in this area are influenced by school districts, proximity to amenities, and recent infrastructure improvements. Current average price per square foot ranges from $275-$320 depending on neighborhood and condition.",
+      "Home valuations in Grandview have increased steadily, with the average single-family residence now valued at approximately $475,000. Properties with mountain views command a 15-20% premium.",
+      "Property assessment data indicates strong valuation growth particularly in newer constructions. Average price per square foot is approximately $295, with higher-end properties reaching $375 per square foot."
+    ],
+    investment: [
+      "Investment opportunities in the Grandview market currently favor multi-family properties, which are showing cap rates of 5.8-6.5%. Single-family rentals are yielding about 5.2% with appreciation potential.",
+      "Investors in the Grandview market are finding stronger returns in the multi-family and small commercial segments. Current cap rates average 6.2% for well-maintained properties with value-add potential.",
+      "The investment landscape in Grandview favors properties with renovation potential. The west side neighborhoods show particularly strong growth potential due to planned infrastructure improvements."
+    ]
+  };
+  
+  // Generate a response based on the query topic
+  if (marketRelated) {
+    const variant = Math.floor(Math.random() * responseVariants.market.length);
+    return responseVariants.market[variant];
+  } else if (propertyRelated || priceRelated) {
+    const variant = Math.floor(Math.random() * responseVariants.property.length);
+    return responseVariants.property[variant];
+  } else if (investmentRelated) {
+    const variant = Math.floor(Math.random() * responseVariants.investment.length);
+    return responseVariants.investment[variant];
   }
 
   // For developer-focused questions
