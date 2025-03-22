@@ -70,6 +70,45 @@ router.get('/developer-agent', asyncHandler(async (req, res) => {
 }));
 
 /**
+ * Run developer agent task
+ */
+router.post('/run-developer-agent', asyncHandler(async (req, res) => {
+  const { task, inputs } = req.body;
+  
+  if (!task) {
+    return res.status(400).json({
+      success: false,
+      error: 'Task is required in request body'
+    });
+  }
+  
+  try {
+    const agent = await getDeveloperAgent();
+    
+    // Default inputs if not provided
+    const taskInputs = inputs || {};
+    
+    // For answer_question type, we need to extract the question
+    if (task === 'answer_question' && !taskInputs.question && req.body.question) {
+      taskInputs.question = req.body.question;
+    }
+    
+    // Execute the task
+    const result = await agent.execute(task, taskInputs, { priority: 'normal' });
+    
+    res.json({
+      success: true,
+      result: result.success ? result.data : { error: result.error?.message || 'Task execution failed' }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
+
+/**
  * Get real estate agent details
  */
 router.get('/real-estate-agent', asyncHandler(async (req, res) => {
@@ -120,30 +159,136 @@ router.get('/test-vector-memory', asyncHandler(async (req, res) => {
 }));
 
 /**
- * Run developer agent task
+ * Answer technical question with developer agent
  */
-router.post('/run-developer-agent', asyncHandler(async (req, res) => {
-  const { task } = req.body;
+router.post('/answer-technical-question', asyncHandler(async (req, res) => {
+  const { question } = req.body;
   
-  if (!task) {
+  if (!question) {
     return res.status(400).json({ 
       success: false, 
-      error: 'Task is required in request body' 
+      error: 'Question is required in request body' 
     });
   }
   
   try {
     const agent = await getDeveloperAgent();
     
-    // Execute the task directly
+    // Execute the task directly for answering questions
     const result = await agent.execute('answer_question', {
-      question: task,
+      question,
       context: 'The question is related to software development.'
     }, { priority: 'normal' });
     
     res.json({
       success: true,
       result: result.success ? result.data : { error: result.error?.message || 'Task execution failed' }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
+
+/**
+ * Generate code with developer agent
+ */
+router.post('/generate-code', asyncHandler(async (req, res) => {
+  const { language, requirements, style, context } = req.body;
+  
+  if (!language || !requirements) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Language and requirements are required in request body' 
+    });
+  }
+  
+  try {
+    const agent = await getDeveloperAgent();
+    
+    // Execute the code generation task
+    const result = await agent.execute('generate_code', {
+      language,
+      requirements,
+      style: style || 'detailed', // default to detailed if not specified
+      context
+    }, { priority: 'normal' });
+    
+    res.json({
+      success: true,
+      result: result.success ? result.data : { error: result.error?.message || 'Code generation failed' }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
+
+/**
+ * Debug code with developer agent
+ */
+router.post('/debug-code', asyncHandler(async (req, res) => {
+  const { code, language, error_message } = req.body;
+  
+  if (!code || !language || !error_message) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Code, language, and error_message are required in request body' 
+    });
+  }
+  
+  try {
+    const agent = await getDeveloperAgent();
+    
+    // Execute the debugging task
+    const result = await agent.execute('debug_code', {
+      code,
+      language,
+      error_message
+    }, { priority: 'high' }); // Use high priority for debugging issues
+    
+    res.json({
+      success: true,
+      result: result.success ? result.data : { error: result.error?.message || 'Debugging failed' }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
+
+/**
+ * Review code with developer agent
+ */
+router.post('/review-code', asyncHandler(async (req, res) => {
+  const { code, language, focus_areas } = req.body;
+  
+  if (!code || !language) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Code and language are required in request body' 
+    });
+  }
+  
+  try {
+    const agent = await getDeveloperAgent();
+    
+    // Execute the code review task
+    const result = await agent.execute('review_code', {
+      code,
+      language,
+      focus_areas: focus_areas || [] // Optional focus areas
+    }, { priority: 'normal' });
+    
+    res.json({
+      success: true,
+      result: result.success ? result.data : { error: result.error?.message || 'Code review failed' }
     });
   } catch (error) {
     res.status(500).json({

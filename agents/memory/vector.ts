@@ -95,6 +95,9 @@ export interface AdvancedSearchOptions {
     minDistance?: number; // Minimum cosine distance between results (default: 0.15)
     maxSimilarResults?: number; // Maximum number of similar results (default: 2)
   };
+  
+  // Simple diversity factor (0-1 value that affects result diversity)
+  diversityFactor?: number;
 }
 
 /**

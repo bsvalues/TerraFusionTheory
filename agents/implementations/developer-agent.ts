@@ -426,49 +426,85 @@ export class DeveloperAgent extends BaseAgent implements Agent {
   private async handleQuestionTask(task: AgentTask): Promise<void> {
     const { question, context } = task.inputs;
     
-    // Search relevant information in vector memory
-    const memoryResults = await vectorMemory.search(question, { limit: 3, threshold: 0.7 });
+    // Search relevant information in vector memory with lower threshold
+    const memoryResults = await vectorMemory.search(question, { 
+      limit: 5, 
+      threshold: 0.3,  // Lower threshold to match our improved vector memory
+      diversityOptions: {
+        enabled: true,
+        minDistance: 0.2  // Add diversity to get a range of relevant content
+      }
+    });
+    
+    // Log memory search results
+    await this.logActivity(`Vector memory search results for question: "${question.substring(0, 30)}..."`, LogLevel.DEBUG, {
+      resultCount: memoryResults.length,
+      topResults: memoryResults.slice(0, 3).map(r => ({
+        preview: r.entry.text.substring(0, 50) + '...',
+        score: r.score
+      }))
+    });
     
     // Build context from relevant memories
     let contextFromMemory = '';
     if (memoryResults.length > 0) {
       contextFromMemory = "Relevant information from my knowledge base:\n" + 
-        memoryResults.map(result => `- ${result.entry.text}`).join('\n');
+        memoryResults.map(result => `- ${result.entry.text} (relevance: ${result.score.toFixed(2)})`).join('\n');
     }
     
-    // Prepare the prompt
-    const prompt = `Question: ${question}\n\n${contextFromMemory}\n\n${context ? `Additional context: ${context}\n` : ''}Please provide a clear and helpful answer.`;
+    // Prepare the enhanced prompt
+    const prompt = `
+Technical Question: ${question}
+
+${memoryResults.length > 0 ? '## Relevant Context\n' + contextFromMemory + '\n\n' : ''}
+${context ? `## Additional Context\n${context}\n\n` : ''}
+
+## Task
+Please provide a clear, accurate, and helpful answer to the technical question based on:
+1. Your expertise in software development
+2. The provided context information (if any)
+3. Best practices and current industry standards
+
+Focus on providing actionable insights and solutions that would be valuable to a developer.
+`;
     
-    // Use MCP tool to answer the question
+    // Use enhanced MCP tool to answer the question
     const result = await this.useTool('mcp', {
       model: 'gpt-4',
       prompt,
-      temperature: 0.7,
-      system_message: 'You are a helpful and knowledgeable developer assistant. Provide clear, concise, and accurate answers to technical questions.'
+      temperature: 0.4,  // Slightly lower temperature for more focused responses
+      system_message: 'You are a knowledgeable software developer with expertise in architecture, programming best practices, and technical problem-solving. Provide clear, accurate, and helpful answers to technical questions.',
+      cache: true  // Enable caching for efficiency
     });
     
     if (!result.success) {
       throw new Error(`Failed to answer question: ${result.error}`);
     }
     
-    // Set the task result
+    // Set the task result with enhanced metadata
     task.result = {
       answer: result.result.response,
       sourcesUsed: memoryResults.map(result => ({
         text: result.entry.text.substring(0, 100) + (result.entry.text.length > 100 ? '...' : ''),
-        relevanceScore: result.score
-      }))
+        relevanceScore: result.score,
+        category: result.entry.metadata?.category || 'unknown'
+      })),
+      metadata: {
+        responseTime: result.metadata?.responseTime || null,
+        modelUsed: 'gpt-4',
+        timestamp: new Date().toISOString()
+      }
     };
     
     // Store the question and answer in memory for future reference
     await vectorMemory.addEntry(
       `Q: ${question}\nA: ${result.result.response}`,
       {
-        source: 'question-answering',
+        source: 'dev-question-answering',
         agentId: this.getId(),
         timestamp: new Date().toISOString(),
-        category: 'qa',
-        tags: ['question', 'answer']
+        category: 'technical-qa',
+        tags: ['question', 'answer', 'technical', ...this.specializations]
       }
     );
   }

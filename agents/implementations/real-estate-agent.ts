@@ -543,7 +543,10 @@ export class RealEstateAgent extends BaseAgent implements Agent {
     const memoryResults = await vectorMemory.search(question, { 
       limit: 5, 
       threshold: 0.3,  // Lower threshold to match our improved vector memory
-      diversityFactor: 0.2  // Add diversity factor to get a range of relevant content
+      diversityOptions: {
+        enabled: true,
+        minDistance: 0.2  // Add diversity to get a range of relevant content
+      }
     });
     
     // Log memory search results
