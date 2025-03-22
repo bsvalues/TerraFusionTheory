@@ -429,45 +429,148 @@ export class DeveloperAgent extends BaseAgent implements Agent {
     // Detect if this question might benefit from consulting a real estate agent
     const isRealEstateRelated = this.isRealEstateRelatedQuestion(question);
     
-    // Search relevant information in vector memory with lower threshold
-    const memoryResults = await vectorMemory.search(question, { 
-      limit: 5, 
-      threshold: 0.3,  // Lower threshold to match our improved vector memory
-      diversityOptions: {
+    // 1. Contextual search for past collaborations that might be relevant
+    const pastCollaborations = await vectorMemory.search(question, { 
+      limit: 3, 
+      threshold: 0.35,
+      filter: {
+        tags: ['collaboration', 'real-estate'],
+        categories: ['cross-domain-collaboration']
+      },
+      timeWeighting: {
         enabled: true,
-        minDistance: 0.2  // Add diversity to get a range of relevant content
+        halfLifeDays: 60, // Favor more recent collaborations but don't exclude older ones completely
+        maxBoost: 1.3
       }
     });
     
-    // Log memory search results
-    await this.logActivity(`Vector memory search results for question: "${question.substring(0, 30)}..."`, LogLevel.DEBUG, {
-      resultCount: memoryResults.length,
-      topResults: memoryResults.slice(0, 3).map(r => ({
-        preview: r.entry.text.substring(0, 50) + '...',
-        score: r.score
-      })),
-      isRealEstateRelated
+    // 2. Domain-specific knowledge search based on the question context
+    const domainSpecificFilter = isRealEstateRelated 
+      ? { tags: ['real-estate', 'property', 'market', 'geospatial'] }
+      : { categories: ['technical-qa', 'code-generation'] };
+    
+    const domainKnowledge = await vectorMemory.search(question, { 
+      limit: 4, 
+      threshold: 0.3,
+      filter: domainSpecificFilter,
+      diversityOptions: {
+        enabled: true,
+        minDistance: 0.2
+      }
     });
     
-    // If real estate related, consult with a real estate agent
-    let expertConsultation = '';
-    let consultationUsed = false;
+    // 3. Technical knowledge search using hybrid search for better keyword matching
+    const developerKnowledge = await vectorMemory.search(question, { 
+      limit: 3, 
+      threshold: 0.3,
+      filter: {
+        tags: ['developer', 'technical', 'code'],
+        customFilter: (entry) => entry.metadata?.tags?.includes('collaboration') !== true
+      },
+      hybridSearch: {
+        enabled: true,
+        keywordWeight: 0.4,
+        semanticWeight: 0.6
+      }
+    });
     
-    if (isRealEstateRelated) {
-      try {
-        // Get real estate expertise through collaboration
-        const consultation = await this.consultRealEstateAgent(question);
-        if (consultation) {
-          expertConsultation = consultation;
-          consultationUsed = true;
-          
-          await this.logActivity(`Received real estate consultation for: "${question.substring(0, 30)}..."`, LogLevel.INFO, {
-            consultationLength: consultation.length
+    // Combine results ensuring unique entries
+    const seenIds = new Set<string>();
+    const allResults: Array<{entry: MemoryEntry, score: number}> = [];
+    
+    // Helper to add unique results
+    const addUniqueResults = (results: Array<{entry: MemoryEntry, score: number}>, sourceName: string) => {
+      for (const result of results) {
+        if (!seenIds.has(result.entry.id)) {
+          seenIds.add(result.entry.id);
+          // Add a source tag to know where the result came from
+          allResults.push({
+            ...result,
+            entry: {
+              ...result.entry,
+              metadata: {
+                ...result.entry.metadata,
+                sourceSearch: sourceName
+              }
+            }
           });
         }
-      } catch (error) {
-        await this.logActivity(`Failed to consult real estate agent: ${error instanceof Error ? error.message : String(error)}`, LogLevel.WARNING);
-        // Continue without consultation if it fails
+      }
+    };
+    
+    // Add results in priority order
+    addUniqueResults(pastCollaborations, 'pastCollaborations');
+    addUniqueResults(domainKnowledge, 'domainKnowledge');
+    addUniqueResults(developerKnowledge, 'developerKnowledge');
+    
+    // Sort by score and limit results
+    const memoryResults = allResults.sort((a, b) => b.score - a.score).slice(0, 6);
+    
+    // Log enhanced memory search results
+    await this.logActivity(`Enhanced vector memory search for: "${question.substring(0, 30)}..."`, LogLevel.DEBUG, {
+      resultCount: memoryResults.length,
+      pastCollaborationsFound: pastCollaborations.length,
+      domainKnowledgeFound: domainKnowledge.length,
+      developerKnowledgeFound: developerKnowledge.length,
+      isRealEstateRelated,
+      topResults: memoryResults.slice(0, 3).map(r => ({
+        preview: r.entry.text.substring(0, 50) + '...',
+        score: r.score,
+        source: r.entry.metadata?.sourceSearch || 'unknown'
+      }))
+    });
+    
+    // If real estate related, first check if we have a recent similar consultation
+    let expertConsultation = '';
+    let consultationUsed = false;
+    let consultationSource = '';
+    
+    if (isRealEstateRelated) {
+      // Check if we already have a high-quality past consultation that's relevant
+      const hasRecentCollaboration = pastCollaborations.length > 0 && 
+        pastCollaborations.some(r => 
+          r.score > 0.75 && // Must be highly relevant 
+          new Date(r.entry.metadata?.timestamp || 0).getTime() > Date.now() - (7 * 24 * 60 * 60 * 1000) // 7 days
+        );
+      
+      if (hasRecentCollaboration) {
+        // Reuse the best past collaboration
+        const bestCollaboration = pastCollaborations.sort((a, b) => b.score - a.score)[0];
+        const collaborationText = bestCollaboration.entry.text;
+        
+        // Extract the consultation part from the text (format: "Developer Question: X\nReal Estate Consultation: Y")
+        const consultationMatch = collaborationText.match(/Real Estate Consultation: ([\s\S]+)/);
+        if (consultationMatch && consultationMatch[1]) {
+          expertConsultation = consultationMatch[1].trim();
+          consultationUsed = true;
+          consultationSource = 'memory';
+          
+          await this.logActivity(`Reusing past real estate consultation for: "${question.substring(0, 30)}..."`, LogLevel.INFO, {
+            relevanceScore: bestCollaboration.score,
+            timestamp: bestCollaboration.entry.metadata?.timestamp || 'unknown',
+            consultationLength: expertConsultation.length
+          });
+        }
+      }
+      
+      // If no suitable past consultation was found, get a new one
+      if (!consultationUsed) {
+        try {
+          // Get real estate expertise through live collaboration
+          const consultation = await this.consultRealEstateAgent(question);
+          if (consultation) {
+            expertConsultation = consultation;
+            consultationUsed = true;
+            consultationSource = 'live';
+            
+            await this.logActivity(`Received real estate consultation for: "${question.substring(0, 30)}..."`, LogLevel.INFO, {
+              consultationLength: consultation.length
+            });
+          }
+        } catch (error) {
+          await this.logActivity(`Failed to consult real estate agent: ${error instanceof Error ? error.message : String(error)}`, LogLevel.WARNING);
+          // Continue without consultation if it fails
+        }
       }
     }
     
@@ -537,15 +640,25 @@ Focus on providing actionable insights and solutions that would be valuable to a
       }
     };
     
-    // Store the question and answer in memory for future reference
+    // Store the question and answer in memory for future reference with enhanced metadata
+    const extractedTopics = this.extractKeyTopics(question);
+    
     await vectorMemory.addEntry(
       `Q: ${question}\nA: ${result.result.response}`,
       {
         source: 'dev-question-answering',
         agentId: this.getId(),
         timestamp: new Date().toISOString(),
-        category: 'technical-qa',
-        tags: ['question', 'answer', 'technical', ...this.specializations]
+        category: isRealEstateRelated ? 'real-estate-technical-qa' : 'technical-qa',
+        tags: ['question', 'answer', 'technical', ...extractedTopics, ...this.specializations],
+        importance: isRealEstateRelated ? 0.8 : 0.6, // Prioritize cross-domain knowledge
+        confidence: result.result.confidence || 0.7,
+        consultationUsed: consultationUsed,
+        searchContext: {
+          pastCollaborations: pastCollaborations.length,
+          domainKnowledge: domainKnowledge.length,
+          developerKnowledge: developerKnowledge.length
+        }
       }
     );
   }
@@ -703,20 +816,128 @@ Please help me understand:
    * Check if a question might benefit from real estate expertise
    */
   private isRealEstateRelatedQuestion(question: string): boolean {
-    // Keywords that suggest real estate relevance
-    const realEstateKeywords = [
-      'property', 'real estate', 'house', 'home', 'apartment', 'condo', 
-      'rent', 'mortgage', 'market value', 'housing', 'land', 'commercial', 
-      'residential', 'zoning', 'realty', 'listing', 'broker', 'agent', 
-      'investment property', 'appraisal', 'valuation', 'rental', 'buy', 
-      'sell', 'geodata', 'gis', 'location', 'neighborhood', 'downtown', 
-      'map view', 'mapping', 'property tax', 'assessment', 'square foot',
-      'acre', 'lot size', 'bedroom', 'bathroom', 'grandview'
+    // Core real estate terms with higher confidence
+    const coreRealEstateKeywords = [
+      'real estate', 'property', 'house', 'housing market', 'home value', 
+      'mortgage', 'appraisal', 'listing', 'broker', 'realtor',
+      'commercial property', 'residential property', 'zoning',
+      'geodata', 'gis', 'property tax', 'assessment', 'grandview'
     ];
     
-    // Check if any keywords are in the question (case insensitive)
+    // General real estate related terms with lower confidence
+    const generalRealEstateKeywords = [
+      'home', 'apartment', 'condo', 'rent', 'market value', 'land', 
+      'residential', 'investment property', 'valuation', 'rental', 
+      'buying', 'selling', 'location', 'neighborhood', 'downtown', 
+      'map view', 'mapping', 'square footage', 'acre', 'lot size', 
+      'bedroom', 'bathroom', 'real property', 'deed', 'title'
+    ];
+    
+    // Technical terms that could be real estate related in context
+    const technicalContextTerms = [
+      'geospatial', 'spatial data', 'mapping api', 'coordinates',
+      'location data', 'proximity search', 'radius search', 'geocoding',
+      'leaflet', 'openstreetmap', 'arcgis', 'mapbox'
+    ];
+    
+    // Check for core keywords (case insensitive)
     const questionLower = question.toLowerCase();
-    return realEstateKeywords.some(keyword => questionLower.includes(keyword.toLowerCase()));
+    
+    // If core keywords are present, high confidence it's real estate related
+    if (coreRealEstateKeywords.some(keyword => questionLower.includes(keyword.toLowerCase()))) {
+      return true;
+    }
+    
+    // If multiple general keywords or technical terms appear together, likely real estate related
+    const generalMatches = generalRealEstateKeywords.filter(keyword => 
+      questionLower.includes(keyword.toLowerCase())
+    );
+    
+    const technicalMatches = technicalContextTerms.filter(keyword => 
+      questionLower.includes(keyword.toLowerCase())
+    );
+    
+    // Check for combinations suggesting real estate tech context
+    if (generalMatches.length >= 1 && technicalMatches.length >= 1) {
+      return true; // Both general real estate term and technical term
+    }
+    
+    // Multiple general terms suggest real estate focus
+    if (generalMatches.length >= 2) {
+      return true;
+    }
+    
+    return false;
+  }
+  
+  /**
+   * Extract key topics from a question to use as tags
+   * This helps improve vector memory organization and retrieval
+   */
+  private extractKeyTopics(question: string): string[] {
+    // Common technical domains
+    const domains = {
+      frontend: ['ui', 'interface', 'react', 'vue', 'angular', 'component', 'css', 'html', 'dom', 'responsive', 'design', 'mobile'],
+      backend: ['server', 'api', 'endpoint', 'database', 'query', 'orm', 'rest', 'graphql', 'middleware', 'authentication', 'authorization'],
+      database: ['sql', 'nosql', 'postgres', 'mysql', 'mongodb', 'schema', 'model', 'query', 'index', 'transaction', 'constraint'],
+      devops: ['deploy', 'ci/cd', 'pipeline', 'docker', 'kubernetes', 'container', 'infrastructure', 'aws', 'cloud', 'scaling'],
+      security: ['auth', 'jwt', 'token', 'encryption', 'hash', 'vulnerability', 'exploit', 'secure', 'csrf', 'xss'],
+      testing: ['test', 'unit', 'integration', 'e2e', 'mock', 'stub', 'assert', 'expect', 'coverage', 'jest', 'cypress'],
+      performance: ['optimize', 'latency', 'throughput', 'bottleneck', 'profiling', 'memory', 'cpu', 'cache', 'lazy loading'],
+      architecture: ['design pattern', 'architecture', 'microservice', 'monolith', 'modular', 'dependency', 'coupling', 'cohesion'],
+      algorithms: ['algorithm', 'complexity', 'efficient', 'optimization', 'big o', 'time complexity', 'space complexity', 'recursive'],
+      development: ['debug', 'error', 'exception', 'logging', 'monitoring', 'documentation', 'versioning', 'git', 'workflow'],
+      realEstate: ['property', 'real estate', 'housing', 'market', 'geospatial', 'location', 'map', 'geodata', 'gis']
+    };
+    
+    // Programming languages
+    const languages = [
+      'javascript', 'typescript', 'python', 'java', 'c#', 'c++', 'go', 'rust', 'php', 'ruby', 
+      'swift', 'kotlin', 'scala', 'dart', 'perl', 'shell', 'bash', 'sql'
+    ];
+    
+    // Frameworks and libraries
+    const frameworks = [
+      'react', 'vue', 'angular', 'svelte', 'node', 'express', 'django', 'flask', 'spring', 
+      'rails', 'laravel', 'symfony', '.net', 'tensorflow', 'pytorch', 'pandas'
+    ];
+    
+    const questionLower = question.toLowerCase();
+    const tags: string[] = [];
+    
+    // Check for domains
+    for (const [domain, keywords] of Object.entries(domains)) {
+      if (keywords.some(kw => questionLower.includes(kw.toLowerCase()))) {
+        tags.push(domain);
+      }
+    }
+    
+    // Check for languages
+    for (const lang of languages) {
+      if (questionLower.includes(lang.toLowerCase())) {
+        tags.push(lang);
+      }
+    }
+    
+    // Check for frameworks
+    for (const framework of frameworks) {
+      if (questionLower.includes(framework.toLowerCase())) {
+        tags.push(framework);
+      }
+    }
+    
+    // If we have technical context terms, add 'geospatial' tag for better recall
+    const technicalGeoTerms = [
+      'coordinates', 'latitude', 'longitude', 'geocoding', 'reverse geocoding',
+      'spatial', 'geojson', 'map', 'leaflet', 'openstreetmap', 'arcgis', 'mapbox'
+    ];
+    
+    if (technicalGeoTerms.some(term => questionLower.includes(term.toLowerCase()))) {
+      tags.push('geospatial');
+    }
+    
+    // Limit to a reasonable number of tags
+    return [...new Set(tags)].slice(0, 5);
   }
   
   /**
