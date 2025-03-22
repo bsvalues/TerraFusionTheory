@@ -21,8 +21,14 @@ import {
 
 // Import specific types from the agent interfaces
 import { 
-  AgentCapability 
+  AgentCapability,
+  AgentType,
+  Agent
 } from "../agents/interfaces/agent-interface";
+
+// Import agent registry and coordinator
+import { agentRegistry } from "../agents/core/agent-registry";
+import { agentCoordinator } from "../agents/core/agent-coordinator";
 
 // Track the memory monitor timer globally to allow proper cleanup
 
