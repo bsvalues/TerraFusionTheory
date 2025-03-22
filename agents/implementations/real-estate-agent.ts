@@ -803,17 +803,23 @@ export class RealEstateAgent extends BaseAgent implements Agent {
   private async handleQuestionTask(task: AgentTask): Promise<void> {
     const { question, context } = task.inputs;
     
+    // Detect if this is a collaborative request from another agent
+    const isCollaborationRequest = this.isCollaborationRequest(question);
+    const requestingAgentId = isCollaborationRequest ? this.extractRequestingAgentId(question) : null;
+    
     // Log that we're processing a question
     await this.logActivity(`Processing question: "${question.substring(0, 30)}..."`, LogLevel.INFO, {
       questionLength: question.length,
-      hasAdditionalContext: !!context
+      hasAdditionalContext: !!context,
+      isCollaborationRequest,
+      requestingAgentId
     });
     
     // Prepare a base prompt that will be enhanced with context by the MCP tool
-    const prompt = `
+    let prompt = `
 Question about real estate: ${question}
 
-${context ? `## Additional Context Provided By User\n${context}\n\n` : ''}
+${context ? `## Additional Context Provided\n${context}\n\n` : ''}
 
 ## Task
 Please provide a clear, accurate, and helpful answer to the question based on:
@@ -821,32 +827,48 @@ Please provide a clear, accurate, and helpful answer to the question based on:
 2. The relevant information from your knowledge base
 3. Current market understanding
 4. The additional context (if provided)
-
-Focus on providing actionable insights that would be valuable to someone interested in real estate.
 `;
+
+    // Adjust response style based on whether this is a collaboration request
+    if (isCollaborationRequest) {
+      prompt += `
+Because this is a consultation request from another agent, focus on providing:
+- Factual information about real estate concepts, metrics, and terms
+- Technical details that would be relevant for software development
+- Structured data where appropriate (using examples, lists, or tables)
+- Clear explanations of domain-specific knowledge`;
+    } else {
+      prompt += `
+Focus on providing actionable insights that would be valuable to someone interested in real estate.`;
+    }
+    
+    // Determine memory search options based on request type
+    const memoryOptions = {
+      limit: isCollaborationRequest ? 7 : 5,       // More context for technical collaboration
+      threshold: 0.3,                             // Lower threshold to get more potential matches
+      diversityFactor: isCollaborationRequest ? 0.6 : 0.5,  // More diversity for technical questions
+      includeSources: true,                       // Include source information in results
+      timeWeighting: {                            // Prioritize recent information
+        enabled: true,
+        halfLifeDays: 30,                         // Information "half-life" of 30 days
+        maxBoost: 1.5                             // Max boost factor for very recent information
+      }
+    };
     
     // Use enhanced MCP tool with vector memory integration
     const result = await this.useTool('mcp', {
       model: 'gpt-4',
       prompt,
-      temperature: 0.4,  // Slightly lower temperature for more focused responses
-      system_message: 'You are a knowledgeable real estate professional with expertise in market analysis, property valuation, and investment strategies. Your specialty is the Grandview, WA market and surrounding areas in the Pacific Northwest. Provide clear, accurate, and helpful answers to real estate questions.',
+      temperature: isCollaborationRequest ? 0.3 : 0.4,  // Lower temp for technical collaboration
+      system_message: isCollaborationRequest
+        ? 'You are a technical real estate expert providing domain knowledge to a developer. Provide precise, technically-oriented explanations about real estate concepts with a focus on accuracy and data relevance. Include technical definitions where appropriate.'
+        : 'You are a knowledgeable real estate professional with expertise in market analysis, property valuation, and investment strategies. Your specialty is the Grandview, WA market and surrounding areas in the Pacific Northwest. Provide clear, accurate, and helpful answers to real estate questions.',
       cache: true,  // Enable caching for efficiency
       
       // Enhanced context-aware parameters
       use_vector_memory: true,  // Enable vector memory context enhancement
-      memory_query: question,   // Use the exact question for memory search
-      memory_options: {
-        limit: 5,               // Get up to 5 relevant memory entries
-        threshold: 0.3,         // Lower threshold to get more potential matches
-        diversityFactor: 0.5,   // Balance between relevance and diversity
-        includeSources: true,   // Include source information in results
-        timeWeighting: {        // Prioritize more recent information
-          enabled: true,
-          halfLifeDays: 30,     // Information "half-life" of 30 days
-          maxBoost: 1.5         // Max boost factor for very recent information
-        }
-      },
+      memory_query: this.stripCollaborationPrefix(question),  // Clean question for memory search
+      memory_options: memoryOptions,
       context_integration: 'smart'  // Use smart integration strategy
     });
     
@@ -868,23 +890,34 @@ Focus on providing actionable insights that would be valuable to someone interes
         timestamp: new Date().toISOString(),
         contextEnhanced: result.result.metadata?.contextEnhanced || false,
         contextStrategy: contextStrategy,
-        fromCache: result.result.fromCache || false
+        fromCache: result.result.fromCache || false,
+        collaborationContext: isCollaborationRequest ? {
+          requestingAgentId,
+          responseType: 'technical-consultation'
+        } : undefined
       }
     };
     
-    // Store the question and answer in memory for future reference with enhanced metadata
+    // Store the question and answer in memory with enhanced metadata
+    // Use different tags and categories for collaborative vs regular queries
+    const memoryTags = ['question', 'answer', 'real-estate'];
+    if (isCollaborationRequest) {
+      memoryTags.push('agent-collaboration', 'technical', 'consultation');
+    }
+    
     await vectorMemory.addEntry(
-      `Q: ${question}\nA: ${result.result.response}`,
+      `Q: ${this.stripCollaborationPrefix(question)}\nA: ${result.result.response}`,
       {
-        source: 'question-answering',
+        source: isCollaborationRequest ? 'agent-collaboration' : 'question-answering',
         agentId: this.getId(),
         timestamp: new Date().toISOString(),
-        category: 'real-estate-qa',
-        tags: ['question', 'answer', 'real-estate'],
+        category: isCollaborationRequest ? 'cross-domain-collaboration' : 'real-estate-qa',
+        tags: memoryTags,
         questionType: this.categorizeQuestion(question),
         responseQuality: 1.0,  // Can be updated later with user feedback
         modelUsed: result.result.model,
-        contextEnhanced: result.result.metadata?.contextEnhanced || false
+        contextEnhanced: result.result.metadata?.contextEnhanced || false,
+        collaboratingAgentId: requestingAgentId  // Track collaboration if applicable
       }
     );
     
@@ -894,7 +927,9 @@ Focus on providing actionable insights that would be valuable to someone interes
       contextSourcesUsed: contextSourcesUsed.length,
       contextStrategy: contextStrategy,
       responseTime: result.metadata?.responseTime,
-      fromCache: result.result.fromCache || false
+      fromCache: result.result.fromCache || false,
+      collaborationRequest: isCollaborationRequest,
+      requestingAgentId
     });
   }
   
@@ -1123,6 +1158,47 @@ Please include:
         }
       );
     }
+  }
+  
+  /**
+   * Check if a question is a collaboration request from another agent
+   */
+  private isCollaborationRequest(question: string): boolean {
+    // Check for collaboration markers in the question
+    return question.includes('[Developer Agent Consultation]') || 
+           question.includes('[Agent Collaboration]') || 
+           question.includes('[Consultation Request]');
+  }
+  
+  /**
+   * Extract the ID of the requesting agent from a collaboration request
+   */
+  private extractRequestingAgentId(question: string): string | null {
+    // Extract agent ID from collaboration request
+    const match = question.match(/\[(Developer Agent|Agent) Consultation\]\s*\[(\w+)\]/i);
+    if (match && match[2]) {
+      return match[2];
+    }
+    
+    // If no explicit ID is found but it's from the developer agent
+    if (question.includes('[Developer Agent Consultation]')) {
+      return 'developer_agent'; // Default ID for developer agent
+    }
+    
+    return null;
+  }
+  
+  /**
+   * Remove collaboration prefixes from questions for cleaner processing
+   */
+  private stripCollaborationPrefix(question: string): string {
+    // Remove collaboration markers for cleaner processing
+    return question
+      .replace(/\[Developer Agent Consultation\]\s*/i, '')
+      .replace(/\[Agent Collaboration\]\s*/i, '')
+      .replace(/\[Consultation Request\]\s*/i, '')
+      .replace(/\[\w+\]\s*/g, '') // Remove any agent IDs
+      .trim();
   }
   
   /**

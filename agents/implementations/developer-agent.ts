@@ -426,6 +426,9 @@ export class DeveloperAgent extends BaseAgent implements Agent {
   private async handleQuestionTask(task: AgentTask): Promise<void> {
     const { question, context } = task.inputs;
     
+    // Detect if this question might benefit from consulting a real estate agent
+    const isRealEstateRelated = this.isRealEstateRelatedQuestion(question);
+    
     // Search relevant information in vector memory with lower threshold
     const memoryResults = await vectorMemory.search(question, { 
       limit: 5, 
@@ -442,8 +445,31 @@ export class DeveloperAgent extends BaseAgent implements Agent {
       topResults: memoryResults.slice(0, 3).map(r => ({
         preview: r.entry.text.substring(0, 50) + '...',
         score: r.score
-      }))
+      })),
+      isRealEstateRelated
     });
+    
+    // If real estate related, consult with a real estate agent
+    let expertConsultation = '';
+    let consultationUsed = false;
+    
+    if (isRealEstateRelated) {
+      try {
+        // Get real estate expertise through collaboration
+        const consultation = await this.consultRealEstateAgent(question);
+        if (consultation) {
+          expertConsultation = consultation;
+          consultationUsed = true;
+          
+          await this.logActivity(`Received real estate consultation for: "${question.substring(0, 30)}..."`, LogLevel.INFO, {
+            consultationLength: consultation.length
+          });
+        }
+      } catch (error) {
+        await this.logActivity(`Failed to consult real estate agent: ${error instanceof Error ? error.message : String(error)}`, LogLevel.WARNING);
+        // Continue without consultation if it fails
+      }
+    }
     
     // Build context from relevant memories
     let contextFromMemory = '';
@@ -452,18 +478,20 @@ export class DeveloperAgent extends BaseAgent implements Agent {
         memoryResults.map(result => `- ${result.entry.text} (relevance: ${result.score.toFixed(2)})`).join('\n');
     }
     
-    // Prepare the enhanced prompt
+    // Prepare the enhanced prompt with multi-agent knowledge
     const prompt = `
 Technical Question: ${question}
 
 ${memoryResults.length > 0 ? '## Relevant Context\n' + contextFromMemory + '\n\n' : ''}
 ${context ? `## Additional Context\n${context}\n\n` : ''}
+${consultationUsed ? `## Real Estate Expert Consultation\n${expertConsultation}\n\n` : ''}
 
 ## Task
 Please provide a clear, accurate, and helpful answer to the technical question based on:
 1. Your expertise in software development
 2. The provided context information (if any)
 3. Best practices and current industry standards
+${consultationUsed ? '4. The real estate expertise provided by the real estate agent' : ''}
 
 Focus on providing actionable insights and solutions that would be valuable to a developer.
 `;
@@ -474,7 +502,18 @@ Focus on providing actionable insights and solutions that would be valuable to a
       prompt,
       temperature: 0.4,  // Slightly lower temperature for more focused responses
       system_message: 'You are a knowledgeable software developer with expertise in architecture, programming best practices, and technical problem-solving. Provide clear, accurate, and helpful answers to technical questions.',
-      cache: true  // Enable caching for efficiency
+      cache: true,  // Enable caching for efficiency
+      
+      // Enhanced context-aware parameters
+      use_vector_memory: true,
+      memory_query: question,
+      memory_options: {
+        limit: 5,
+        threshold: 0.3,
+        diversityFactor: 0.5,
+        includeSources: true
+      },
+      context_integration: 'smart'
     });
     
     if (!result.success) {
@@ -489,10 +528,12 @@ Focus on providing actionable insights and solutions that would be valuable to a
         relevanceScore: result.score,
         category: result.entry.metadata?.category || 'unknown'
       })),
+      collaborationUsed: consultationUsed,
       metadata: {
         responseTime: result.metadata?.responseTime || null,
         modelUsed: 'gpt-4',
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
+        collaborativeProcess: consultationUsed ? 'Consulted with real estate agent' : undefined
       }
     };
     
@@ -655,6 +696,102 @@ Please help me understand:
           tags: ['mcp', 'prompt', 'response']
         }
       );
+    }
+  }
+  
+  /**
+   * Check if a question might benefit from real estate expertise
+   */
+  private isRealEstateRelatedQuestion(question: string): boolean {
+    // Keywords that suggest real estate relevance
+    const realEstateKeywords = [
+      'property', 'real estate', 'house', 'home', 'apartment', 'condo', 
+      'rent', 'mortgage', 'market value', 'housing', 'land', 'commercial', 
+      'residential', 'zoning', 'realty', 'listing', 'broker', 'agent', 
+      'investment property', 'appraisal', 'valuation', 'rental', 'buy', 
+      'sell', 'geodata', 'gis', 'location', 'neighborhood', 'downtown', 
+      'map view', 'mapping', 'property tax', 'assessment', 'square foot',
+      'acre', 'lot size', 'bedroom', 'bathroom', 'grandview'
+    ];
+    
+    // Check if any keywords are in the question (case insensitive)
+    const questionLower = question.toLowerCase();
+    return realEstateKeywords.some(keyword => questionLower.includes(keyword.toLowerCase()));
+  }
+  
+  /**
+   * Consult with a real estate agent for domain-specific expertise
+   */
+  private async consultRealEstateAgent(question: string): Promise<string | null> {
+    try {
+      // Use the agent registry to find real estate agents
+      const { agentRegistry } = await import('../core/agent-registry');
+      const realEstateAgents = agentRegistry.getAgentsByType('real_estate');
+      
+      if (!realEstateAgents || realEstateAgents.length === 0) {
+        await this.logActivity('No real estate agents available for consultation', LogLevel.WARNING);
+        return null;
+      }
+      
+      // Select the first available real estate agent
+      const realEstateAgent = realEstateAgents[0];
+      
+      await this.logActivity(`Consulting real estate agent ${realEstateAgent.getId()} for question`, LogLevel.INFO, {
+        question: question.substring(0, 100) + (question.length > 100 ? '...' : '')
+      });
+      
+      // Use the agent coordinator for structured communication
+      const { agentCoordinator } = await import('../core/agent-coordinator');
+      
+      // Create a consultation task for the real estate agent
+      const consultationResult = await agentCoordinator.assignTask(
+        realEstateAgent.getId(),
+        'answer_question',
+        {
+          question: `[Developer Agent Consultation] ${question}`,
+          context: `This question is being asked by a developer agent who needs real estate expertise. 
+                   Please focus on providing domain-specific knowledge that would be relevant 
+                   for a technical implementation or understanding of real estate concepts.`
+        },
+        {
+          priority: 'high'
+        }
+      );
+      
+      if (!consultationResult.success) {
+        throw new Error(`Consultation failed: ${consultationResult.error?.message || 'Unknown error'}`);
+      }
+      
+      // Extract the answer from the consultation result
+      const consultationAnswer = consultationResult.data?.answer;
+      
+      if (!consultationAnswer) {
+        await this.logActivity('Received empty consultation response', LogLevel.WARNING);
+        return null;
+      }
+      
+      // Log the successful consultation
+      await this.logActivity('Successfully received real estate consultation', LogLevel.INFO, {
+        consultationLength: consultationAnswer.length
+      });
+      
+      // Store the collaborative interaction in vector memory
+      await vectorMemory.addEntry(
+        `Developer Question: ${question}\nReal Estate Consultation: ${consultationAnswer}`,
+        {
+          source: 'agent-collaboration',
+          agentId: this.getId(),
+          timestamp: new Date().toISOString(),
+          category: 'cross-domain-collaboration',
+          tags: ['collaboration', 'real-estate', 'consultation'],
+          collaboratingAgentId: realEstateAgent.getId()
+        }
+      );
+      
+      return consultationAnswer;
+    } catch (error) {
+      await this.logActivity(`Error consulting real estate agent: ${error instanceof Error ? error.message : String(error)}`, LogLevel.ERROR);
+      return null;
     }
   }
   
