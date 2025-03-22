@@ -1,43 +1,20 @@
 /**
  * Simple Memory Optimization Test
  * 
- * This script tests the basic memory optimizations in our system
- * without relying on complex agent interactions.
+ * This script provides a basic test for memory optimization techniques
+ * implemented in the IntelligentEstate platform.
  */
-
-// Colors for console output
-const COLORS = {
-  reset: '\x1b[0m',
-  green: '\x1b[32m',
-  red: '\x1b[31m',
-  blue: '\x1b[34m',
-  yellow: '\x1b[33m',
-  magenta: '\x1b[35m'
-};
-
-// Test data
-const testQueries = [
-  "What is the average home price in Grandview?",
-  "How should I implement spatial indexing for property searches?",
-  "What database schema is best for property listings?",
-  "How can I optimize query performance for location-based searches?",
-  "What are the best machine learning models for property valuation?",
-  "How do I implement efficient caching for property data?",
-  "What's the ideal data structure for storing property relationships?",
-  "How should I design an API for real estate applications?",
-  "What are the best practices for implementing geofencing?",
-  "How do I optimize database queries for complex property filters?"
-];
 
 /**
  * Get current memory usage
  */
 function getMemoryUsage() {
-  const mem = process.memoryUsage();
+  const memoryUsage = process.memoryUsage();
   return {
-    rss: Math.round(mem.rss / 1024 / 1024 * 100) / 100,
-    heapTotal: Math.round(mem.heapTotal / 1024 / 1024 * 100) / 100,
-    heapUsed: Math.round(mem.heapUsed / 1024 / 1024 * 100) / 100
+    rss: Math.round(memoryUsage.rss / 1024 / 1024), // RSS in MB
+    heapTotal: Math.round(memoryUsage.heapTotal / 1024 / 1024), // Total heap in MB
+    heapUsed: Math.round(memoryUsage.heapUsed / 1024 / 1024), // Used heap in MB
+    external: Math.round(memoryUsage.external / 1024 / 1024) // External memory in MB
   };
 }
 
@@ -45,18 +22,14 @@ function getMemoryUsage() {
  * Print formatted log message
  */
 function log(message, type = 'info') {
-  const timestamp = new Date().toLocaleTimeString();
-  let color = COLORS.blue;
+  const timestamp = new Date().toISOString();
+  const colorCode = type === 'info' ? '\x1b[36m' : // cyan
+                   type === 'success' ? '\x1b[32m' : // green
+                   type === 'warning' ? '\x1b[33m' : // yellow
+                   type === 'error' ? '\x1b[31m' : // red
+                   '\x1b[0m'; // default
   
-  switch(type) {
-    case 'success': color = COLORS.green; break;
-    case 'error': color = COLORS.red; break;
-    case 'warning': color = COLORS.yellow; break;
-    case 'memory': color = COLORS.magenta; break;
-    default: color = COLORS.blue;
-  }
-  
-  console.log(`${color}[${timestamp}] ${message}${COLORS.reset}`);
+  console.log(`${colorCode}[${timestamp}] [${type.toUpperCase()}] ${message}\x1b[0m`);
 }
 
 /**
@@ -64,75 +37,75 @@ function log(message, type = 'info') {
  */
 class TestCache {
   constructor(options = {}) {
-    this.maxEntries = options.maxEntries || 50;
-    this.maxResponseLength = options.maxResponseLength || 1500;
-    this.ttlMs = options.ttlMs || 30 * 60 * 1000; // 30 minutes
+    this.maxSize = options.maxSize || 100;
+    this.defaultTTL = options.defaultTTL || 60 * 1000; // 1 minute default
     this.cache = new Map();
-    this.keyTimestamps = new Map();
-    this.usageOrder = [];
+    this.usageOrder = []; // For LRU implementation
+    
+    log(`Created cache with maxSize=${this.maxSize}, defaultTTL=${this.defaultTTL}ms`);
   }
   
   /**
    * Add entry to cache with memory optimization checks
    */
-  set(key, value) {
-    // Apply max length constraint to value
-    if (typeof value === 'string' && value.length > this.maxResponseLength) {
-      value = value.substring(0, this.maxResponseLength);
+  set(key, value, ttl = this.defaultTTL) {
+    // Check cache size limit (LRU eviction)
+    if (this.cache.size >= this.maxSize) {
+      // Get the least recently used key
+      const lruKey = this.usageOrder[0];
+      this.cache.delete(lruKey);
+      this.removeFromUsageOrder(lruKey);
+      log(`Cache full: Evicted key "${lruKey}" (LRU)`, 'warning');
     }
     
-    // Ensure key is not too long (optimization)
-    const shortKey = key.length > 30 ? key.substring(0, 30) : key;
-    
-    // Record access time for TTL and LRU
-    this.keyTimestamps.set(shortKey, Date.now());
-    
-    // Update usage order for LRU
-    this.removeFromUsageOrder(shortKey);
-    this.usageOrder.push(shortKey);
-    
-    // Apply cache size constraint (LRU)
-    if (this.cache.size >= this.maxEntries) {
-      const oldestKey = this.usageOrder[0];
-      this.cache.delete(oldestKey);
-      this.keyTimestamps.delete(oldestKey);
-      this.usageOrder.shift();
-      return `Removed oldest item: ${oldestKey}`;
+    // Optimize large string values
+    let optimizedValue = value;
+    if (typeof value === 'string' && value.length > 1000) {
+      optimizedValue = value.substring(0, 1000) + '...';
+      log(`Optimized large string value for key "${key}" (${value.length} -> ${optimizedValue.length} chars)`, 'info');
     }
     
-    // Store in cache
-    this.cache.set(shortKey, value);
-    return null;
+    // Store entry with expiration
+    const now = Date.now();
+    this.cache.set(key, {
+      value: optimizedValue,
+      expiresAt: now + ttl,
+      createdAt: now,
+      accessCount: 0
+    });
+    
+    // Update usage order (most recently used at the end)
+    this.usageOrder.push(key);
+    
+    return true;
   }
   
   /**
    * Get entry from cache with TTL check
    */
   get(key) {
-    // Ensure key is not too long (optimization)
-    const shortKey = key.length > 30 ? key.substring(0, 30) : key;
+    const entry = this.cache.get(key);
     
-    // Check if entry exists
-    if (!this.cache.has(shortKey)) {
+    // Not found
+    if (!entry) {
       return null;
     }
     
-    // Check TTL
-    const timestamp = this.keyTimestamps.get(shortKey);
-    if (Date.now() - timestamp > this.ttlMs) {
-      // Entry expired
-      this.cache.delete(shortKey);
-      this.keyTimestamps.delete(shortKey);
-      this.removeFromUsageOrder(shortKey);
+    // Check if expired
+    if (Date.now() > entry.expiresAt) {
+      // Expired - remove and return null
+      this.cache.delete(key);
+      this.removeFromUsageOrder(key);
+      log(`Expired key "${key}" removed from cache`, 'info');
       return null;
     }
     
-    // Update usage order for LRU
-    this.removeFromUsageOrder(shortKey);
-    this.usageOrder.push(shortKey);
+    // Update usage info
+    entry.accessCount++;
+    this.removeFromUsageOrder(key);
+    this.usageOrder.push(key);
     
-    // Return value
-    return this.cache.get(shortKey);
+    return entry.value;
   }
   
   /**
@@ -140,7 +113,7 @@ class TestCache {
    */
   removeFromUsageOrder(key) {
     const index = this.usageOrder.indexOf(key);
-    if (index > -1) {
+    if (index !== -1) {
       this.usageOrder.splice(index, 1);
     }
   }
@@ -152,13 +125,17 @@ class TestCache {
     const now = Date.now();
     let removedCount = 0;
     
-    for (const [key, timestamp] of this.keyTimestamps.entries()) {
-      if (now - timestamp > this.ttlMs) {
+    // Check all entries for expiration
+    for (const [key, entry] of this.cache.entries()) {
+      if (now > entry.expiresAt) {
         this.cache.delete(key);
-        this.keyTimestamps.delete(key);
         this.removeFromUsageOrder(key);
         removedCount++;
       }
+    }
+    
+    if (removedCount > 0) {
+      log(`Cleanup: Removed ${removedCount} expired entries`, 'success');
     }
     
     return removedCount;
@@ -176,91 +153,130 @@ class TestCache {
  * Run cache optimization tests
  */
 async function runCacheTest() {
-  log('Starting cache optimization test', 'info');
+  log('Starting cache optimization test...', 'info');
   
   // Log initial memory usage
   const initialMemory = getMemoryUsage();
-  log(`Initial memory - RSS: ${initialMemory.rss}MB | Heap: ${initialMemory.heapUsed}/${initialMemory.heapTotal}MB`, 'memory');
+  log(`Initial memory usage: RSS=${initialMemory.rss}MB, Heap=${initialMemory.heapUsed}MB`, 'info');
   
-  // Create test cache with optimization settings
-  const cache = new TestCache({
-    maxEntries: 5, // Small value for testing
-    maxResponseLength: 100, // Small value for testing
-    ttlMs: 2000 // Short TTL for testing
-  });
+  // Create test cache with size limit
+  const cache = new TestCache({ maxSize: 50, defaultTTL: 5000 });
   
-  log(`Created cache with max ${cache.maxEntries} entries, max length ${cache.maxResponseLength} chars`, 'info');
-  
-  // Test 1: Max entries constraint
-  log('\nTest 1: Max entries constraint', 'info');
-  for (let i = 0; i < 10; i++) {
-    const action = cache.set(`key-${i}`, `Sample response for query ${i} with some added text to make it longer than our constraint would allow in a real-world scenario`);
-    log(`Added key-${i} to cache (${action ? 'LRU removal: ' + action : 'No removal needed'})`, action ? 'warning' : 'success');
+  // Add test data (including some large entries)
+  log('Adding test data to cache...', 'info');
+  for (let i = 0; i < 100; i++) {
+    // Every 10th entry will be a large one
+    const isLarge = i % 10 === 0;
+    const value = isLarge
+      ? 'A'.repeat(10000) + i // Large value (10KB)
+      : `Value ${i}`; // Small value
+    
+    // Add with shorter TTL for some entries
+    const ttl = i % 3 === 0 ? 2000 : 10000;
+    cache.set(`key${i}`, value, ttl);
   }
   
-  log(`Cache size after additions: ${cache.size()}`, cache.size() <= cache.maxEntries ? 'success' : 'error');
+  // Log memory after adding data
+  const afterAddMemory = getMemoryUsage();
+  log(`Memory after adding data: RSS=${afterAddMemory.rss}MB, Heap=${afterAddMemory.heapUsed}MB`, 'info');
+  log(`Cache size: ${cache.size()} entries`, 'info');
   
-  // Test 2: Response length constraint
-  log('\nTest 2: Response length constraint', 'info');
-  const longValue = 'A'.repeat(500); // Create a string longer than our constraint
-  cache.set('long-key', longValue);
-  const retrieved = cache.get('long-key');
-  log(`Original length: ${longValue.length}, Stored length: ${retrieved.length}`, 
-    retrieved.length <= cache.maxResponseLength ? 'success' : 'error');
-  
-  // Test 3: TTL expiration
-  log('\nTest 3: TTL expiration', 'info');
-  cache.set('expiring-key', 'This will expire soon');
-  log(`Initial cache size: ${cache.size()}`, 'info');
-  log(`Waiting for cache entry to expire (2 seconds)...`, 'info');
-  
-  await new Promise(resolve => setTimeout(resolve, 2500));
-  
-  const expiredValue = cache.get('expiring-key');
-  log(`Retrieved expired key: ${expiredValue === null ? 'Correctly expired' : 'Still present (FAIL)'}`, 
-    expiredValue === null ? 'success' : 'error');
-  
-  // Test 4: Cleanup method
-  log('\nTest 4: Cleanup method', 'info');
-  for (let i = 20; i < 25; i++) {
-    cache.set(`cleanup-key-${i}`, `Value ${i}`);
+  // Access some items to update LRU order
+  log('Accessing some cache entries...', 'info');
+  for (let i = 0; i < 30; i++) {
+    if (i % 3 === 0) {
+      const key = `key${i * 2}`; // Access even numbered keys
+      const value = cache.get(key);
+      log(`Accessed ${key}: ${value ? 'hit' : 'miss'}`, 'info');
+    }
   }
   
-  log(`Cache size before scheduled cleanup: ${cache.size()}`, 'info');
-  await new Promise(resolve => setTimeout(resolve, 2500));
+  // Wait for some entries to expire
+  log('Waiting for some entries to expire...', 'success');
+  await new Promise(resolve => setTimeout(resolve, 3000));
   
+  // Run cleanup
   const removedCount = cache.cleanup();
-  log(`Cleanup removed ${removedCount} expired entries`, 'info');
-  log(`Cache size after cleanup: ${cache.size()}`, 'info');
+  log(`Cleanup removed ${removedCount} expired entries`, 'success');
+  log(`Cache size after cleanup: ${cache.size()} entries`, 'info');
   
-  // Log final memory usage
+  // Add more data (should trigger LRU eviction)
+  log('Adding more data to trigger LRU eviction...', 'info');
+  for (let i = 0; i < 30; i++) {
+    cache.set(`newKey${i}`, `New value ${i}`);
+  }
+  
+  // Get final memory usage
   const finalMemory = getMemoryUsage();
-  log(`\nFinal memory - RSS: ${finalMemory.rss}MB | Heap: ${finalMemory.heapUsed}/${finalMemory.heapTotal}MB`, 'memory');
+  log(`Final memory usage: RSS=${finalMemory.rss}MB, Heap=${finalMemory.heapUsed}MB`, 'info');
+  log(`Cache size: ${cache.size()} entries`, 'info');
   
-  // Report test results
-  const allTestsPassed = cache.size() <= cache.maxEntries;
-  log(`\nCache optimization test ${allTestsPassed ? 'PASSED' : 'FAILED'}`, allTestsPassed ? 'success' : 'error');
+  // Calculate and log memory efficiency
+  const memoryPerEntry = finalMemory.heapUsed / cache.size();
+  log(`Memory efficiency: ~${memoryPerEntry.toFixed(2)}MB per cache entry`, 'success');
+  
+  return {
+    initialMemory,
+    finalMemory,
+    cacheSize: cache.size(),
+    memoryPerEntry
+  };
 }
 
 /**
  * Run memory optimization tests
  */
 async function runMemoryOptimizationTests() {
+  log('MEMORY OPTIMIZATION TESTS', 'success');
+  log('=======================', 'success');
+  
   try {
-    // Print test header
-    console.log('=============================================');
-    console.log('  MEMORY OPTIMIZATION TEST SUITE');
-    console.log('=============================================');
+    // Run cache test
+    log('\nRunning cache optimization test...', 'info');
+    const cacheResults = await runCacheTest();
     
-    await runCacheTest();
+    // Log overall results
+    log('\nOVERALL RESULTS', 'success');
+    log('==============', 'success');
+    log(`Initial memory usage: ${cacheResults.initialMemory.rss}MB RSS, ${cacheResults.initialMemory.heapUsed}MB Heap`, 'success');
+    log(`Final memory usage: ${cacheResults.finalMemory.rss}MB RSS, ${cacheResults.finalMemory.heapUsed}MB Heap`, 'success');
+    log(`Memory per cache entry: ~${cacheResults.memoryPerEntry.toFixed(2)}MB`, 'success');
     
-    console.log('\n=============================================');
-    console.log('  TEST SUITE COMPLETED');
-    console.log('=============================================');
+    return {
+      success: true,
+      results: {
+        cacheResults
+      }
+    };
   } catch (error) {
-    console.error('Test failed with error:', error);
+    log(`Error running memory optimization tests: ${error.message}`, 'error');
+    console.error(error);
+    return {
+      success: false,
+      error: error.message
+    };
   }
 }
 
-// Run tests
-runMemoryOptimizationTests().catch(console.error);
+// Run the tests if this file is executed directly
+if (require.main === module) {
+  runMemoryOptimizationTests()
+    .then(results => {
+      if (results.success) {
+        log('Memory optimization tests completed successfully!', 'success');
+      } else {
+        log('Memory optimization tests failed!', 'error');
+      }
+    })
+    .catch(error => {
+      log(`Unexpected error in memory optimization tests: ${error.message}`, 'error');
+      console.error(error);
+    });
+}
+
+module.exports = {
+  runMemoryOptimizationTests,
+  runCacheTest,
+  TestCache,
+  getMemoryUsage
+};

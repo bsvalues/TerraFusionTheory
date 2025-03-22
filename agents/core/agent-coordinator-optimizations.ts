@@ -414,11 +414,13 @@ export class EnhancedAgentCoordinator {
         error: error instanceof Error ? error.message : String(error)
       });
       
-      // Return error result
+      // Return error result with proper Error object
       return {
         success: false,
         error: {
-          message: error instanceof Error ? error.message : String(error)
+          name: 'TaskExecutionError',
+          message: error instanceof Error ? error.message : String(error),
+          stack: error instanceof Error ? error.stack : undefined
         }
       };
     }
