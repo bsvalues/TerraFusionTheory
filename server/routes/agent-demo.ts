@@ -6,7 +6,14 @@
 
 import { Router } from 'express';
 import { runAgentDemo } from '../../agents/demo';
-import { createDemoAgents, getDeveloperAgent, getRealEstateAgent } from '../../agents';
+import { 
+  createDemoAgents, 
+  getDeveloperAgent, 
+  getRealEstateAgent
+} from '../../agents';
+import { agentCoordinator } from '../../agents/core/agent-coordinator';
+import { agentRegistry } from '../../agents/core/agent-registry';
+import { vectorMemory } from '../../agents/memory/vector';
 import { asyncHandler } from '../middleware/errorHandler';
 import { testVectorMemory } from '../../agents/memory/vector-test';
 
@@ -299,6 +306,41 @@ router.post('/review-code', asyncHandler(async (req, res) => {
 }));
 
 /**
+ * Generate documentation with developer agent
+ */
+router.post('/generate-documentation', asyncHandler(async (req, res) => {
+  const { code, language, doc_type } = req.body;
+  
+  if (!code || !language || !doc_type) {
+    return res.status(400).json({ 
+      success: false, 
+      error: 'Code, language, and doc_type are required in request body' 
+    });
+  }
+  
+  try {
+    const agent = await getDeveloperAgent();
+    
+    // Execute the documentation generation task
+    const result = await agent.execute('generate_documentation', {
+      code,
+      language,
+      doc_type // e.g., "api", "readme", "jsdoc", etc.
+    }, { priority: 'normal' });
+    
+    res.json({
+      success: true,
+      result: result.success ? result.data : { error: result.error?.message || 'Documentation generation failed' }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
+
+/**
  * Run real estate agent task
  */
 router.post('/run-real-estate-agent', asyncHandler(async (req, res) => {
@@ -359,6 +401,121 @@ router.post('/test-mcp', asyncHandler(async (req, res) => {
     res.json({
       success: true,
       result
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
+
+/**
+ * Agent collaboration endpoint for inter-agent communication
+ */
+router.post('/agent-collaboration', asyncHandler(async (req, res) => {
+  const { source_agent_id, target_agent_id, message, task, inputs, context } = req.body;
+  
+  if (!source_agent_id || !target_agent_id || !message) {
+    return res.status(400).json({
+      success: false,
+      error: 'source_agent_id, target_agent_id, and message are required in request body'
+    });
+  }
+  
+  try {
+    // Use the agent coordinator singleton
+    
+    // Prepare the collaboration request
+    const collaborationRequest = {
+      sourceAgentId: source_agent_id,
+      message,
+      task: task || 'answer_question', // Default task
+      inputs: inputs || { question: message },
+      context: context || {},
+      priority: 'normal'
+    };
+    
+    // Send the request to the target agent
+    const result = await agentCoordinator.delegateToAgent(target_agent_id, collaborationRequest);
+    
+    res.json({
+      success: true,
+      source_agent_id,
+      target_agent_id,
+      request: collaborationRequest,
+      result: result.success ? result.data : { error: result.error?.message || 'Collaboration failed' }
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
+
+/**
+ * Get all available agents with their capabilities
+ */
+router.get('/agents', asyncHandler(async (req, res) => {
+  try {
+    const agentIds = agentRegistry.getAllAgentIds();
+    
+    const agents = await Promise.all(
+      agentIds.map(async (id: string) => {
+        const agent = await agentRegistry.getAgentById(id);
+        if (!agent) return null;
+        
+        return {
+          id: agent.getId(),
+          name: agent.getName(),
+          description: agent.getDescription(),
+          capabilities: agent.getCapabilities(),
+          type: agent.getType()
+        };
+      })
+    );
+    
+    // Filter out null values (in case any agents failed to load)
+    const validAgents = agents.filter((a: any) => a !== null);
+    
+    res.json({
+      success: true,
+      count: validAgents.length,
+      agents: validAgents
+    });
+  } catch (error) {
+    res.status(500).json({
+      success: false,
+      error: error instanceof Error ? error.message : String(error)
+    });
+  }
+}));
+
+/**
+ * Search vector memory
+ */
+router.post('/search-memory', asyncHandler(async (req, res) => {
+  const { query, count, diversityFactor } = req.body;
+  
+  if (!query) {
+    return res.status(400).json({
+      success: false,
+      error: 'Query is required in request body'
+    });
+  }
+  
+  try {
+    // Search the vector memory with the provided query
+    const searchResults = await vectorMemory.search(query, {
+      count: count || 5, // Default to 5 results
+      diversityFactor: diversityFactor || 0.5 // Default diversity factor
+    });
+    
+    res.json({
+      success: true,
+      query,
+      results: searchResults
     });
   } catch (error) {
     res.status(500).json({
