@@ -5,7 +5,7 @@ import MascotCharacter, { MascotTip, MascotMood, MascotAction } from './MascotCh
 // Debugging patterns to look for in console logs and errors
 interface DebugPattern {
   pattern: RegExp;
-  tipGenerator: (match: RegExpMatchArray) => MascotTip;
+  tipGenerator: (match: RegExpMatchArray) => Omit<MascotTip, 'id'>;
 }
 
 // Context for the mascot manager
@@ -208,14 +208,8 @@ export const MascotProvider: React.FC<MascotManagerProps> = ({
       for (const { pattern, tipGenerator } of debugPatterns) {
         const match = errorString.match(pattern);
         if (match) {
-          // Create a tip from the match
-          const newTip = {
-            id: uuidv4(),
-            ...tipGenerator(match)
-          };
-          
           // Add the tip
-          setTips(prevTips => [...prevTips, newTip]);
+          addTip(tipGenerator(match));
           break; // Only add one tip per error
         }
       }
@@ -233,14 +227,8 @@ export const MascotProvider: React.FC<MascotManagerProps> = ({
       for (const { pattern, tipGenerator } of debugPatterns) {
         const match = warnString.match(pattern);
         if (match) {
-          // Create a tip from the match
-          const newTip = {
-            id: uuidv4(),
-            ...tipGenerator(match)
-          };
-          
           // Add the tip
-          setTips(prevTips => [...prevTips, newTip]);
+          addTip(tipGenerator(match));
           break; // Only add one tip per warning
         }
       }
@@ -254,14 +242,8 @@ export const MascotProvider: React.FC<MascotManagerProps> = ({
       for (const { pattern, tipGenerator } of debugPatterns) {
         const match = errorString.match(pattern);
         if (match) {
-          // Create a tip from the match
-          const newTip = {
-            id: uuidv4(),
-            ...tipGenerator(match)
-          };
-          
           // Add the tip
-          setTips(prevTips => [...prevTips, newTip]);
+          addTip(tipGenerator(match));
           break; // Only add one tip per error
         }
       }

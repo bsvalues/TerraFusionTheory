@@ -197,7 +197,7 @@ const MascotCharacter: React.FC<MascotCharacterProps> = ({
         return {
           animate: {
             y: [0, -5, 0],
-            transition: { duration: 2, repeat: Infinity, repeatType: "mirror" }
+            transition: { duration: 2, repeat: Infinity }
           }
         };
     }
@@ -296,7 +296,7 @@ const MascotCharacter: React.FC<MascotCharacterProps> = ({
       <div className="flex items-end">
         {/* Mascot character - using emoji for simplicity, could replace with custom SVG or image */}
         <motion.div
-          className="text-5xl cursor-pointer relative bg-muted p-2 rounded-full shadow-lg"
+          className="cursor-pointer relative bg-muted p-2 rounded-full shadow-lg"
           onClick={() => {
             if (!showBubble && activeTip) {
               setShowBubble(true);
@@ -309,7 +309,7 @@ const MascotCharacter: React.FC<MascotCharacterProps> = ({
           }}
           {...getAnimationProps()}
         >
-          {getMascotEmoji()}
+          <MascotSvg mood={mood} size={60} />
           
           {/* Toggle visibility button */}
           <Button
