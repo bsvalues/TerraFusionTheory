@@ -6,12 +6,16 @@
  * 
  * The MCP allows for consistent interfaces across different AI providers, handles
  * retries, error logging, and provides detailed response tracking.
+ * 
+ * Enhanced with context management and vector memory integration for improved
+ * contextual awareness in responses.
  */
 
 import { v4 as uuidv4 } from 'uuid';
 import { createTool, Tool, ToolParameter, ToolResult } from '../interfaces/tool-interface';
 import { LogCategory, LogLevel } from '../../shared/schema';
 import { storage } from '../../server/storage';
+import { vectorMemory, AdvancedSearchOptions } from '../memory/vector';
 
 // MCP response cache to avoid duplicate calls
 const responseCache = new Map<string, {
@@ -86,6 +90,108 @@ async function logMCPActivity(
     });
   } catch (error) {
     console.error('Failed to log MCP tool activity:', error);
+  }
+}
+
+/**
+ * Fetch relevant context from vector memory
+ */
+async function getRelevantContext(
+  query: string,
+  options: {
+    limit?: number;
+    threshold?: number;
+    diversityFactor?: number;
+    includeSources?: boolean;
+    timeWeighting?: {
+      enabled: boolean;
+      halfLifeDays: number;
+      maxBoost: number;
+    };
+  } = {}
+): Promise<{ context: string, sources: string[] }> {
+  try {
+    // Configure default search options
+    const searchOptions: AdvancedSearchOptions = {
+      limit: options.limit || 3,
+      threshold: options.threshold || 0.3,
+      diversityFactor: options.diversityFactor || 0.5,
+      timeWeighting: options.timeWeighting || {
+        enabled: true,
+        halfLifeDays: 30,
+        maxBoost: 1.5
+      }
+    };
+    
+    // Search vector memory
+    console.log(`[VectorMemory] Search query: "${query.substring(0, 30)}${query.length > 30 ? '...' : ''}" with advanced options`);
+    const results = await vectorMemory.search(query, searchOptions);
+    
+    if (!results || results.length === 0) {
+      return { context: '', sources: [] };
+    }
+    
+    // Process results into context string
+    let contextEntries: string[] = [];
+    let sources: string[] = [];
+    
+    results.forEach((result, index) => {
+      const entry = result.entry;
+      const source = entry.metadata?.source || 'unknown';
+      const confidence = result.score.toFixed(2);
+      
+      // Add source to the list if not already included
+      if (!sources.includes(source)) {
+        sources.push(source);
+      }
+      
+      // Format the entry text
+      const entryText = `[Context ${index+1}] (relevance: ${confidence}): ${entry.text}`;
+      contextEntries.push(entryText);
+    });
+    
+    return {
+      context: contextEntries.join('\n\n'),
+      sources
+    };
+  } catch (error) {
+    console.error('[MCP Tool] Error retrieving context from vector memory:', error);
+    return { context: '', sources: [] };
+  }
+}
+
+/**
+ * Integrate context with prompt based on integration strategy
+ */
+function integrateContext(
+  prompt: string,
+  context: string,
+  strategy: string = 'smart'
+): string {
+  if (!context) {
+    return prompt;
+  }
+  
+  switch (strategy) {
+    case 'prepend':
+      return `${context}\n\n${prompt}`;
+      
+    case 'append':
+      return `${prompt}\n\n${context}`;
+      
+    case 'smart':
+    default:
+      // Smart integration tries to determine the best approach based on prompt
+      if (prompt.length < 200) {
+        // For short prompts, prepend context
+        return `RELEVANT CONTEXT:\n${context}\n\nQUESTION OR TASK:\n${prompt}`;
+      } else if (/^Analyze|^Review|^Evaluate|^Assess/i.test(prompt)) {
+        // For analysis prompts, context after the main instruction
+        return `${prompt}\n\nCONSIDER THE FOLLOWING CONTEXT:\n${context}`;
+      } else {
+        // Default approach - context first with clear separation
+        return `RELEVANT CONTEXT:\n${context}\n\n${prompt}`;
+      }
   }
 }
 
@@ -203,6 +309,43 @@ export function registerMCPTool(): Tool {
       description: 'Whether to cache the response for future use',
       required: false,
       default: true,
+    },
+    {
+      name: 'use_vector_memory',
+      type: 'boolean',
+      description: 'Whether to enhance the prompt with relevant context from vector memory',
+      required: false,
+      default: true,
+    },
+    {
+      name: 'memory_query',
+      type: 'string',
+      description: 'Custom query for vector memory lookup (defaults to using the prompt)',
+      required: false,
+    },
+    {
+      name: 'memory_options',
+      type: 'object',
+      description: 'Advanced options for vector memory search',
+      required: false,
+      default: {
+        limit: 3,
+        threshold: 0.3,
+        diversityFactor: 0.5,
+        includeSources: true,
+        timeWeighting: {
+          enabled: true,
+          halfLifeDays: 30,
+          maxBoost: 1.5
+        }
+      }
+    },
+    {
+      name: 'context_integration',
+      type: 'string',
+      description: 'How to integrate memory context into the prompt ("prepend", "append", or "smart")',
+      required: false,
+      default: 'smart'
     }
   ];
 
