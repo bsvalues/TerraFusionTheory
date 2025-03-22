@@ -15,7 +15,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { createTool, Tool, ToolParameter, ToolResult } from '../interfaces/tool-interface';
 import { LogCategory, LogLevel } from '../../shared/schema';
 import { storage } from '../../server/storage';
-import { vectorMemory, AdvancedSearchOptions } from '../memory/vector';
+import { vectorMemory } from '../memory/vector';
+import { AdvancedSearchOptions, SearchResult, VectorEntry } from '../memory/types';
 
 // MCP response cache to avoid duplicate calls
 const responseCache = new Map<string, {
@@ -365,7 +366,21 @@ export function registerMCPTool(): Tool {
           stop = [],
           system_message = 'You are a helpful AI assistant.',
           function_calling = false,
-          cache = true
+          cache = true,
+          use_vector_memory = true,
+          memory_query = null,
+          memory_options = {
+            limit: 3,
+            threshold: 0.3,
+            diversityFactor: 0.5,
+            includeSources: true,
+            timeWeighting: {
+              enabled: true,
+              halfLifeDays: 30,
+              maxBoost: 1.5
+            }
+          },
+          context_integration = 'smart'
         } = args;
 
         // Create a cache key if caching is enabled
@@ -416,16 +431,45 @@ export function registerMCPTool(): Tool {
         console.log(`[MCP Tool] Executing with model: ${model}`);
         console.log(`[MCP Tool] Prompt: ${prompt.substring(0, 100)}${prompt.length > 100 ? '...' : ''}`);
         
+        // Track if we're using enhanced context for metadata
+        let usedMemoryContext = false;
+        let memorySourcesUsed: string[] = [];
+        let enhancedPrompt = prompt;
+        
+        // If vector memory enhancement is enabled, retrieve relevant context
+        if (use_vector_memory) {
+          try {
+            // Use memory_query if provided, otherwise use the prompt
+            const queryForMemory = memory_query || prompt;
+            
+            // Get relevant context from vector memory
+            const { context, sources } = await getRelevantContext(queryForMemory, memory_options);
+            
+            if (context) {
+              // Integrate context with prompt
+              enhancedPrompt = integrateContext(prompt, context, context_integration as string);
+              usedMemoryContext = true;
+              memorySourcesUsed = sources;
+              
+              console.log(`[MCP Tool] Enhanced prompt with vector memory context from ${sources.length} sources`);
+            }
+          } catch (error) {
+            console.error('[MCP Tool] Error enhancing prompt with vector memory:', error);
+            // Continue with original prompt if context enhancement fails
+          }
+        }
+        
         await logMCPActivity('Executing model request', LogLevel.INFO, {
           model,
           promptPreview: prompt.substring(0, 50) + (prompt.length > 50 ? '...' : ''),
+          enhancedWithContext: usedMemoryContext,
           systemMessagePreview: system_message.substring(0, 30) + (system_message.length > 30 ? '...' : ''),
           temperature,
           max_tokens
         });
         
         // Generate response (in a real implementation, this would call the model API)
-        const response = generateModelResponse(prompt, system_message, model);
+        const response = generateModelResponse(enhancedPrompt, system_message, model);
         
         // Create result object
         const result = {
@@ -439,7 +483,10 @@ export function registerMCPTool(): Tool {
             system_message: system_message.substring(0, 50) + (system_message.length > 50 ? '...' : ''),
             function_calling,
             timestamp: new Date().toISOString(),
-            responseTime: Date.now() - startTime
+            responseTime: Date.now() - startTime,
+            enhancedWithContext: usedMemoryContext,
+            contextSources: usedMemoryContext ? memorySourcesUsed : undefined,
+            contextStrategy: usedMemoryContext ? context_integration : undefined
           }
         };
         
@@ -451,7 +498,9 @@ export function registerMCPTool(): Tool {
             metadata: {
               temperature,
               max_tokens,
-              model
+              model,
+              enhancedWithContext: usedMemoryContext,
+              contextSources: usedMemoryContext ? memorySourcesUsed : undefined
             }
           });
         }
@@ -541,6 +590,23 @@ Optional Parameters:
 - function_calling: Whether to enable function calling (default: false)
 - cache: Whether to cache the response for future use (default: true)
 
+Advanced Context Management:
+- use_vector_memory: Whether to enhance prompt with relevant context (default: true)
+- memory_query: Custom query for vector memory lookup (defaults to using the prompt)
+- memory_options: Advanced options for vector memory search:
+  - limit: Maximum number of results to retrieve (default: 3)
+  - threshold: Similarity threshold for results (default: 0.3)
+  - diversityFactor: How diverse the results should be (default: 0.5)
+  - includeSources: Whether to include source information (default: true)
+  - timeWeighting: Parameters for time-based weighting:
+    - enabled: Whether to enable time weighting (default: true)
+    - halfLifeDays: Days after which relevance is halved (default: 30)
+    - maxBoost: Maximum boost for recent entries (default: 1.5)
+- context_integration: How to integrate memory with prompt (default: "smart")
+  - "prepend": Add context before the prompt
+  - "append": Add context after the prompt
+  - "smart": Intelligently integrate based on prompt structure
+
 Supported Models:
 - gpt-4
 - gpt-3.5-turbo
@@ -595,6 +661,32 @@ mcp.execute({
               prompt: 'How do I determine the fair market value of a 3-bedroom house in Grandview?',
               temperature: 0.4,
               system_message: 'You are a professional real estate appraiser with deep knowledge of property valuation methodologies.'
+            }
+          },
+          {
+            description: 'Context-aware development question with vector memory',
+            args: {
+              model: 'gpt-4',
+              prompt: 'What was our approach to error handling in the database connector module?',
+              system_message: 'You are a senior developer with intimate knowledge of the codebase.',
+              use_vector_memory: true,
+              memory_options: {
+                limit: 5,
+                threshold: 0.2,
+                diversityFactor: 0.7
+              },
+              context_integration: 'smart'
+            }
+          },
+          {
+            description: 'Real estate question with custom memory query',
+            args: {
+              model: 'gpt-4',
+              prompt: 'What are the typical lot sizes in Grandview?',
+              system_message: 'You are a real estate expert familiar with Yakima County properties.',
+              use_vector_memory: true,
+              memory_query: 'Grandview WA property lot sizes square footage acreage',
+              context_integration: 'prepend'
             }
           }
         ];
