@@ -894,7 +894,9 @@ Please help me understand:
       'location data', 'proximity search', 'radius search', 'geocoding',
       'leaflet', 'openstreetmap', 'arcgis', 'mapbox', 'geoJSON',
       'heatmap', 'choropleth', 'boundary', 'polygon', 'marker',
-      'address validation', 'parcel', 'latitude', 'longitude'
+      'address validation', 'parcel', 'latitude', 'longitude',
+      'nearest neighbor', 'knn', 'spatial index', 'spatial query',
+      'location-based', 'geohash', 'quadtree', 'r-tree', 'geographical'
     ];
     
     // Analysis-related terms suggesting real estate analytics context
@@ -920,14 +922,25 @@ Please help me understand:
       // Value and metrics patterns
       /\b(price|value|cost)\s+per\s+(square\s+foot|sq\s+ft|acre)\b/i,
       /\b(compare|analyze)\s+(properties|homes|listings)\b/i,
-      /\bproperty\s+(valuation|assessment|pricing)\b/i
+      /\bproperty\s+(valuation|assessment|pricing)\b/i,
+      
+      // Algorithm and data structure patterns related to properties
+      /\b(algorithm|index|query|search)\s+for\s+properties\b/i,
+      /\bproperties\s+in\s+similar\s+(price|value)\b/i,
+      /\bproperties\s+(within|by)\s+(range|area|radius|distance)\b/i,
+      /\b(nearest|similar|comparable)\s+(properties|homes|listings)\b/i,
+      /\b(optimize|index)\s+(property|real estate)\s+data\b/i
     ];
     
     // Intent-specific questions that suggest real estate knowledge needs
     const intentPatterns = [
       /\bhow\s+(to|do\s+I|would\s+I|can\s+I)\s+(find|search|display|show|calculate|determine|locate)\s+.{0,30}\b(property|properties|house|houses|realty|home|homes)\b/i,
       /\bwhat\s+(is|are)\s+.{0,30}\b(property|home|house|real estate)\s+(values?|prices?|costs?|rates?)\b/i,
-      /\bwhat\s+factors?\s+.{0,30}\b(property|home|house|real estate)\b/i
+      /\bwhat\s+factors?\s+.{0,30}\b(property|home|house|real estate)\b/i,
+      /\bhow\s+(to|do\s+I|would\s+I|can\s+I)\s+(implement|develop|create|build|design|code)\s+.{0,40}\b(property|properties|house|houses|real estate|home|homes)\b/i,
+      /\bwhat\s+(algorithm|data structure|approach|method|technique)\s+.{0,30}\b(property|properties|home|homes|real estate)\b/i,
+      /\bhow\s+(to|do\s+I|would\s+I|can\s+I)\s+(optimize|index|query|search)\s+.{0,30}\b(property|properties|home|homes|real estate)\b/i,
+      /\b(best|efficient|optimal|fastest)\s+(way|approach|method)\s+.{0,30}\b(property|properties|home|homes|real estate)\b/i
     ];
     
     // Convert to lowercase for case-insensitive comparison
@@ -1035,7 +1048,9 @@ Please help me understand:
       architecture: ['design pattern', 'architecture', 'microservice', 'monolith', 'modular', 'dependency', 'coupling', 'cohesion'],
       algorithms: ['algorithm', 'complexity', 'efficient', 'optimization', 'big o', 'time complexity', 'space complexity', 'recursive'],
       development: ['debug', 'error', 'exception', 'logging', 'monitoring', 'documentation', 'versioning', 'git', 'workflow'],
-      realEstate: ['property', 'real estate', 'housing', 'market', 'geospatial', 'location', 'map', 'geodata', 'gis']
+      realEstate: ['property', 'real estate', 'housing', 'market', 'geospatial', 'location', 'map', 'geodata', 'gis', 'listing', 'assessment'],
+      spatialAlgorithms: ['nearest neighbor', 'knn', 'r-tree', 'quadtree', 'geohash', 'spatial index', 'spatial query', 'proximity search', 'range query', 'bounding box'],
+      dataScience: ['machine learning', 'prediction', 'regression', 'classification', 'clustering', 'time series', 'forecasting', 'feature engineering', 'data mining']
     };
     
     // Programming languages
@@ -1047,7 +1062,16 @@ Please help me understand:
     // Frameworks and libraries
     const frameworks = [
       'react', 'vue', 'angular', 'svelte', 'node', 'express', 'django', 'flask', 'spring', 
-      'rails', 'laravel', 'symfony', '.net', 'tensorflow', 'pytorch', 'pandas'
+      'rails', 'laravel', 'symfony', '.net', 'tensorflow', 'pytorch', 'pandas', 'scikit-learn',
+      'leaflet', 'mapbox', 'turf.js', 'arcgis', 'postgis', 'geopandas'
+    ];
+    
+    // Real estate specific technical concepts
+    const realEstateTechConcepts = [
+      'geocoding', 'reverse geocoding', 'property search', 'property filter', 'market analysis',
+      'comparable properties', 'property valuation', 'price prediction', 'appraisal',
+      'spatial relationships', 'market trends', 'neighborhood analysis', 'walkability',
+      'parcel data', 'tax assessment', 'property records', 'listing aggregation'
     ];
     
     const questionLower = question.toLowerCase();
@@ -1074,14 +1098,53 @@ Please help me understand:
       }
     }
     
-    // If we have technical context terms, add 'geospatial' tag for better recall
+    // Check for real estate technical concepts
+    for (const concept of realEstateTechConcepts) {
+      if (questionLower.includes(concept.toLowerCase())) {
+        tags.push('realEstateTech');
+        break; // Only add once
+      }
+    }
+    
+    // Enhanced geospatial tag identification
     const technicalGeoTerms = [
       'coordinates', 'latitude', 'longitude', 'geocoding', 'reverse geocoding',
-      'spatial', 'geojson', 'map', 'leaflet', 'openstreetmap', 'arcgis', 'mapbox'
+      'spatial', 'geojson', 'map', 'leaflet', 'openstreetmap', 'arcgis', 'mapbox',
+      'geographical', 'geospatial', 'location-based', 'proximity', 'distance',
+      'radius search', 'bounding box', 'polygon', 'region search', 'geographic'
     ];
     
     if (technicalGeoTerms.some(term => questionLower.includes(term.toLowerCase()))) {
       tags.push('geospatial');
+    }
+    
+    // Special cases for hybrid topics
+    if (questionLower.includes('property') && questionLower.includes('data')) {
+      tags.push('propertyData');
+    }
+    
+    if (questionLower.includes('nearest') && questionLower.includes('neighbor')) {
+      tags.push('nearestNeighbor');
+    }
+    
+    if (questionLower.includes('database') && questionLower.includes('property')) {
+      tags.push('propertyDatabase');
+    }
+    
+    if (questionLower.includes('search') && questionLower.includes('algorithm') && 
+        (questionLower.includes('property') || questionLower.includes('home') || 
+         questionLower.includes('house') || questionLower.includes('real estate'))) {
+      tags.push('propertySearch');
+    }
+    
+    // If no tags found, add a general 'technical' tag
+    if (tags.length === 0) {
+      tags.push('technical');
+    }
+    
+    // Ensure 'collaboration' tag is included for cross-domain questions
+    if (this.isQuestionRealEstateRelated(question)) {
+      tags.push('collaboration');
     }
     
     // Limit to a reasonable number of tags
