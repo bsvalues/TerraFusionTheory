@@ -235,7 +235,7 @@ async function performBasicSearch() {
   // Use lower threshold for testing
   const results = await vectorMemory.search(query, {
     limit: 3,
-    threshold: 0.3 // Lower threshold to see if any results are returned
+    threshold: 0.2 // Lower threshold to see if any results are returned
   });
   
   await logTestResult('Basic Semantic Search Results', {
@@ -259,12 +259,12 @@ async function performHybridSearch() {
   
   const basicResults = await vectorMemory.search(query, {
     limit: 3,
-    threshold: 0.6
+    threshold: 0.2
   });
   
   const hybridOptions: AdvancedSearchOptions = {
     limit: 3,
-    threshold: 0.6,
+    threshold: 0.2,
     hybridSearch: {
       enabled: true,
       keywordWeight: 0.4,
@@ -305,12 +305,12 @@ async function performContextualSearch() {
   
   const basicResults = await vectorMemory.search(query, {
     limit: 3,
-    threshold: 0.6
+    threshold: 0.2
   });
   
   const contextOptions: AdvancedSearchOptions = {
     limit: 3,
-    threshold: 0.6,
+    threshold: 0.2,
     contextualSearch: {
       enabled: true,
       contextText,
@@ -349,7 +349,7 @@ async function performCategoryAndTagFiltering() {
   
   const filterOptions: AdvancedSearchOptions = {
     limit: 3,
-    threshold: 0.6,
+    threshold: 0.2,
     filter: {
       categories: ['market-trend', 'neighborhood-profile'],
       tags: ['price-increase', 'appreciation']
@@ -379,12 +379,12 @@ async function performTimeWeightedSearch() {
   
   const basicResults = await vectorMemory.search(query, {
     limit: 3,
-    threshold: 0.6
+    threshold: 0.2
   });
   
   const timeWeightedOptions: AdvancedSearchOptions = {
     limit: 3,
-    threshold: 0.6,
+    threshold: 0.2,
     timeWeighting: {
       enabled: true,
       halfLifeDays: 30,
@@ -423,12 +423,12 @@ async function performDiversitySearch() {
   
   const basicResults = await vectorMemory.search(query, {
     limit: 5,
-    threshold: 0.6
+    threshold: 0.2
   });
   
   const diversityOptions: AdvancedSearchOptions = {
     limit: 5,
-    threshold: 0.6,
+    threshold: 0.2,
     diversityOptions: {
       enabled: true,
       minDistance: 0.2,
@@ -457,7 +457,7 @@ async function performDiversitySearch() {
 async function performClusterAnalysis() {
   const { clusters, clusterScores } = await vectorMemory.clusterEntries({
     minimumClusterSize: 2,
-    similarityThreshold: 0.7,
+    similarityThreshold: 0.3,
     maxClusters: 3
   });
   

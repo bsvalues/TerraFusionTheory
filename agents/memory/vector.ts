@@ -684,7 +684,7 @@ class EnhancedVectorStore {
   ): Promise<MemorySearchResult[]> {
     // Default options
     const limit = options?.limit || 5;
-    const threshold = options?.threshold || 0.3; // Lower default threshold for enhanced embeddings
+    const threshold = options?.threshold || 0.2; // Lower default threshold to improve result retrieval
     
     // Generate query embedding
     const queryEmbedding = await this.generateEmbedding(query);
@@ -1120,7 +1120,7 @@ class EnhancedVectorStore {
     if (!entry || !entry.embedding) return [];
     
     const limit = options?.limit || 5;
-    const threshold = options?.threshold || 0.7;
+    const threshold = options?.threshold || 0.3;
     const excludeSelf = options?.excludeSelf !== false; // Default true
     
     // Get all entries
@@ -1182,7 +1182,7 @@ class EnhancedVectorStore {
     clusterScores: number[];
   }> {
     const minClusterSize = options?.minimumClusterSize || 2;
-    const threshold = options?.similarityThreshold || 0.8;
+    const threshold = options?.similarityThreshold || 0.3;
     const maxClusters = options?.maxClusters || 10;
     
     const entries = Array.from(this.entries.values())
