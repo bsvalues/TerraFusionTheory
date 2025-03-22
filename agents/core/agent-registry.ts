@@ -112,6 +112,14 @@ class AgentRegistryImpl implements IAgentRegistry {
   public getAllAgents(): Agent[] {
     return Array.from(this.agents.values());
   }
+
+  /**
+   * Get all active agents
+   */
+  public getActiveAgents(): Agent[] {
+    return Array.from(this.agents.values())
+      .filter(agent => agent.getStatus() !== 'terminated' && agent.getStatus() !== 'error');
+  }
   
   /**
    * Get agents by capability

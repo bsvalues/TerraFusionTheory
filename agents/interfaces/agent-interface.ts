@@ -38,6 +38,18 @@ export enum AgentCapability {
 }
 
 /**
+ * Agent type enum
+ */
+export enum AgentType {
+  DEVELOPER = 'developer',
+  REAL_ESTATE = 'real_estate',
+  DATA_ANALYSIS = 'data_analysis',
+  DOCUMENT_PROCESSING = 'document_processing',
+  SYSTEM = 'system',
+  GENERIC = 'generic'
+}
+
+/**
  * Agent status types
  */
 export enum AgentStatus {
@@ -148,6 +160,11 @@ export interface Agent extends EventEmitter {
   getContext(): Record<string, any>;
   updateContext(context: Record<string, any>): void;
   getState(): Record<string, any>;
+  
+  // Helper methods
+  isActiveAgent?(): boolean;
+  getDiagnostics?(): Record<string, any>;
+  shutdown?(): Promise<void>;
   
   // Agent coordination
   canCoordinateWith(agentId: string): boolean;
@@ -452,6 +469,43 @@ export abstract class BaseAgent extends EventEmitter implements Agent {
       capabilities: this.getCapabilities(),
       tools: this.getAvailableTools()
     };
+  }
+  
+  /**
+   * Check if agent is active (not terminated or in error state)
+   */
+  isActiveAgent(): boolean {
+    return this.status !== AgentStatus.TERMINATED && this.status !== AgentStatus.ERROR;
+  }
+  
+  /**
+   * Get agent diagnostic information
+   */
+  getDiagnostics(): Record<string, any> {
+    return {
+      id: this.id,
+      name: this.getName(),
+      status: this.status,
+      activeTaskCount: Array.from(this.tasks.values())
+        .filter(t => t.status === 'running' || t.status === 'pending').length,
+      completedTaskCount: Array.from(this.tasks.values())
+        .filter(t => t.status === 'completed').length,
+      failedTaskCount: Array.from(this.tasks.values())
+        .filter(t => t.status === 'failed').length,
+      memoryKeys: Array.from(this.memoryStore.keys()),
+      registeredTools: this.getAvailableTools()
+    };
+  }
+  
+  /**
+   * Shutdown the agent and clean up resources
+   */
+  async shutdown(): Promise<void> {
+    await this.stop();
+    this.memoryStore.clear();
+    this.tasks.clear();
+    this.toolRegistry.clear();
+    this.removeAllListeners();
   }
   
   /**

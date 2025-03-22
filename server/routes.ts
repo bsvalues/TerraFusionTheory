@@ -663,12 +663,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const agents = agentRegistry.getAllAgents().map(agent => ({
         id: agent.getId(),
-        type: agent.getType(),
+        type: agent.getType?.() || 'unknown',
         name: agent.getName(),
         description: agent.getDescription(),
         state: agent.getState(),
         capabilities: agent.getCapabilities(),
-        isActive: agent.isActiveAgent()
+        isActive: agent.isActiveAgent?.() || (agent.getStatus() !== 'terminated' && agent.getStatus() !== 'error')
       }));
       res.json(agents);
     } catch (error) {
