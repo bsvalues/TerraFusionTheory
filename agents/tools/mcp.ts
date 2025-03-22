@@ -15,8 +15,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { createTool, Tool, ToolParameter, ToolResult } from '../interfaces/tool-interface';
 import { LogCategory, LogLevel } from '../../shared/schema';
 import { storage } from '../../server/storage';
-import { vectorMemory } from '../memory/vector';
-import { AdvancedSearchOptions, SearchResult, VectorEntry } from '../memory/types';
+import { vectorMemory, AdvancedSearchOptions } from '../memory/vector';
 
 // MCP response cache to avoid duplicate calls
 const responseCache = new Map<string, {
