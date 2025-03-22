@@ -10,7 +10,7 @@
  */
 
 import axios from 'axios';
-const API_BASE_URL = 'http://localhost:5000/api';
+const API_BASE_URL = 'http://localhost:5000/api/agents';
 
 /**
  * Test questions that combine technical and real estate knowledge
@@ -92,12 +92,15 @@ async function testCollaboration(question) {
     console.log(`${colors.dim}Expecting collaboration: ${question.expectsCollaboration ? 'Yes' : 'No'}${colors.reset}`);
     
     const startTime = Date.now();
-    const response = await axios.post(`${API_BASE_URL}/agents/test-cross-domain-collaboration`, {
+    const response = await axios.post(`${API_BASE_URL}/test-cross-domain-collaboration`, {
       question: question.text
     });
     const duration = ((Date.now() - startTime) / 1000).toFixed(2);
     
     const data = response.data;
+    
+    console.log(`${colors.bright}${colors.magenta}DEBUG: Full API Response: ${colors.reset}`);
+    console.log(JSON.stringify(data, null, 2).substring(0, 500) + '...');
     
     // Evaluate results
     const collaborationOccurred = data.collaborationFound;
@@ -107,6 +110,7 @@ async function testCollaboration(question) {
     console.log(`- Detection: The question was ${data.isRealEstateRelated ? 'identified' : 'not identified'} as real estate related`);
     console.log(`- Collaboration: ${collaborationOccurred ? 'Occurred' : 'Did not occur'}`);
     console.log(`- Duration: ${duration} seconds`);
+    console.log(`- Execution Time: ${data.executionTime || 'unknown'}ms`);
     
     if (correctPrediction) {
       console.log(`${colors.green}✓ Agent correctly ${question.expectsCollaboration ? 'detected' : 'ignored'} real estate content${colors.reset}`);

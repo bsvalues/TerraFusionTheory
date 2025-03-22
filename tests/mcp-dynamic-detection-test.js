@@ -9,7 +9,7 @@
  * Run with: node tests/mcp-dynamic-detection-test.js
  */
 
-const axios = require('axios');
+import axios from 'axios';
 const API_BASE_URL = 'http://localhost:5000/api';
 
 /**
