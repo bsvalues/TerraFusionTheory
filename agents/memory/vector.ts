@@ -445,14 +445,16 @@ class EnhancedVectorStore {
     // For development, we'll use a deterministic mock embedding
     // based on text hash to ensure consistent results
     // In production, this would call OpenAI API or similar
-    return this.deterministicMockEmbedding(text);
+    return this.enhancedMockEmbedding(text);
   }
-  
+
   /**
    * Create a deterministic mock embedding based on text hash
    * This ensures consistent behavior in development
+   * 
+   * Enhanced version to improve semantic representation
    */
-  private deterministicMockEmbedding(text: string): number[] {
+  private enhancedMockEmbedding(text: string): number[] {
     // Create a simple hash of the text
     let hash = 0;
     for (let i = 0; i < text.length; i++) {
@@ -466,16 +468,46 @@ class EnhancedVectorStore {
       return x - Math.floor(x);
     };
     
-    // Generate deterministic embedding vector
+    // Simple text analysis for better semantic representation
+    const words = text.toLowerCase().split(/\s+/);
+    const uniqueWords = new Set(words);
+    
+    // Generate embedding with some word-level influence
     const embedding = [];
     for (let i = 0; i < this.dimensions; i++) {
-      const value = seededRandom(hash + i) * 2 - 1; // Range -1 to 1
+      // Base value from seeded random
+      let value = seededRandom(hash + i) * 2 - 1; // Range -1 to 1
+      
+      // Influence embedding with word presence
+      // Each word affects a specific dimension range
+      for (const word of uniqueWords) {
+        const wordHash = this.simpleHash(word);
+        const dimensionInfluence = wordHash % 100; // Each word affects ~100 dimensions
+        
+        if (i % 100 === dimensionInfluence) {
+          // Amplify this dimension if the word is present
+          value *= 1.5;
+        }
+      }
+      
       embedding.push(value);
     }
     
     // Normalize the vector (unit length)
     const magnitude = Math.sqrt(embedding.reduce((sum, val) => sum + val * val, 0));
     return embedding.map(val => val / magnitude);
+  }
+  
+  /**
+   * Simple string hashing function
+   */
+  private simpleHash(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return Math.abs(hash);
   }
   
   /**
