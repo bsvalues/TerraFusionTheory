@@ -424,7 +424,7 @@ router.post('/agent-collaboration', asyncHandler(async (req, res) => {
   }
   
   try {
-    // Use the agent coordinator singleton
+    // Use the agentCoordinator imported at the top
     
     // Prepare the collaboration request
     const collaborationRequest = {
