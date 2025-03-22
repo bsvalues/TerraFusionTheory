@@ -4,7 +4,7 @@
  * This script demonstrates the advanced retrieval techniques in the vector memory system.
  */
 
-import { vectorMemory, AdvancedSearchOptions } from './vector.ts';
+import { vectorMemory, AdvancedSearchOptions, initializeVectorMemory } from './vector.ts';
 import { LogLevel, LogCategory } from '../../shared/schema';
 import { storage } from '../../server/storage';
 
