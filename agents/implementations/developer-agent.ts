@@ -866,10 +866,11 @@ Please help me understand:
   }
   
   /**
-   * Check if a question might benefit from real estate expertise
+   * Advanced intent analysis to detect if a question would benefit from real estate expertise
+   * Uses multi-layered detection with contextual awareness, semantic patterns, and intent classification
    */
   private isRealEstateRelatedQuestion(question: string): boolean {
-    // Core real estate terms with higher confidence
+    // Core real estate terms with highest confidence (direct domain indicators)
     const coreRealEstateKeywords = [
       'real estate', 'property', 'house', 'housing market', 'home value', 
       'mortgage', 'appraisal', 'listing', 'broker', 'realtor',
@@ -877,50 +878,144 @@ Please help me understand:
       'geodata', 'gis', 'property tax', 'assessment', 'grandview'
     ];
     
-    // General real estate related terms with lower confidence
+    // General real estate related terms with medium confidence
     const generalRealEstateKeywords = [
-      'home', 'apartment', 'condo', 'rent', 'market value', 'land', 
+      'home', 'apartment', 'condo', 'rent', 'market value', 'land',
       'residential', 'investment property', 'valuation', 'rental', 
       'buying', 'selling', 'location', 'neighborhood', 'downtown', 
       'map view', 'mapping', 'square footage', 'acre', 'lot size', 
-      'bedroom', 'bathroom', 'real property', 'deed', 'title'
+      'bedroom', 'bathroom', 'real property', 'deed', 'title',
+      'house', 'housing', 'commercial', 'tenant', 'lease'
     ];
     
     // Technical terms that could be real estate related in context
     const technicalContextTerms = [
       'geospatial', 'spatial data', 'mapping api', 'coordinates',
       'location data', 'proximity search', 'radius search', 'geocoding',
-      'leaflet', 'openstreetmap', 'arcgis', 'mapbox'
+      'leaflet', 'openstreetmap', 'arcgis', 'mapbox', 'geoJSON',
+      'heatmap', 'choropleth', 'boundary', 'polygon', 'marker',
+      'address validation', 'parcel', 'latitude', 'longitude'
     ];
     
-    // Check for core keywords (case insensitive)
+    // Analysis-related terms suggesting real estate analytics context
+    const analysisTerms = [
+      'trend', 'analysis', 'historical data', 'appreciation', 'depreciation',
+      'forecast', 'predict', 'projection', 'growth rate', 'decline rate',
+      'market indicator', 'leading indicator', 'comparative', 'competitive',
+      'benchmark', 'metric', 'radius', 'analytics', 'search algorithm'
+    ];
+    
+    // Patterns that strongly suggest real estate context (weighted phrases)
+    const realEstatePatterns = [
+      // Location-based patterns
+      /\b(\w+)\s+neighborhood\b/i,
+      /\bin\s+(\w+)\s+(county|city|area|region|market|zip code)\b/i,
+      /\b(\w+)\s+housing\s+market\b/i,
+      
+      // Search and display patterns
+      /\bproperty\s+(search|lookup|query|filter)\b/i,
+      /\b(display|show|render|visualize)\s+properties\b/i,
+      /\b(map|plot|geocode)\s+(houses|properties|listings)\b/i,
+      
+      // Value and metrics patterns
+      /\b(price|value|cost)\s+per\s+(square\s+foot|sq\s+ft|acre)\b/i,
+      /\b(compare|analyze)\s+(properties|homes|listings)\b/i,
+      /\bproperty\s+(valuation|assessment|pricing)\b/i
+    ];
+    
+    // Intent-specific questions that suggest real estate knowledge needs
+    const intentPatterns = [
+      /\bhow\s+(to|do\s+I|would\s+I|can\s+I)\s+(find|search|display|show|calculate|determine|locate)\s+.{0,30}\b(property|properties|house|houses|realty|home|homes)\b/i,
+      /\bwhat\s+(is|are)\s+.{0,30}\b(property|home|house|real estate)\s+(values?|prices?|costs?|rates?)\b/i,
+      /\bwhat\s+factors?\s+.{0,30}\b(property|home|house|real estate)\b/i
+    ];
+    
+    // Convert to lowercase for case-insensitive comparison
     const questionLower = question.toLowerCase();
     
-    // If core keywords are present, high confidence it's real estate related
-    if (coreRealEstateKeywords.some(keyword => questionLower.includes(keyword.toLowerCase()))) {
+    // Track confidence scores with a weighted approach
+    let confidenceScore = 0;
+    const matchedTerms = {
+      core: [] as string[],
+      general: [] as string[],
+      technical: [] as string[],
+      analysis: [] as string[],
+      patterns: [] as string[],
+      intents: [] as string[]
+    };
+    
+    // 1. Check core keywords (highest confidence)
+    const coreMatches = coreRealEstateKeywords.filter(keyword => 
+      questionLower.includes(keyword.toLowerCase())
+    );
+    matchedTerms.core = coreMatches;
+    confidenceScore += coreMatches.length * 2.0; // Higher weight for core terms
+    
+    // Instant return for strong indicators
+    if (coreMatches.length >= 1) {
       return true;
     }
     
-    // If multiple general keywords or technical terms appear together, likely real estate related
+    // 2. Check general real estate keywords
     const generalMatches = generalRealEstateKeywords.filter(keyword => 
       questionLower.includes(keyword.toLowerCase())
     );
+    matchedTerms.general = generalMatches;
+    confidenceScore += generalMatches.length * 1.0;
     
+    // 3. Check technical terms that may indicate real estate context
     const technicalMatches = technicalContextTerms.filter(keyword => 
       questionLower.includes(keyword.toLowerCase())
     );
+    matchedTerms.technical = technicalMatches;
+    confidenceScore += technicalMatches.length * 0.8;
     
-    // Check for combinations suggesting real estate tech context
+    // 4. Check analysis terms
+    const analysisMatches = analysisTerms.filter(keyword => 
+      questionLower.includes(keyword.toLowerCase())
+    );
+    matchedTerms.analysis = analysisMatches;
+    confidenceScore += analysisMatches.length * 0.7;
+    
+    // 5. Check for real estate patterns (strong indicators)
+    for (const pattern of realEstatePatterns) {
+      if (pattern.test(question)) {
+        matchedTerms.patterns.push(pattern.toString());
+        confidenceScore += 1.5; // Significant boost for pattern matches
+      }
+    }
+    
+    // 6. Check for intent patterns (very strong indicators)
+    for (const pattern of intentPatterns) {
+      if (pattern.test(question)) {
+        matchedTerms.intents.push(pattern.toString());
+        confidenceScore += 2.0; // Major boost for intent matches
+      }
+    }
+    
+    // 7. Check for specific combinations that suggest real estate tech context
     if (generalMatches.length >= 1 && technicalMatches.length >= 1) {
-      return true; // Both general real estate term and technical term
+      confidenceScore += 1.0; // Bonus for technical + general combination
+    }
+    
+    if (generalMatches.length >= 1 && analysisMatches.length >= 1) {
+      confidenceScore += 1.0; // Bonus for analysis + general combination
     }
     
     // Multiple general terms suggest real estate focus
     if (generalMatches.length >= 2) {
-      return true;
+      confidenceScore += 0.5; // Modest boost for multiple general terms
     }
     
-    return false;
+    // Log the detailed analysis (for high importance or debugging)
+    this.logActivity(`Question intent analysis: "${question.substring(0, 50)}..."`, LogLevel.DEBUG, {
+      confidenceScore,
+      matchedTerms,
+      isRealEstateRelated: confidenceScore >= 2.0
+    });
+    
+    // Final decision based on confidence threshold
+    return confidenceScore >= 2.0; // Threshold determined through testing
   }
   
   /**
