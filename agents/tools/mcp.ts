@@ -17,12 +17,101 @@ import { LogCategory, LogLevel } from '../../shared/schema';
 import { storage } from '../../server/storage';
 import { vectorMemory, AdvancedSearchOptions } from '../memory/vector';
 
-// MCP response cache to avoid duplicate calls
-const responseCache = new Map<string, {
+// MCP response cache with memory-efficient storage
+type CacheEntry = {
   response: string;
   timestamp: number;
-  metadata: any;
-}>();
+  metadata: {
+    temperature?: number;
+    max_tokens?: number;
+    model?: string;
+    enhancedWithContext?: boolean;
+    contextSources?: string[];
+  };
+};
+
+// Memory-efficient cache implementation with size limits
+class MemoryEfficientCache {
+  private cache: Map<string, CacheEntry>;
+  private maxEntries: number;
+  private maxResponseLength: number;
+  private lastCleanup: number;
+  private cleanupInterval: number;
+
+  constructor(maxEntries = 100, maxResponseLength = 2000, cleanupIntervalMs = 60000) {
+    this.cache = new Map<string, CacheEntry>();
+    this.maxEntries = maxEntries;
+    this.maxResponseLength = maxResponseLength;
+    this.lastCleanup = Date.now();
+    this.cleanupInterval = cleanupIntervalMs;
+  }
+
+  set(key: string, entry: CacheEntry): void {
+    // Trim response if too large
+    if (entry.response.length > this.maxResponseLength) {
+      entry.response = entry.response.substring(0, this.maxResponseLength);
+    }
+
+    // Add to cache
+    this.cache.set(key, entry);
+
+    // Check if we need to clean up old entries
+    if (this.cache.size > this.maxEntries) {
+      this.removeOldestEntries();
+    }
+
+    // Periodically clean expired entries
+    const now = Date.now();
+    if (now - this.lastCleanup > this.cleanupInterval) {
+      this.cleanupExpiredEntries();
+      this.lastCleanup = now;
+    }
+  }
+
+  get(key: string): CacheEntry | undefined {
+    return this.cache.get(key);
+  }
+
+  has(key: string): boolean {
+    return this.cache.has(key);
+  }
+
+  private removeOldestEntries(): void {
+    // Keep 80% of max capacity (remove oldest 20%)
+    const entriesToRemove = Math.ceil(this.maxEntries * 0.2);
+    
+    // Convert to array for sorting
+    const entries = Array.from(this.cache.entries());
+    
+    // Sort by timestamp
+    entries.sort((a, b) => a[1].timestamp - b[1].timestamp);
+    
+    // Delete oldest entries
+    for (let i = 0; i < Math.min(entriesToRemove, entries.length); i++) {
+      this.cache.delete(entries[i][0]);
+    }
+  }
+
+  cleanupExpiredEntries(maxAgeMs = 30 * 60 * 1000): void {
+    const now = Date.now();
+    for (const [key, entry] of this.cache.entries()) {
+      if (now - entry.timestamp > maxAgeMs) {
+        this.cache.delete(key);
+      }
+    }
+  }
+
+  size(): number {
+    return this.cache.size;
+  }
+
+  clear(): void {
+    this.cache.clear();
+  }
+}
+
+// Initialize cache with reasonable defaults for memory efficiency
+const responseCache = new MemoryEfficientCache(50, 1500);
 
 // Cache expiration in milliseconds (5 minutes)
 const CACHE_EXPIRATION = 5 * 60 * 1000;
@@ -94,7 +183,7 @@ async function logMCPActivity(
 }
 
 /**
- * Fetch relevant context from vector memory
+ * Fetch relevant context from vector memory with memory-efficient implementation
  */
 async function getRelevantContext(
   query: string,
@@ -111,10 +200,10 @@ async function getRelevantContext(
   } = {}
 ): Promise<{ context: string, sources: string[] }> {
   try {
-    // Configure default search options
+    // Configure default search options with memory-efficient limits
     const searchOptions: AdvancedSearchOptions = {
-      limit: options.limit || 3,
-      threshold: options.threshold || 0.3,
+      limit: Math.min(options.limit || 3, 5), // Cap at maximum of 5 results to avoid excessive memory usage
+      threshold: options.threshold || 0.4, // Higher threshold for better relevance and efficiency
       diversityFactor: options.diversityFactor || 0.5,
       timeWeighting: options.timeWeighting || {
         enabled: true,
@@ -123,19 +212,30 @@ async function getRelevantContext(
       }
     };
     
-    // Search vector memory
-    console.log(`[VectorMemory] Search query: "${query.substring(0, 30)}${query.length > 30 ? '...' : ''}" with advanced options`);
-    const results = await vectorMemory.search(query, searchOptions);
+    // Truncate long queries for memory efficiency
+    const truncatedQuery = query.length > 100 ? query.substring(0, 100) : query;
+    
+    // Search vector memory with log message
+    const logMessage = `[VectorMemory] Search query: "${truncatedQuery.substring(0, 30)}${truncatedQuery.length > 30 ? '...' : ''}"`;
+    console.log(logMessage);
+    
+    // Perform the actual search
+    const results = await vectorMemory.search(truncatedQuery, searchOptions);
     
     if (!results || results.length === 0) {
       return { context: '', sources: [] };
     }
     
-    // Process results into context string
-    let contextEntries: string[] = [];
-    let sources: string[] = [];
+    // Process results into context string with memory-optimized approach
+    const sources: string[] = [];
     
-    results.forEach((result, index) => {
+    // Create a single string builder instead of array for less memory overhead
+    // Limit text length for memory efficiency
+    const MAX_ENTRY_LENGTH = 250; // Limit each context entry to reasonable size
+    let contextBuilder = '';
+    
+    for (let i = 0; i < results.length; i++) {
+      const result = results[i];
       const entry = result.entry;
       const source = entry.metadata?.source || 'unknown';
       const confidence = result.score.toFixed(2);
@@ -145,13 +245,20 @@ async function getRelevantContext(
         sources.push(source);
       }
       
-      // Format the entry text
-      const entryText = `[Context ${index+1}] (relevance: ${confidence}): ${entry.text}`;
-      contextEntries.push(entryText);
-    });
+      // Truncate entry text for memory efficiency
+      const truncatedText = entry.text.length > MAX_ENTRY_LENGTH 
+        ? entry.text.substring(0, MAX_ENTRY_LENGTH) + '...' 
+        : entry.text;
+      
+      // Format the entry text and add to builder
+      if (i > 0) {
+        contextBuilder += '\n\n';
+      }
+      contextBuilder += `[Context ${i+1}] (relevance: ${confidence}): ${truncatedText}`;
+    }
     
     return {
-      context: contextEntries.join('\n\n'),
+      context: contextBuilder,
       sources
     };
   } catch (error) {

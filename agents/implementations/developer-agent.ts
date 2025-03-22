@@ -1143,7 +1143,7 @@ Please help me understand:
     }
     
     // Ensure 'collaboration' tag is included for cross-domain questions
-    if (this.isQuestionRealEstateRelated(question)) {
+    if (this.isRealEstateRelatedQuestion(question)) {
       tags.push('collaboration');
     }
     
