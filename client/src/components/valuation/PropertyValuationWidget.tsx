@@ -72,8 +72,20 @@ const valuationFormSchema = z.object({
   zip: z.string().optional(),
 });
 
+// Define the transformed type with numeric values
+interface TransformedFormData {
+  propertyType: string;
+  bedrooms: number;
+  bathrooms: number;
+  squareFeet: number;
+  yearBuilt: number;
+  lotSize?: number;
+  address?: string;
+  zip?: string;
+}
+
 // Transform schema for validation and submission
-const transformedSchema = valuationFormSchema.transform((data) => ({
+const transformedSchema = valuationFormSchema.transform((data): TransformedFormData => ({
   ...data,
   bedrooms: parseInt(data.bedrooms, 10),
   bathrooms: parseFloat(data.bathrooms),
@@ -164,7 +176,7 @@ export default function PropertyValuationWidget() {
   };
   
   // Generate mock valuation data based on form inputs
-  const generateMockValuation = (data: ValuationFormType): PropertyValuation => {
+  const generateMockValuation = (data: TransformedFormData): PropertyValuation => {
     // Basic price calculation based on square footage and location
     const basePricePerSqFt = Math.floor(250 + Math.random() * 150); // $250-400 per sqft
     const baseValue = data.squareFeet * basePricePerSqFt;
