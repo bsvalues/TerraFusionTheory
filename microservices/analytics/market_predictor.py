@@ -9,20 +9,43 @@ from typing import Dict, List, Tuple, Any
 
 class MarketPredictor:
     def __init__(self):
-        self.price_model = Prophet(changepoint_prior_scale=0.05, seasonality_prior_scale=10.0)
+        # Time series model
+        self.price_model = Prophet(
+            changepoint_prior_scale=0.05,
+            seasonality_prior_scale=10.0,
+            yearly_seasonality=True,
+            weekly_seasonality=True
+        )
+        
+        # Gradient boosting model with optimized parameters
         self.xgb_model = XGBRegressor(
-            n_estimators=100,
-            learning_rate=0.1,
-            max_depth=5,
+            n_estimators=200,
+            learning_rate=0.05,
+            max_depth=6,
             subsample=0.8,
-            colsample_bytree=0.8
+            colsample_bytree=0.8,
+            min_child_weight=1,
+            gamma=0.1,
+            reg_alpha=0.1,
+            reg_lambda=1,
+            random_state=42
         )
+        
+        # Random forest with enhanced parameters
         self.rf_model = RandomForestRegressor(
-            n_estimators=50,
-            max_depth=10,
-            min_samples_split=5
+            n_estimators=100,
+            max_depth=15,
+            min_samples_split=5,
+            min_samples_leaf=2,
+            max_features='sqrt',
+            bootstrap=True,
+            random_state=42
         )
+        
+        # Feature preprocessing
         self.scaler = StandardScaler()
+        self.pca = PCA(n_components=0.95)
+        self.feature_selector = SelectFromModel(Lasso(alpha=0.01))
         
     def train(self, historical_data: pd.DataFrame):
         # Time series training
