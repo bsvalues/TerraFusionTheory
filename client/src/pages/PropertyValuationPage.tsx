@@ -1,4 +1,5 @@
 import { useCallback, useState, useEffect } from 'react';
+import { Link } from 'wouter';
 import PropertyValuationWidget from '@/components/valuation/PropertyValuationWidget';
 import { 
   Card, 
@@ -9,7 +10,7 @@ import {
 } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
-import { Calculator as LucideCalculator, BarChart4 as LucideBarChart4, MapPin as LucideMapPin, Info as LucideInfo } from 'lucide-react';
+import { Calculator as LucideCalculator, BarChart4 as LucideBarChart4, MapPin as LucideMapPin, Info as LucideInfo, Home as LucideHome, ChevronLeft as LucideChevronLeft } from 'lucide-react';
 
 export default function PropertyValuationPage() {
   const [activeTab, setActiveTab] = useState('valuation');
@@ -24,6 +25,15 @@ export default function PropertyValuationPage() {
 
   return (
     <div className="container px-4 py-6 max-w-7xl mx-auto animate-in fade-in-50 duration-500">
+      {/* Back to home link */}
+      <Link href="/">
+        <button className="mb-4 flex items-center text-sm font-medium text-muted-foreground hover:text-primary transition-colors">
+          <LucideChevronLeft className="h-4 w-4 mr-1" />
+          <LucideHome className="h-4 w-4 mr-1" />
+          Back to Dashboard
+        </button>
+      </Link>
+      
       <div className="mb-8">
         <h1 className="text-3xl font-bold tracking-tight flex items-center">
           <LucideCalculator className="mr-2 h-7 w-7 text-primary" />

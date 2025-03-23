@@ -6,6 +6,7 @@
  */
 
 import { useState } from 'react';
+import { Link } from 'wouter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   LucideMapPin, 
@@ -13,7 +14,8 @@ import {
   LucideSearch, 
   LucideHome, 
   LucideBriefcase, 
-  LucideSettings 
+  LucideSettings,
+  Calculator as LucideCalculator 
 } from 'lucide-react';
 import MapContainer from '@/components/mapping/MapContainer';
 import MarketDashboard from '@/components/dashboard/MarketDashboard';
@@ -47,6 +49,15 @@ const RealEstateAnalyticsPage = () => {
           </nav>
           
           <div className="flex items-center space-x-4 animate-in slide-in-from-right-5 duration-500">
+            {/* Property Valuation Link */}
+            <Link href="/valuation">
+              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
+                <LucideCalculator className="h-5 w-5 mr-1" />
+                <span className="hidden md:inline">Valuation</span>
+              </button>
+            </Link>
+            
+            {/* Other action buttons */}
             {[
               { icon: <LucideSearch className="h-5 w-5" />, delay: 100 },
               { icon: <LucideBriefcase className="h-5 w-5" />, delay: 200 },
