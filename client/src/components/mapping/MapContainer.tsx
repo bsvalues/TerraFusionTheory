@@ -24,7 +24,7 @@ import {
   LucideList, 
   LucideMapPin, 
   LucidePencil, 
-  LucideGridIcon, 
+  LucideGrid, 
   LucideInfo 
 } from 'lucide-react';
 import { 
@@ -344,7 +344,7 @@ const MapContainer = () => {
                 Properties
               </ToggleGroupItem>
               <ToggleGroupItem value="heatmap" aria-label="Toggle heatmap view">
-                <LucideGridIcon className="h-4 w-4 mr-2" />
+                <LucideGrid className="h-4 w-4 mr-2" />
                 Heatmap
               </ToggleGroupItem>
               <ToggleGroupItem value="boundaries" aria-label="Toggle boundaries view">
@@ -793,7 +793,7 @@ const MapContainer = () => {
         zoom={mapZoom}
         className="h-full w-full z-0"
         zoomControl={false}
-        whenCreated={(map) => {
+        whenReady={(map) => {
           mapRef.current = map;
         }}
       >

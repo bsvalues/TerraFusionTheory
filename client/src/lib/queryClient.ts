@@ -1,63 +1,45 @@
-import { QueryClient, QueryFunction } from "@tanstack/react-query";
+/**
+ * React Query client configuration
+ */
 
-async function throwIfResNotOk(res: Response) {
-  if (!res.ok) {
-    const text = (await res.text()) || res.statusText;
-    throw new Error(`${res.status}: ${text}`);
-  }
-}
+import { QueryClient } from '@tanstack/react-query';
 
-export async function apiRequest<T = any>(
-  url: string, 
-  options?: {
-    method?: string;
-    body?: string;
-    headers?: Record<string, string>;
-  }
-): Promise<T> {
-  const res = await fetch(url, {
-    method: options?.method || 'GET',
+// Default fetch function for API requests
+export const apiRequest = async <T>(
+  url: string,
+  config?: RequestInit
+): Promise<T> => {
+  const response = await fetch(url, {
     headers: {
-      ...(options?.body ? { "Content-Type": "application/json" } : {}),
-      ...options?.headers,
+      'Content-Type': 'application/json',
     },
-    body: options?.body,
-    credentials: "include",
+    ...config,
   });
 
-  await throwIfResNotOk(res);
-  return await res.json();
-}
+  if (!response.ok) {
+    const errorData = await response.json().catch(() => ({}));
+    throw new Error(
+      errorData.error || `API request failed with status ${response.status}`
+    );
+  }
 
-type UnauthorizedBehavior = "returnNull" | "throw";
-export const getQueryFn: <T>(options: {
-  on401: UnauthorizedBehavior;
-}) => QueryFunction<T> =
-  ({ on401: unauthorizedBehavior }) =>
-  async ({ queryKey }) => {
-    const res = await fetch(queryKey[0] as string, {
-      credentials: "include",
-    });
+  return response.json();
+};
 
-    if (unauthorizedBehavior === "returnNull" && res.status === 401) {
-      return null;
-    }
-
-    await throwIfResNotOk(res);
-    return await res.json();
-  };
-
+// Configure the query client with defaults
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      queryFn: getQueryFn({ on401: "throw" }),
-      refetchInterval: false,
+      staleTime: 1000 * 60 * 5, // 5 minutes
+      retry: 1,
       refetchOnWindowFocus: false,
-      staleTime: Infinity,
-      retry: false,
-    },
-    mutations: {
-      retry: false,
+      queryFn: async ({ queryKey }) => {
+        const url = Array.isArray(queryKey) ? queryKey[0] : queryKey;
+        if (typeof url !== 'string') {
+          throw new Error('Invalid query key - first element must be a string URL');
+        }
+        return apiRequest(url);
+      },
     },
   },
 });
