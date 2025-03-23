@@ -72,12 +72,36 @@ const RealEstateAnalyticsPage = () => {
           </div>
           
           <div className="flex-1 overflow-hidden">
-            <TabsContent value="map" className="h-full m-0 data-[state=active]:flex flex-col">
-              <MapContainer />
+            <TabsContent 
+              value="map" 
+              className="h-full m-0 data-[state=active]:flex flex-col"
+              forceMount={true}
+            >
+              <div 
+                className={`h-full transition-all duration-500 ease-in-out ${
+                  activeTab === 'map' 
+                    ? 'opacity-100 animate-in fade-in-0 zoom-in-[98%] duration-500' 
+                    : 'opacity-0 animate-out fade-out-0 zoom-out-[98%] duration-500'
+                }`}
+              >
+                <MapContainer />
+              </div>
             </TabsContent>
             
-            <TabsContent value="market" className="h-full m-0 data-[state=active]:flex flex-col">
-              <MarketDashboard />
+            <TabsContent 
+              value="market" 
+              className="h-full m-0 data-[state=active]:flex flex-col"
+              forceMount={true}
+            >
+              <div 
+                className={`h-full transition-all duration-500 ease-in-out ${
+                  activeTab === 'market' 
+                    ? 'opacity-100 animate-in fade-in-0 zoom-in-[98%] duration-500' 
+                    : 'opacity-0 animate-out fade-out-0 zoom-out-[98%] duration-500'
+                }`}
+              >
+                <MarketDashboard />
+              </div>
             </TabsContent>
             
             {/* Add more tab content as needed */}
