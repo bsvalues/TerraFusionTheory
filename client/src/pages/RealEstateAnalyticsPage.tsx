@@ -68,14 +68,18 @@ const RealEstateAnalyticsPage = () => {
               </button>
               <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-popover border hidden group-hover:block z-50 animate-in slide-in-from-top-5 fade-in-50 duration-200">
                 <div className="py-1 rounded-md bg-popover">
-                  <Link href="/help" className="flex items-center px-4 py-2 text-sm hover:bg-secondary transition-colors">
-                    <LucideHelpCircle className="h-4 w-4 mr-2" />
-                    Help Center
-                  </Link>
-                  <Link href="/fix-my-screen/help" className="flex items-center px-4 py-2 text-sm hover:bg-secondary transition-colors">
-                    <LucideMonitor className="h-4 w-4 mr-2" />
-                    Display Issues
-                  </Link>
+                  <div className="px-4 py-2 text-sm hover:bg-secondary transition-colors cursor-pointer" onClick={() => window.location.href = '/help'}>
+                    <div className="flex items-center">
+                      <LucideHelpCircle className="h-4 w-4 mr-2" />
+                      Help Center
+                    </div>
+                  </div>
+                  <div className="px-4 py-2 text-sm hover:bg-secondary transition-colors cursor-pointer" onClick={() => window.location.href = '/fix-my-screen/help'}>
+                    <div className="flex items-center">
+                      <LucideMonitor className="h-4 w-4 mr-2" />
+                      Display Issues
+                    </div>
+                  </div>
                 </div>
               </div>
             </div>

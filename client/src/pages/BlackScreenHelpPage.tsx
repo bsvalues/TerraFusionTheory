@@ -1,217 +1,182 @@
+/**
+ * BlackScreenHelpPage
+ * 
+ * A dedicated help page for users experiencing blank/black screen issues.
+ * This page provides troubleshooting steps and is designed to be minimal
+ * to maximize chances of rendering correctly even when other UI components fail.
+ */
+
 import React from 'react';
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardFooter, 
-  CardHeader, 
-  CardTitle 
-} from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Link } from 'wouter';
+import { Button } from '@/components/ui/button';
 import { 
-  LucideAlertTriangle, 
-  LucideArrowLeft, 
-  LucideCheckCircle2, 
-  LucideExternalLink, 
-  LucideHome, 
-  LucideMonitor, 
-  LucideRefreshCw, 
-  LucideSettings
+  ArrowLeft as ArrowLeftIcon,
+  RefreshCw as RefreshCwIcon,
+  Monitor as MonitorIcon,
+  Brush as BrushIcon,
+  Trash2 as TrashIcon,
+  Globe as GlobeIcon,
+  Settings as SettingsIcon,
+  Info as InfoIcon,
 } from 'lucide-react';
-import Footer from '@/components/layout/Footer';
 
 export default function BlackScreenHelpPage() {
+  // Function to clear local storage
+  const handleClearLocalStorage = () => {
+    localStorage.clear();
+    alert('Local storage cleared successfully. The page will now reload.');
+    window.location.reload();
+  };
+
+  // Function to clear cache (simulated)
+  const handleClearCache = () => {
+    // Show informational message since we can't directly clear browser cache
+    alert('To clear your browser cache: \n\n' +
+      '1. Open browser settings\n' +
+      '2. Go to Privacy & Security\n' +
+      '3. Click "Clear browsing data"\n' +
+      '4. Select "Cached images and files"\n' +
+      '5. Click "Clear data"\n\n' +
+      'After clearing your cache, please reload this page.');
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-background">
-      <div className="container mx-auto py-8 px-4 max-w-4xl flex-1">
-        <div className="flex items-center mb-6">
+    <div className="min-h-screen bg-white text-black flex flex-col">
+      {/* Simple header that's unlikely to cause rendering issues */}
+      <header className="py-4 px-6 border-b border-gray-200">
+        <div className="max-w-4xl mx-auto flex justify-between items-center">
+          <h1 className="text-xl font-medium flex items-center">
+            <MonitorIcon className="mr-2 h-5 w-5" />
+            Display Troubleshooting
+          </h1>
           <Link href="/">
-            <Button variant="ghost" className="mr-4">
-              <LucideArrowLeft className="mr-2 h-4 w-4" />
-              Back to Dashboard
+            <Button variant="outline" size="sm" className="gap-1">
+              <ArrowLeftIcon className="h-4 w-4" />
+              Return Home
             </Button>
           </Link>
-          <h1 className="text-3xl font-bold flex items-center">
-            <LucideMonitor className="mr-2 h-6 w-6 text-primary" />
-            Screen Display Troubleshooting
-          </h1>
         </div>
-        
-        <div className="bg-amber-50 border-l-4 border-amber-400 p-4 mb-8 rounded">
-          <div className="flex items-start">
-            <LucideAlertTriangle className="h-6 w-6 text-amber-600 mr-3 mt-0.5" />
-            <div>
-              <h2 className="text-lg font-semibold text-amber-800">Experiencing Display Issues?</h2>
-              <p className="text-amber-700">
-                If you're seeing a black screen or experiencing other display problems with the real estate
-                analytics application, this guide will help you resolve common issues.
+      </header>
+
+      <main className="flex-1 py-8">
+        <div className="max-w-3xl mx-auto px-6">
+          <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-8">
+            <div className="flex items-start">
+              <InfoIcon className="h-5 w-5 text-blue-500 mt-0.5 mr-3 flex-shrink-0" />
+              <p className="text-sm text-blue-800">
+                This page uses minimal styling and JavaScript to maximize compatibility with browser issues. 
+                If you're seeing this page correctly but experiencing problems with the main application, 
+                try the troubleshooting steps below.
               </p>
             </div>
           </div>
-        </div>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center">
-                <LucideRefreshCw className="mr-2 h-5 w-5 text-primary" />
-                Quick Solutions
-              </CardTitle>
-              <CardDescription>Try these simple fixes first</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border-l-2 border-green-400 pl-4 py-1">
-                <h3 className="font-medium">Refresh the Page</h3>
-                <p className="text-sm text-muted-foreground">
-                  Often a simple page refresh will resolve temporary rendering issues. Press F5 or use your browser's
-                  refresh button.
-                </p>
-              </div>
-              
-              <div className="border-l-2 border-green-400 pl-4 py-1">
-                <h3 className="font-medium">Clear Browser Cache</h3>
-                <p className="text-sm text-muted-foreground">
-                  Clearing your browser cache can resolve issues with outdated or corrupted files.
-                </p>
-                <div className="mt-2 text-xs">
-                  <code className="bg-muted p-1 rounded">Chrome: Ctrl+Shift+Delete</code>
-                  <br />
-                  <code className="bg-muted p-1 rounded">Firefox: Ctrl+Shift+Delete</code>
-                  <br />
-                  <code className="bg-muted p-1 rounded">Safari: Option+Command+E</code>
-                </div>
-              </div>
-              
-              <div className="border-l-2 border-green-400 pl-4 py-1">
-                <h3 className="font-medium">Try Private/Incognito Mode</h3>
-                <p className="text-sm text-muted-foreground">
-                  Opening the application in a private/incognito window can bypass extension conflicts and cached data issues.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+
+          <h2 className="text-xl font-semibold mb-6">Common Solutions for Display Issues</h2>
           
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg flex items-center">
-                <LucideSettings className="mr-2 h-5 w-5 text-primary" />
-                Advanced Troubleshooting
-              </CardTitle>
-              <CardDescription>For persistent display problems</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="border-l-2 border-blue-400 pl-4 py-1">
-                <h3 className="font-medium">Update Graphics Drivers</h3>
-                <p className="text-sm text-muted-foreground">
-                  Outdated graphics drivers can cause rendering issues with map visualizations and data charts.
-                  Visit your graphics card manufacturer's website for the latest drivers.
-                </p>
-              </div>
-              
-              <div className="border-l-2 border-blue-400 pl-4 py-1">
-                <h3 className="font-medium">Disable Hardware Acceleration</h3>
-                <p className="text-sm text-muted-foreground">
-                  Try disabling hardware acceleration in your browser settings if you experience map rendering issues.
-                </p>
-                <div className="mt-2 text-xs">
-                  <code className="bg-muted p-1 rounded">Chrome: Settings &rarr; Advanced &rarr; System &rarr; Use hardware acceleration</code>
-                </div>
-              </div>
-              
-              <div className="border-l-2 border-blue-400 pl-4 py-1">
-                <h3 className="font-medium">Try Different Browser</h3>
-                <p className="text-sm text-muted-foreground">
-                  Some features may work better in different browsers. Our application is optimized for Chrome, Firefox, and Edge.
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        
-        <Card className="mb-8">
-          <CardHeader className="pb-3">
-            <CardTitle className="flex items-center">
-              <LucideCheckCircle2 className="mr-2 h-5 w-5 text-primary" />
-              Fallback Options
-            </CardTitle>
-            <CardDescription>
-              Alternative ways to access our real estate analytics
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="border rounded p-4 bg-card/50">
-                  <h3 className="font-medium text-primary">Simplified View Mode</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    Our application offers a simplified view that reduces graphics processing requirements.
-                    This mode disables advanced visualizations but keeps all data accessible.
-                  </p>
-                  <Button className="mt-3 w-full" variant="outline">
-                    <LucideExternalLink className="mr-2 h-4 w-4" />
-                    Switch to Simplified View
-                  </Button>
-                </div>
-                
-                <div className="border rounded p-4 bg-card/50">
-                  <h3 className="font-medium text-primary">Static Data Export</h3>
-                  <p className="text-sm text-muted-foreground mt-1">
-                    You can export property data and analytics as static reports in PDF or Excel format
-                    if you're unable to view the interactive dashboards.
-                  </p>
-                  <Button className="mt-3 w-full" variant="outline">
-                    <LucideExternalLink className="mr-2 h-4 w-4" />
-                    Access Data Exports
-                  </Button>
-                </div>
-              </div>
-              
-              <div className="border rounded p-4 bg-primary/5 mt-4">
-                <h3 className="font-medium">Mobile Application</h3>
-                <p className="text-sm text-muted-foreground mt-1">
-                  Our mobile application offers a streamlined experience that may work better on some devices.
-                  It's available for both iOS and Android platforms.
-                </p>
-                <div className="flex flex-wrap gap-2 mt-3">
-                  <Button variant="secondary" size="sm">
-                    Download for iOS
-                  </Button>
-                  <Button variant="secondary" size="sm">
-                    Download for Android
-                  </Button>
-                </div>
-              </div>
+          <div className="space-y-6">
+            <div className="border rounded-lg p-5">
+              <h3 className="flex items-center text-lg font-medium mb-3">
+                <RefreshCwIcon className="h-5 w-5 mr-2 text-green-600" />
+                Reload the Application
+              </h3>
+              <p className="text-gray-700 mb-4">
+                The simplest fix is often to reload the page, which can resolve temporary glitches.
+              </p>
+              <Button 
+                onClick={() => window.location.reload()} 
+                className="gap-1"
+              >
+                <RefreshCwIcon className="h-4 w-4" />
+                Reload Now
+              </Button>
             </div>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="pb-3">
-            <CardTitle className="text-lg">Still Having Problems?</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <p className="text-muted-foreground mb-4">
-              If you've tried all the suggested solutions and are still experiencing display issues,
-              please contact our support team with details about your device, browser, and the specific
-              problems you're encountering.
+
+            <div className="border rounded-lg p-5">
+              <h3 className="flex items-center text-lg font-medium mb-3">
+                <TrashIcon className="h-5 w-5 mr-2 text-amber-600" />
+                Clear Local Storage
+              </h3>
+              <p className="text-gray-700 mb-4">
+                Clearing the application's stored data can fix issues caused by corrupted settings.
+                This will reset your preferences but won't delete any important data.
+              </p>
+              <Button 
+                onClick={handleClearLocalStorage} 
+                variant="outline"
+                className="gap-1"
+              >
+                <TrashIcon className="h-4 w-4" />
+                Clear Local Storage
+              </Button>
+            </div>
+
+            <div className="border rounded-lg p-5">
+              <h3 className="flex items-center text-lg font-medium mb-3">
+                <BrushIcon className="h-5 w-5 mr-2 text-purple-600" />
+                Clear Browser Cache
+              </h3>
+              <p className="text-gray-700 mb-4">
+                If you're seeing older versions of the application or styles aren't loading correctly,
+                clearing your browser cache can help.
+              </p>
+              <Button 
+                onClick={handleClearCache} 
+                variant="outline"
+                className="gap-1"
+              >
+                <BrushIcon className="h-4 w-4" />
+                How to Clear Cache
+              </Button>
+            </div>
+
+            <div className="border rounded-lg p-5">
+              <h3 className="flex items-center text-lg font-medium mb-3">
+                <GlobeIcon className="h-5 w-5 mr-2 text-blue-600" />
+                Try a Different Browser
+              </h3>
+              <p className="text-gray-700 mb-4">
+                If issues persist, try accessing the application in a different web browser.
+                We recommend Chrome, Firefox, or Edge for the best experience.
+              </p>
+            </div>
+
+            <div className="border rounded-lg p-5">
+              <h3 className="flex items-center text-lg font-medium mb-3">
+                <SettingsIcon className="h-5 w-5 mr-2 text-gray-600" />
+                Check Device Settings
+              </h3>
+              <p className="text-gray-700">
+                Ensure your device has:
+              </p>
+              <ul className="list-disc pl-6 mt-2 space-y-1 text-gray-700">
+                <li>JavaScript enabled</li>
+                <li>Cookies enabled</li>
+                <li>No content blockers preventing our application</li>
+                <li>Updated graphics drivers (for 3D map visualizations)</li>
+              </ul>
+            </div>
+          </div>
+
+          <div className="mt-10 pt-6 border-t">
+            <h3 className="text-lg font-medium mb-4">Still Having Issues?</h3>
+            <p className="text-gray-700 mb-5">
+              If none of these solutions resolve your display problems, please contact our support team
+              with details about your device, browser, and the specific issues you're experiencing.
             </p>
-            <div className="flex flex-wrap gap-3">
-              <Button>Contact Support</Button>
-              <Link href="/">
-                <Button variant="outline">
-                  <LucideHome className="mr-2 h-4 w-4" />
-                  Return to Homepage
-                </Button>
-              </Link>
-            </div>
-          </CardContent>
-          <CardFooter className="text-xs text-muted-foreground border-t pt-3">
-            Last updated: March 23, 2025 • Real Estate Intelligence Platform v2.4.1
-          </CardFooter>
-        </Card>
-      </div>
-      <Footer />
+            <Link href="/help">
+              <Button variant="default" className="gap-2">
+                Visit Help Center
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </main>
+
+      <footer className="py-4 px-6 border-t border-gray-200 mt-auto">
+        <div className="max-w-4xl mx-auto text-center text-sm text-gray-500">
+          &copy; {new Date().getFullYear()} Real Estate Intelligence Platform • Technical Support
+        </div>
+      </footer>
     </div>
   );
 }

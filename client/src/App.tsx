@@ -14,6 +14,7 @@ import RealEstateAnalyticsPage from './pages/RealEstateAnalyticsPage';
 import PropertyValuationPage from './pages/PropertyValuationPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
+import NotFoundPage from './pages/NotFoundPage';
 import { 
   TutorialManager, 
   TutorialButton, 
@@ -53,7 +54,7 @@ const App = () => {
             <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
             <Route path="/help" component={HelpCenterPage} />
             <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
-            {/* Add more routes as needed */}
+            <Route component={NotFoundPage} />
           </Switch>
           
           <TutorialButton position="bottom-right" />
