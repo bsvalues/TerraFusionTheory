@@ -137,6 +137,18 @@ const formatNumber = (value: number): string => {
   return new Intl.NumberFormat('en-US').format(value);
 };
 
+// Validate numeric input
+const validateNumericInput = (value: string, min: number = 0, max: number = Number.MAX_SAFE_INTEGER): boolean => {
+  const num = parseInt(value.replace(/,/g, ''), 10);
+  return !isNaN(num) && num >= min && num <= max;
+};
+
+// Validate decimal input
+const validateDecimalInput = (value: string, min: number = 0, max: number = Number.MAX_SAFE_INTEGER): boolean => {
+  const num = parseFloat(value);
+  return !isNaN(num) && num >= min && num <= max;
+};
+
 export default function PropertyValuationWidget() {
   const [valuation, setValuation] = useState<PropertyValuation | null>(null);
   const [confidenceLevel, setConfidenceLevel] = useState(75);
@@ -159,6 +171,45 @@ export default function PropertyValuationWidget() {
 
   // Handle form submission
   const onSubmit = async (data: ValuationFormType) => {
+    // Perform additional validation before submitting
+    let isValid = true;
+    let errorFields: string[] = [];
+    
+    // Check required fields
+    if (!data.propertyType) {
+      isValid = false;
+      errorFields.push('Property Type');
+    }
+    
+    if (!data.bedrooms) {
+      isValid = false;
+      errorFields.push('Bedrooms');
+    }
+    
+    if (!data.bathrooms) {
+      isValid = false;
+      errorFields.push('Bathrooms');
+    }
+    
+    if (!data.squareFeet) {
+      isValid = false;
+      errorFields.push('Square Feet');
+    }
+    
+    if (!data.yearBuilt) {
+      isValid = false;
+      errorFields.push('Year Built');
+    }
+    
+    if (!isValid) {
+      toast({
+        title: "Missing required fields",
+        description: `Please complete the following fields: ${errorFields.join(', ')}`,
+        variant: "destructive",
+      });
+      return;
+    }
+    
     toast({
       title: "Analyzing property data",
       description: "Calculating valuation based on market data and comparables...",
@@ -441,9 +492,13 @@ export default function PropertyValuationWidget() {
                           onChange={(e) => {
                             // Format with commas as they type
                             const value = e.target.value.replace(/,/g, '');
-                            const formatted = value ? formatNumber(parseInt(value)) : '';
-                            e.target.value = formatted;
-                            field.onChange(e);
+                            
+                            // Only proceed if we have a valid number
+                            if (value === '' || validateNumericInput(value, 100, 100000)) {
+                              const formatted = value ? formatNumber(parseInt(value)) : '';
+                              e.target.value = formatted;
+                              field.onChange(e);
+                            }
                           }}
                         />
                       </FormControl>
@@ -460,7 +515,17 @@ export default function PropertyValuationWidget() {
                     <FormItem>
                       <FormLabel>Year Built</FormLabel>
                       <FormControl>
-                        <Input placeholder="2000" {...field} />
+                        <Input 
+                          placeholder="2000" 
+                          {...field} 
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Only allow valid years between 1800 and current year
+                            if (value === '' || validateNumericInput(value, 1800, new Date().getFullYear())) {
+                              field.onChange(e);
+                            }
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -475,7 +540,17 @@ export default function PropertyValuationWidget() {
                     <FormItem>
                       <FormLabel>Lot Size (Acres, Optional)</FormLabel>
                       <FormControl>
-                        <Input placeholder="0.25" {...field} />
+                        <Input 
+                          placeholder="0.25" 
+                          {...field} 
+                          onChange={(e) => {
+                            const value = e.target.value;
+                            // Only allow decimal values between 0.01 and 1000
+                            if (value === '' || validateDecimalInput(value, 0.01, 1000)) {
+                              field.onChange(e);
+                            }
+                          }}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
