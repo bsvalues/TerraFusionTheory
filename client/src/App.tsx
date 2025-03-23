@@ -21,6 +21,7 @@ import {
   WelcomeScreen,
   AIAssistant 
 } from './components/onboarding';
+import { AISpecialistChat } from './components/ai';
 
 // Main App component
 const App = () => {
@@ -59,6 +60,11 @@ const App = () => {
           
           <TutorialButton position="bottom-right" />
           <AIAssistant />
+          
+          {/* Add the new AI Specialist Chat with fix positioned button in the header */}
+          <div className="fixed top-4 right-4 z-40">
+            <AISpecialistChat />
+          </div>
           
           {showWelcome && (
             <WelcomeScreen onClose={handleCloseWelcome} />

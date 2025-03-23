@@ -1,444 +1,408 @@
 /**
- * AIAssistantChat Component
- * 
- * A specialized chat interface for interacting with different AI assistants
- * that provide domain-specific expertise for our real estate platform.
+ * AISpecialistChat Component
+ *
+ * This component provides an AI-powered chat interface that offers specialized
+ * assistance for real estate analysis and technical integration questions.
+ * It features two different AI specialists - one for property valuation and
+ * one for technical integration support.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect } from 'react';
+import { MessageSquare, X, MinusCircle, ChevronUp } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger
-} from '@/components/ui/tabs';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle
-} from '@/components/ui/card';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-  DialogClose
-} from '@/components/ui/dialog';
-import { ScrollArea } from '@/components/ui/scroll-area';
-import { Badge } from '@/components/ui/badge';
-import { Avatar } from '@/components/ui/avatar';
-import { Skeleton } from '@/components/ui/skeleton';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
-import {
-  MessageSquareText as MessageSquareTextIcon,
-  SendHorizonal as SendIcon,
-  Home as HomeIcon,
-  Calculator as CalculatorIcon,
-  Wrench as WrenchIcon,
-  RotateCcw as RotateCcwIcon,
-  Sparkles as SparklesIcon,
-  Share2 as ShareIcon,
-  Download as DownloadIcon,
-  Copy as CopyIcon,
-  Save as SaveIcon,
-  User as UserIcon,
-  ChevronRight as ChevronRightIcon
-} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
-// Types
-interface ChatMessage {
+// AI Specialist types
+enum SpecialistType {
+  PROPERTY = 'property',
+  TECHNICAL = 'technical'
+}
+
+// Message interface
+interface Message {
   id: string;
-  role: 'user' | 'assistant';
   content: string;
+  sender: 'user' | 'ai';
   timestamp: Date;
-  assistantType?: 'appraisal' | 'maintenance';
+  specialist: SpecialistType;
+  isTyping?: boolean;
 }
 
-interface Assistant {
-  id: string;
-  name: string;
-  description: string;
-  icon: React.ReactNode;
-  type: 'appraisal' | 'maintenance';
-  examples: string[];
-}
+// Generate a unique ID
+const generateId = () => Math.random().toString(36).substring(2, 9);
 
-// Define available assistants
-const assistants: Assistant[] = [
-  {
-    id: 'appraisal',
-    name: 'RealEstate Appraisal Assistant',
-    description: 'Valuation expertise, market trends, and property analysis',
-    icon: <CalculatorIcon className="h-5 w-5" />,
-    type: 'appraisal',
-    examples: [
-      "What factors most affect property valuation in suburban areas?",
-      "How would adding a swimming pool impact my home's value?",
-      "Explain the difference between market value and assessed value",
-      "What's the cap rate formula and how do I interpret the results?",
-      "How reliable are automated valuation models for unique properties?"
-    ]
-  },
-  {
-    id: 'maintenance',
-    name: 'Maintenance & Integration Assistant',
-    description: 'System troubleshooting, ETL pipelines, and technical help',
-    icon: <WrenchIcon className="h-5 w-5" />,
-    type: 'maintenance',
-    examples: [
-      "How can I improve our ETL pipeline performance?",
-      "What's the best way to integrate legacy property data systems?",
-      "Recommend monitoring tools for real estate data processes",
-      "How should we structure our database for optimal spatial queries?",
-      "What are best practices for securing property data APIs?"
-    ]
-  }
-];
-
-// Simulate AI responses
-const simulateAIResponse = async (
-  message: string, 
-  assistantType: 'appraisal' | 'maintenance'
-): Promise<string> => {
-  // In a real implementation, this would call the backend API
-  // which would then interact with the appropriate AI model
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      if (assistantType === 'appraisal') {
-        resolve(`Based on my analysis, ${message.length > 20 
-          ? "I can provide you with detailed insights on property valuation factors. The key considerations include location, property condition, square footage, comparable sales, and current market trends. Would you like me to elaborate on any specific aspect?"
-          : "I need more specific information about the property or market area you're interested in to provide an accurate assessment. Could you provide more details?"}`);
-      } else {
-        resolve(`From a technical standpoint, ${message.length > 30
-          ? "I understand your system integration question. To optimize your ETL pipeline or resolve this issue, I recommend following industry best practices for data processing, including incremental loads, proper error handling, and monitoring. Would you like specific implementation details?"
-          : "I need more context about your system architecture and specific technical requirements to provide targeted recommendations. Could you elaborate on your current setup?"}`);
-      }
-    }, 1500); // Simulate network delay
-  });
-};
-
-// Main component
-export function AISpecialistChat() {
-  const [activeTab, setActiveTab] = useState<string>('appraisal');
-  const [inputMessage, setInputMessage] = useState<string>('');
-  const [isLoading, setIsLoading] = useState<boolean>(false);
-  const [conversations, setConversations] = useState<{
-    [key: string]: ChatMessage[];
-  }>({
-    appraisal: [],
-    maintenance: []
-  });
-  
+// Component for AI Specialist Chat
+const AISpecialistChat = () => {
+  const [isOpen, setIsOpen] = useState(false);
+  const [isMinimized, setIsMinimized] = useState(false);
+  const [activeSpecialist, setActiveSpecialist] = useState<SpecialistType>(SpecialistType.PROPERTY);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [input, setInput] = useState('');
+  const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   
-  // Scroll to bottom of messages
+  // Scroll to bottom of chat when messages change
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
-  }, [conversations]);
-  
-  // Get current assistant
-  const currentAssistant = assistants.find(a => a.id === activeTab) || assistants[0];
-  
-  // Get current conversation
-  const currentConversation = conversations[activeTab] || [];
-  
-  // Handle sending a message
-  const handleSendMessage = async () => {
-    if (!inputMessage.trim()) return;
-    
-    // Add user message to conversation
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: 'user',
-      content: inputMessage,
-      timestamp: new Date(),
-      assistantType: currentAssistant.type
-    };
-    
-    setConversations(prev => ({
-      ...prev,
-      [activeTab]: [...(prev[activeTab] || []), userMessage]
-    }));
-    
-    setInputMessage('');
-    setIsLoading(true);
-    
-    try {
-      // Get AI response
-      const response = await simulateAIResponse(
-        inputMessage, 
-        currentAssistant.type
-      );
-      
-      // Add assistant message to conversation
-      const assistantMessage: ChatMessage = {
-        id: crypto.randomUUID(),
-        role: 'assistant',
-        content: response,
-        timestamp: new Date(),
-        assistantType: currentAssistant.type
+    if (messagesEndRef.current && isOpen && !isMinimized) {
+      messagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
+  }, [messages, isOpen, isMinimized]);
+
+  // Add welcome messages when chat is first opened
+  useEffect(() => {
+    if (isOpen && messages.length === 0) {
+      const welcomeMessages: Record<SpecialistType, string> = {
+        [SpecialistType.PROPERTY]: 
+          "Hello! I'm your Property Valuation Specialist. I can help you analyze market trends, evaluate property values, and understand investment opportunities. How can I assist you today?",
+        [SpecialistType.TECHNICAL]: 
+          "Welcome! I'm your Technical Integration Specialist. I can help with integrating data sources, troubleshooting technical issues, and optimizing your analytics workflow. What can I help you with?"
       };
       
-      setConversations(prev => ({
-        ...prev,
-        [activeTab]: [...(prev[activeTab] || []), assistantMessage]
-      }));
+      // Add welcome message for active specialist
+      addAIMessage(welcomeMessages[activeSpecialist]);
+    }
+  }, [isOpen, activeSpecialist, messages.length]);
+
+  // Handle sending a message
+  const handleSendMessage = async () => {
+    if (!input.trim() || isProcessing) return;
+    
+    // Add user message
+    const userMessage: Message = {
+      id: generateId(),
+      content: input,
+      sender: 'user',
+      timestamp: new Date(),
+      specialist: activeSpecialist
+    };
+    
+    setMessages(prev => [...prev, userMessage]);
+    setInput('');
+    setIsProcessing(true);
+    
+    // Add typing indicator
+    const typingIndicatorId = generateId();
+    setMessages(prev => [
+      ...prev, 
+      {
+        id: typingIndicatorId,
+        content: '',
+        sender: 'ai',
+        timestamp: new Date(),
+        specialist: activeSpecialist,
+        isTyping: true
+      }
+    ]);
+    
+    try {
+      // Call the appropriate endpoint based on specialist type
+      const endpoint = activeSpecialist === SpecialistType.PROPERTY 
+        ? '/api/agents/real-estate/ask'
+        : '/api/agents/developer/ask';
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ 
+          question: input,
+          context: { currentSpecialist: activeSpecialist }
+        }),
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to get response from AI');
+      }
+      
+      const data = await response.json();
+      
+      // Remove typing indicator and add AI response
+      setMessages(prev => prev.filter(m => m.id !== typingIndicatorId));
+      addAIMessage(data.response || "I'm sorry, I couldn't process your request at this time.");
     } catch (error) {
+      console.error('Error getting AI response:', error);
+      
+      // Remove typing indicator
+      setMessages(prev => prev.filter(m => m.id !== typingIndicatorId));
+      
+      // Add error message
+      addAIMessage("I'm sorry, I encountered an error processing your request. Please try again later.");
+      
       toast({
-        title: "Error",
-        description: "Failed to get response from the assistant",
+        title: "Connection Error",
+        description: "Could not connect to AI specialist. Please try again later.",
         variant: "destructive"
       });
     } finally {
-      setIsLoading(false);
+      setIsProcessing(false);
     }
   };
-  
-  // Handle using an example
-  const handleUseExample = (example: string) => {
-    setInputMessage(example);
-  };
-  
-  // Handle reset conversation
-  const handleResetConversation = () => {
-    setConversations(prev => ({
-      ...prev,
-      [activeTab]: []
-    }));
+
+  // Add AI message helper
+  const addAIMessage = (content: string) => {
+    const aiMessage: Message = {
+      id: generateId(),
+      content,
+      sender: 'ai',
+      timestamp: new Date(),
+      specialist: activeSpecialist
+    };
     
-    toast({
-      title: "Conversation Reset",
-      description: `Your conversation with the ${currentAssistant.name} has been reset.`
-    });
+    setMessages(prev => [...prev, aiMessage]);
   };
-  
-  // Handle copying conversation
-  const handleCopyConversation = () => {
-    const conversationText = currentConversation
-      .map(msg => `${msg.role === 'user' ? 'You' : currentAssistant.name}: ${msg.content}`)
-      .join('\n\n');
-    
-    navigator.clipboard.writeText(conversationText).then(() => {
-      toast({
-        title: "Copied to Clipboard",
-        description: "The conversation has been copied to your clipboard."
-      });
-    });
-  };
-  
-  return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button 
-          variant="default" 
-          size="sm" 
-          className="gap-2"
-        >
-          <MessageSquareTextIcon className="h-4 w-4" />
-          AI Assistant
-        </Button>
-      </DialogTrigger>
+
+  // Handle specialist change
+  const handleSpecialistChange = (type: SpecialistType) => {
+    if (type !== activeSpecialist) {
+      setActiveSpecialist(type);
       
-      <DialogContent className="sm:max-w-[550px] md:max-w-[750px] lg:max-w-[900px]">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <SparklesIcon className="h-5 w-5 text-primary" />
-            AI Assistant
-          </DialogTitle>
-          <DialogDescription>
-            Get specialized help from our AI assistants with property valuation, market trends, and technical integration.
-          </DialogDescription>
-        </DialogHeader>
-        
-        <div className="h-[550px] flex flex-col">
-          <Tabs defaultValue="appraisal" value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-            <div className="border-b pb-2">
-              <TabsList>
-                {assistants.map(assistant => (
-                  <TabsTrigger key={assistant.id} value={assistant.id} className="gap-2">
-                    {assistant.icon}
-                    {assistant.name}
-                  </TabsTrigger>
-                ))}
-              </TabsList>
-            </div>
-            
-            {assistants.map(assistant => (
-              <TabsContent 
-                key={assistant.id} 
-                value={assistant.id} 
-                className="flex-1 flex flex-col p-0 mt-0"
+      // Clear messages when switching specialists
+      setMessages([]);
+    }
+  };
+
+  // Handle toggle chat
+  const toggleChat = () => {
+    if (isMinimized) {
+      setIsMinimized(false);
+    } else {
+      setIsOpen(!isOpen);
+    }
+  };
+
+  // Handle minimize chat
+  const minimizeChat = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMinimized(true);
+  };
+
+  // Handle maximize chat
+  const maximizeChat = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsMinimized(false);
+  };
+
+  // Handle close chat
+  const closeChat = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    setIsOpen(false);
+    setIsMinimized(false);
+  };
+
+  // Handle key press (Enter to send)
+  const handleKeyPress = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      handleSendMessage();
+    }
+  };
+
+  return (
+    <>
+      {/* Chat Button */}
+      {!isOpen && (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button 
+                onClick={toggleChat} 
+                variant="default"
+                size="icon"
+                className="h-10 w-10 rounded-full shadow-lg hover:shadow-xl transition-all duration-300"
               >
-                <div className="flex flex-col flex-1">
-                  <ScrollArea className="flex-1 pr-4 py-4">
-                    {conversations[assistant.id]?.length === 0 ? (
-                      <div className="h-full flex flex-col items-center justify-center text-center p-8">
-                        <div className="bg-primary/5 p-4 rounded-full mb-4">
-                          {assistant.icon}
-                        </div>
-                        <h3 className="font-medium text-lg mb-2">{assistant.name}</h3>
-                        <p className="text-muted-foreground text-sm mb-6">
-                          {assistant.description}
-                        </p>
-                        
-                        <div className="w-full max-w-md">
-                          <h4 className="font-medium text-sm mb-3">Try asking about:</h4>
-                          <div className="space-y-2">
-                            {assistant.examples.map((example, i) => (
-                              <Button 
-                                key={i} 
-                                variant="outline" 
-                                size="sm"
-                                className="w-full justify-start text-left h-auto py-2 px-3"
-                                onClick={() => handleUseExample(example)}
-                              >
-                                <ChevronRightIcon className="h-3.5 w-3.5 mr-2 flex-shrink-0" />
-                                <span className="truncate">{example}</span>
-                              </Button>
-                            ))}
-                          </div>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="space-y-4 px-1">
-                        {conversations[assistant.id]?.map((message) => (
+                <MessageSquare className="h-5 w-5" />
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Chat with AI Specialists</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      )}
+
+      {/* Chat Window */}
+      {isOpen && (
+        <div 
+          className={cn(
+            "transition-all duration-300 ease-in-out",
+            isMinimized 
+              ? "w-60 h-12 overflow-hidden shadow-md rounded-md" 
+              : "w-80 md:w-96 h-[500px] shadow-xl rounded-lg"
+          )}
+        >
+          {/* Minimized Header */}
+          {isMinimized && (
+            <div 
+              className="bg-primary text-primary-foreground h-full flex items-center justify-between px-4 cursor-pointer rounded-md"
+              onClick={maximizeChat}
+            >
+              <div className="flex items-center space-x-2">
+                <MessageSquare className="h-4 w-4" />
+                <span className="text-sm font-medium">AI Specialist Chat</span>
+              </div>
+              <div className="flex items-center space-x-1">
+                <Button 
+                  variant="ghost" 
+                  size="icon" 
+                  className="h-6 w-6 p-0 text-primary-foreground hover:text-primary-foreground/80 hover:bg-primary/80"
+                  onClick={maximizeChat}
+                >
+                  <ChevronUp className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Full Chat Interface */}
+          {!isMinimized && (
+            <Card className="h-full flex flex-col overflow-hidden border-none shadow-none">
+              <CardHeader className="py-3 px-4 border-b bg-primary text-primary-foreground flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-base font-medium flex items-center gap-2">
+                  <MessageSquare className="h-4 w-4" />
+                  AI Specialist Chat
+                </CardTitle>
+                <div className="flex items-center space-x-1">
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={minimizeChat}
+                    className="h-6 w-6 p-0 text-primary-foreground hover:text-primary-foreground/80 hover:bg-primary/80"
+                  >
+                    <MinusCircle className="h-4 w-4" />
+                  </Button>
+                  <Button 
+                    variant="ghost" 
+                    size="icon" 
+                    onClick={closeChat}
+                    className="h-6 w-6 p-0 text-primary-foreground hover:text-primary-foreground/80 hover:bg-primary/80"
+                  >
+                    <X className="h-4 w-4" />
+                  </Button>
+                </div>
+              </CardHeader>
+
+              <div className="flex-1 overflow-hidden">
+                <Tabs 
+                  defaultValue={SpecialistType.PROPERTY}
+                  value={activeSpecialist}
+                  onValueChange={(value) => handleSpecialistChange(value as SpecialistType)}
+                  className="h-full flex flex-col"
+                >
+                  <TabsList className="w-full h-auto p-0 bg-muted/30 grid grid-cols-2">
+                    <TabsTrigger 
+                      value={SpecialistType.PROPERTY}
+                      className="text-xs py-2"
+                    >
+                      Property Specialist
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value={SpecialistType.TECHNICAL}
+                      className="text-xs py-2"
+                    >
+                      Technical Specialist
+                    </TabsTrigger>
+                  </TabsList>
+
+                  {/* Chat content for both tabs */}
+                  <div className="flex-1 flex flex-col h-[calc(500px-100px)]">
+                    <div className="flex-1 overflow-y-auto p-4 space-y-4">
+                      {messages.map((message) => (
+                        <div 
+                          key={message.id} 
+                          className={cn(
+                            "flex items-start gap-2.5 group",
+                            message.sender === 'user' ? "justify-end" : "justify-start"
+                          )}
+                        >
+                          {message.sender === 'ai' && (
+                            <Avatar className="h-8 w-8 border bg-primary/10">
+                              <AvatarFallback className="text-xs">
+                                {activeSpecialist === SpecialistType.PROPERTY ? 'RE' : 'TS'}
+                              </AvatarFallback>
+                            </Avatar>
+                          )}
+                          
                           <div 
-                            key={message.id} 
-                            className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                            className={cn(
+                              "max-w-[80%] px-4 py-2 rounded-lg",
+                              message.sender === 'user' 
+                                ? "bg-primary text-primary-foreground rounded-tr-none" 
+                                : "bg-muted rounded-tl-none",
+                              message.isTyping && "animate-pulse"
+                            )}
                           >
-                            <div className={`flex gap-3 max-w-[80%] ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                              <Avatar className={`h-8 w-8 ${message.role === 'assistant' ? 'bg-primary/10' : 'bg-background'}`}>
-                                {message.role === 'assistant' ? (
-                                  assistant.icon
-                                ) : (
-                                  <UserIcon className="h-4 w-4" />
-                                )}
-                              </Avatar>
-                              
-                              <div>
-                                <div className={`rounded-lg px-4 py-2.5 text-sm ${
-                                  message.role === 'assistant' 
-                                    ? 'bg-muted' 
-                                    : 'bg-primary text-primary-foreground'
-                                }`}>
-                                  {message.content}
-                                </div>
-                                <div className={`text-xs text-muted-foreground mt-1 ${
-                                  message.role === 'user' ? 'text-right' : ''
-                                }`}>
-                                  {message.timestamp.toLocaleTimeString([], { 
-                                    hour: '2-digit', 
-                                    minute: '2-digit' 
-                                  })}
-                                </div>
+                            {message.isTyping ? (
+                              <div className="flex space-x-1 items-center h-6">
+                                <div className="w-2 h-2 rounded-full bg-current animate-bounce [animation-delay:-0.3s]"></div>
+                                <div className="w-2 h-2 rounded-full bg-current animate-bounce [animation-delay:-0.15s]"></div>
+                                <div className="w-2 h-2 rounded-full bg-current animate-bounce"></div>
                               </div>
+                            ) : (
+                              <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                            )}
+                            <div 
+                              className={cn(
+                                "text-xs opacity-70 mt-1 text-right",
+                                message.sender === 'user' ? "text-primary-foreground/70" : "text-muted-foreground"
+                              )}
+                            >
+                              {message.timestamp.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                             </div>
                           </div>
-                        ))}
-                        
-                        {isLoading && (
-                          <div className="flex justify-start">
-                            <div className="flex gap-3 max-w-[80%]">
-                              <Avatar className="h-8 w-8 bg-primary/10">
-                                {assistant.icon}
-                              </Avatar>
-                              
-                              <div>
-                                <div className="rounded-lg px-4 py-2.5 bg-muted w-60">
-                                  <div className="flex flex-col gap-2">
-                                    <Skeleton className="h-4 w-full" />
-                                    <Skeleton className="h-4 w-3/4" />
-                                    <Skeleton className="h-4 w-1/2" />
-                                  </div>
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        )}
-                        
-                        <div ref={messagesEndRef} />
-                      </div>
-                    )}
-                  </ScrollArea>
-                  
-                  <div className="border-t p-4">
-                    <div className="flex gap-3">
+                          
+                          {message.sender === 'user' && (
+                            <Avatar className="h-8 w-8 border">
+                              <AvatarFallback className="text-xs">YOU</AvatarFallback>
+                            </Avatar>
+                          )}
+                        </div>
+                      ))}
+                      <div ref={messagesEndRef} />
+                    </div>
+                    
+                    <CardFooter className="p-3 border-t">
                       <form 
-                        className="flex-1"
+                        className="flex w-full items-end gap-2"
                         onSubmit={(e) => {
                           e.preventDefault();
                           handleSendMessage();
                         }}
                       >
-                        <div className="flex gap-2">
-                          <Input
-                            value={inputMessage}
-                            onChange={(e) => setInputMessage(e.target.value)}
-                            placeholder={`Ask the ${assistant.name}...`}
-                            className="flex-1"
-                            disabled={isLoading}
-                          />
-                          <Button 
-                            type="submit" 
-                            size="icon"
-                            disabled={!inputMessage.trim() || isLoading}
-                          >
-                            <SendIcon className="h-4 w-4" />
-                          </Button>
-                        </div>
+                        <Textarea
+                          value={input}
+                          onChange={(e) => setInput(e.target.value)}
+                          onKeyDown={handleKeyPress}
+                          placeholder="Type your message..."
+                          className="min-h-10 resize-none flex-1"
+                          disabled={isProcessing}
+                        />
+                        <Button 
+                          type="submit" 
+                          size="sm"
+                          disabled={isProcessing || !input.trim()}
+                        >
+                          Send
+                        </Button>
                       </form>
-                    </div>
-                    
-                    {conversations[assistant.id]?.length > 0 && (
-                      <div className="flex justify-end gap-2 mt-3">
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={handleResetConversation}
-                          className="h-8 px-2 text-xs"
-                        >
-                          <RotateCcwIcon className="h-3.5 w-3.5 mr-1" />
-                          Reset
-                        </Button>
-                        <Button 
-                          variant="outline" 
-                          size="sm"
-                          onClick={handleCopyConversation}
-                          className="h-8 px-2 text-xs"
-                        >
-                          <CopyIcon className="h-3.5 w-3.5 mr-1" />
-                          Copy
-                        </Button>
-                      </div>
-                    )}
+                    </CardFooter>
                   </div>
-                </div>
-              </TabsContent>
-            ))}
-          </Tabs>
+                </Tabs>
+              </div>
+            </Card>
+          )}
         </div>
-        
-        <DialogFooter className="sm:justify-start gap-2 flex-wrap pt-2">
-          <DialogClose asChild>
-            <Button variant="secondary">Close</Button>
-          </DialogClose>
-          <div className="text-xs text-muted-foreground ml-auto pt-1">
-            Powered by Replit AI Playground
-          </div>
-        </DialogFooter>
-      </DialogContent>
-    </Dialog>
+      )}
+    </>
   );
-}
+};
 
 export default AISpecialistChat;
