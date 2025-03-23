@@ -12,20 +12,22 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { useMascot } from '@/hooks/use-mascot';
+import { MascotAction, MascotMood } from '@/components/mascot/MascotCharacter';
 
 const MascotDemo: React.FC = () => {
   const [tipType, setTipType] = useState<'error' | 'warning' | 'info' | 'success'>('info');
   const [tipMessage, setTipMessage] = useState<string>('This is a sample tip!');
   const [codeExample, setCodeExample] = useState<string>('console.log("Hello from the mascot!");');
   const [docLink, setDocLink] = useState<string>('https://example.com/docs');
+  const [currentMood, setCurrentMood] = useState<MascotMood>('happy');
 
   const { 
     addErrorTip, 
     addWarningTip, 
     addInfoTip, 
     addSuccessTip,
-    triggerAnimation,
-    currentMood
+    setMascotAction,
+    setMascotMood
   } = useMascot();
 
   const handleAddTip = () => {
@@ -115,22 +117,80 @@ useEffect(() => {
             
             <div className="space-y-2 pt-4">
               <h3 className="font-medium">Mascot Animation Controls</h3>
-              <p className="text-sm text-gray-500">
+              <p className="text-sm text-gray-500 mb-2">
+                Try different actions and see how the mascot responds
+              </p>
+              
+              <div className="grid grid-cols-2 gap-2">
+                <Button onClick={() => setMascotAction('jump')}>
+                  Jump
+                </Button>
+                <Button onClick={() => setMascotAction('spin')}>
+                  Spin
+                </Button>
+                <Button onClick={() => setMascotAction('wave')}>
+                  Wave
+                </Button>
+                <Button onClick={() => setMascotAction('dance')}>
+                  Dance
+                </Button>
+              </div>
+            </div>
+            
+            <div className="space-y-2 pt-4">
+              <h3 className="font-medium">Mascot Mood Controls</h3>
+              <p className="text-sm text-gray-500 mb-2">
                 Current mood: {currentMood}
               </p>
               
               <div className="grid grid-cols-2 gap-2">
-                <Button onClick={() => triggerAnimation('jump')}>
-                  Jump
+                <Button 
+                  onClick={() => {
+                    setMascotMood('happy');
+                    setCurrentMood('happy');
+                  }}
+                >
+                  Happy
                 </Button>
-                <Button onClick={() => triggerAnimation('spin')}>
-                  Spin
+                <Button 
+                  onClick={() => {
+                    setMascotMood('thinking');
+                    setCurrentMood('thinking');
+                  }}
+                >
+                  Thinking
                 </Button>
-                <Button onClick={() => triggerAnimation('wave')}>
-                  Wave
+                <Button 
+                  onClick={() => {
+                    setMascotMood('surprised');
+                    setCurrentMood('surprised');
+                  }}
+                >
+                  Surprised
                 </Button>
-                <Button onClick={() => triggerAnimation('bounce')}>
-                  Bounce
+                <Button 
+                  onClick={() => {
+                    setMascotMood('excited');
+                    setCurrentMood('excited');
+                  }}
+                >
+                  Excited
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setMascotMood('sad');
+                    setCurrentMood('sad');
+                  }}
+                >
+                  Sad
+                </Button>
+                <Button 
+                  onClick={() => {
+                    setMascotMood('sleepy');
+                    setCurrentMood('sleepy');
+                  }}
+                >
+                  Sleepy
                 </Button>
               </div>
             </div>

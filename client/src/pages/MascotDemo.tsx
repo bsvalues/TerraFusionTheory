@@ -1,5 +1,4 @@
 import React from 'react';
-import Layout from '@/components/layout/Layout';
 import MascotDemoComponent from '@/components/mascot/MascotDemo';
 
 const MascotDemoPage: React.FC = () => {
