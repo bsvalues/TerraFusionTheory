@@ -50,7 +50,14 @@ import {
   LucideArrowDown, 
   LucideBadgeDollarSign, 
   LucideCalendarDays,
-  LucideBrainCircuit
+  LucideBrainCircuit,
+  ScrollText as LucideScrollText,
+  Lightbulb as LucideLightbulb,
+  Check as LucideCheck,
+  ArrowRight as LucideArrowRight,
+  AlertTriangle as LucideAlertTriangle,
+  HeartHandshake as LucideHeartHandshake,
+  CheckCircle2 as LucideCheckCircle2
 } from 'lucide-react';
 import TrendPredictionWidget from './TrendPredictionWidget';
 
@@ -742,54 +749,175 @@ const MarketDashboard = () => {
             </TabsContent>
             
             <TabsContent value="hotspots" className="h-full overflow-auto">
-              <Card>
-                <CardHeader>
-                  <CardTitle>Market Hotspots</CardTitle>
-                  <CardDescription>
-                    Areas with the highest price growth and activity
-                  </CardDescription>
-                </CardHeader>
-                <CardContent>
-                  <div className="overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200">
-                      <thead className="bg-gray-50">
-                        <tr>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Area</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Price Growth</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Median Price</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Avg. DOM</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Total Sales</th>
-                          <th scope="col" className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Score</th>
-                        </tr>
-                      </thead>
-                      <tbody className="bg-white divide-y divide-gray-200">
-                        {hotspots && hotspots.map((hotspot, index) => (
-                          <tr key={index}>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="font-medium">{hotspot.area_value}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm text-green-600 font-medium">+{hotspot.price_growth_pct.toFixed(1)}%</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm">{formatCurrency(hotspot.median_price)}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm">{hotspot.avg_days_on_market} days</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm">{hotspot.total_sales}</div>
-                            </td>
-                            <td className="px-6 py-4 whitespace-nowrap">
-                              <div className="text-sm font-medium">{hotspot.score.toFixed(1)}</div>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
-                  </div>
-                </CardContent>
-              </Card>
+              <div className="grid grid-cols-1 gap-4">
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Market Hotspots</CardTitle>
+                    <CardDescription>
+                      Areas with the highest growth potential
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      {hotspots?.map((hotspot, index) => (
+                        <div 
+                          key={hotspot.area_value}
+                          className={`p-4 rounded-lg border ${index === 0 ? 'bg-primary/5 border-primary/20' : 'bg-card'}`}
+                        >
+                          <div className="flex items-center justify-between mb-2">
+                            <div className="flex items-center">
+                              <span className={`flex items-center justify-center w-6 h-6 rounded-full ${
+                                index === 0 ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'
+                              } mr-2 text-sm font-medium`}>{index + 1}</span>
+                              <h3 className="font-medium">
+                                {hotspot.area_type === 'zip' ? 'ZIP ' : ''}{hotspot.area_value}
+                              </h3>
+                            </div>
+                            <div className="flex items-center text-xs font-medium rounded-full bg-secondary px-2 py-1">
+                              Score: {hotspot.score.toFixed(1)}/10
+                            </div>
+                          </div>
+                          
+                          <div className="grid grid-cols-3 gap-4 text-sm">
+                            <div>
+                              <div className="text-muted-foreground">Median Price</div>
+                              <div className="font-medium">{formatCurrency(hotspot.median_price)}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Growth Rate</div>
+                              <div className="font-medium text-green-600">{formatPercentage(hotspot.price_growth_pct)}</div>
+                            </div>
+                            <div>
+                              <div className="text-muted-foreground">Days on Market</div>
+                              <div className="font-medium">{hotspot.avg_days_on_market} days</div>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle>Emerging Markets Map</CardTitle>
+                    <CardDescription>
+                      Interactive map of growth areas
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="h-[500px] bg-muted rounded-md flex items-center justify-center text-muted-foreground">
+                      Map visualization will be displayed here
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
+            
+            <TabsContent value="prediction" className="h-full overflow-auto animate-in fade-in-0 slide-in-from-right-3 duration-500 delay-300">
+              <div className="grid grid-cols-1 gap-4">
+                <TrendPredictionWidget 
+                  selectedArea={selectedArea} 
+                  selectedAreaType={selectedAreaType}
+                />
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <LucideScrollText className="mr-2 h-5 w-5 text-muted-foreground" />
+                      Market Prediction Insights
+                    </CardTitle>
+                    <CardDescription>
+                      AI-generated analytics and recommendations for the selected area
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-primary/5 border border-primary/10 rounded-lg">
+                      <h3 className="text-sm font-medium mb-2 flex items-center">
+                        <LucideLightbulb className="mr-2 h-4 w-4 text-yellow-500" />
+                        Market Summary
+                      </h3>
+                      <p className="text-sm">
+                        The real estate market in {selectedArea} is currently showing signs of 
+                        {marketOverview?.current_condition === 'hot' && " strong growth with high demand and limited inventory. Prices are trending upward, and properties are selling quickly."}
+                        {marketOverview?.current_condition === 'warm' && " moderate growth with steady demand. Prices continue to climb, though at a more sustainable pace."}
+                        {marketOverview?.current_condition === 'balanced' && " balance between buyers and sellers. Price growth has stabilized, and inventory levels are healthy."}
+                        {marketOverview?.current_condition === 'cool' && " cooling with slightly longer selling times. Price growth has slowed, offering more options for buyers."}
+                        {marketOverview?.current_condition === 'cold' && " a buyer's market with increasing inventory and longer selling times. Prices have plateaued or may see modest declines."}
+                      </p>
+                    </div>
+                    
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div className="p-4 bg-card border rounded-lg">
+                        <h3 className="text-sm font-medium mb-2 flex items-center">
+                          <LucideCheck className="mr-2 h-4 w-4 text-green-500" />
+                          Opportunity Analysis
+                        </h3>
+                        <ul className="text-sm space-y-2">
+                          <li className="flex items-start">
+                            <LucideArrowRight className="mr-2 h-3 w-3 mt-1 text-muted-foreground" />
+                            {marketOverview?.current_condition === 'hot' && "Focus on premium properties and luxury segments where margins remain strong."}
+                            {marketOverview?.current_condition === 'warm' && "Consider mid-range properties with renovation potential for highest ROI."}
+                            {marketOverview?.current_condition === 'balanced' && "Diversify investments across property types to balance risk and return."}
+                            {marketOverview?.current_condition === 'cool' && "Look for discounted properties with strong fundamentals and long-term appreciation potential."}
+                            {marketOverview?.current_condition === 'cold' && "Target distressed properties or those with significant price reductions for best value."}
+                          </li>
+                          <li className="flex items-start">
+                            <LucideArrowRight className="mr-2 h-3 w-3 mt-1 text-muted-foreground" />
+                            Properties in the {hotspots?.[0]?.area_value || selectedArea} area show particularly strong growth potential.
+                          </li>
+                        </ul>
+                      </div>
+                      
+                      <div className="p-4 bg-card border rounded-lg">
+                        <h3 className="text-sm font-medium mb-2 flex items-center">
+                          <LucideAlertTriangle className="mr-2 h-4 w-4 text-amber-500" />
+                          Risk Factors
+                        </h3>
+                        <ul className="text-sm space-y-2">
+                          <li className="flex items-start">
+                            <LucideArrowRight className="mr-2 h-3 w-3 mt-1 text-muted-foreground" />
+                            {marketOverview?.current_condition === 'hot' && "Potential for market correction if price growth continues to outpace income growth."}
+                            {marketOverview?.current_condition === 'warm' && "Rising interest rates could impact affordability and slow price appreciation."}
+                            {marketOverview?.current_condition === 'balanced' && "Changes in local employment or economic conditions could shift market dynamics."}
+                            {marketOverview?.current_condition === 'cool' && "Extended market slowdown could result in longer holding periods for investments."}
+                            {marketOverview?.current_condition === 'cold' && "Further price declines possible before market stabilization occurs."}
+                          </li>
+                          <li className="flex items-start">
+                            <LucideArrowRight className="mr-2 h-3 w-3 mt-1 text-muted-foreground" />
+                            Seasonal fluctuations may impact short-term metrics through Q2.
+                          </li>
+                        </ul>
+                      </div>
+                    </div>
+                    
+                    <div className="p-4 bg-card border rounded-lg">
+                      <h3 className="text-sm font-medium mb-2 flex items-center">
+                        <LucideHeartHandshake className="mr-2 h-4 w-4 text-blue-500" />
+                        Recommendations
+                      </h3>
+                      <ul className="text-sm space-y-2">
+                        <li className="flex items-start">
+                          <LucideCheckCircle2 className="mr-2 h-3 w-3 mt-1 text-primary" />
+                          {marketOverview?.current_condition === 'hot' && "Adjust pricing strategies to capture premium values while they remain sustainable."}
+                          {marketOverview?.current_condition === 'warm' && "Focus on property improvements that maximize value in a competitive market."}
+                          {marketOverview?.current_condition === 'balanced' && "Balance acquisition and disposition strategies with a focus on long-term fundamentals."}
+                          {marketOverview?.current_condition === 'cool' && "Use market conditions to negotiate favorable terms in purchases."}
+                          {marketOverview?.current_condition === 'cold' && "Consider long-term hold strategies for properties with strong foundational value."}
+                        </li>
+                        <li className="flex items-start">
+                          <LucideCheckCircle2 className="mr-2 h-3 w-3 mt-1 text-primary" />
+                          Monitor {hotspots?.[0]?.area_value || "neighboring areas"} for potential spillover effects on the selected market.
+                        </li>
+                        <li className="flex items-start">
+                          <LucideCheckCircle2 className="mr-2 h-3 w-3 mt-1 text-primary" />
+                          Consider adjusting investment strategy to align with {marketOverview?.current_condition === 'hot' || marketOverview?.current_condition === 'warm' ? "short-term opportunities" : "long-term value appreciation"}.
+                        </li>
+                      </ul>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
             </TabsContent>
           </Tabs>
         ) : (
