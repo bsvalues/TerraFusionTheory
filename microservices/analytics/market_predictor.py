@@ -52,6 +52,25 @@ class MarketPredictor:
         features['year_built'] = data['year_built']
         features['days_on_market'] = data['days_on_market']
         
+        # Advanced features
+        features['price_per_sqft'] = data['price'] / data['sqft']
+        features['beds_per_sqft'] = data['beds'] / data['sqft']
+        features['total_rooms'] = data['beds'] + data['baths']
+        features['age'] = pd.to_datetime('now').year - data['year_built']
+        features['is_new'] = (features['age'] <= 5).astype(int)
+        
+        # Market dynamics
+        features['month'] = pd.to_datetime(data['date']).dt.month
+        features['season'] = pd.to_datetime(data['date']).dt.quarter
+        features['market_velocity'] = data['price'].pct_change().fillna(0)
+        
+        # Normalize key metrics
+        for col in ['sqft', 'lot_size', 'price_per_sqft']:
+            features[f'{col}_norm'] = (features[col] - features[col].mean()) / features[col].std()
+            
+        return features
+        features['days_on_market'] = data['days_on_market']
+        
         # Add market context features
         features['price_per_sqft'] = data['price'] / data['sqft']
         features['month'] = pd.to_datetime(data['date']).dt.month
