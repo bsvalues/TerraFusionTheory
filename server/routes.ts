@@ -6,6 +6,7 @@ import * as aiController from "./controllers/ai.controller";
 import * as connectorsController from "./controllers/connectors.controller";
 import * as marketController from "./controllers/market.controller";
 import * as analyticsController from "./controllers/analytics.controller";
+import * as agentController from "./controllers/agent.controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
