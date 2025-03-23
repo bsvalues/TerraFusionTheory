@@ -63,14 +63,24 @@ import {
 // Property valuation form schema
 const valuationFormSchema = z.object({
   propertyType: z.string({ required_error: "Please select a property type" }),
-  bedrooms: z.string().transform(val => parseInt(val, 10)),
-  bathrooms: z.string().transform(val => parseFloat(val)),
-  squareFeet: z.string().transform(val => parseInt(val.replace(/,/g, ''), 10)),
-  yearBuilt: z.string().transform(val => parseInt(val, 10)),
-  lotSize: z.string().optional().transform(val => val ? parseFloat(val) : undefined),
+  bedrooms: z.string({ required_error: "Please select number of bedrooms" }),
+  bathrooms: z.string({ required_error: "Please select number of bathrooms" }),
+  squareFeet: z.string({ required_error: "Please enter the square footage" }),
+  yearBuilt: z.string({ required_error: "Please enter the year built" }),
+  lotSize: z.string().optional(),
   address: z.string().optional(),
   zip: z.string().optional(),
 });
+
+// Transform schema for validation and submission
+const transformedSchema = valuationFormSchema.transform((data) => ({
+  ...data,
+  bedrooms: parseInt(data.bedrooms, 10),
+  bathrooms: parseFloat(data.bathrooms),
+  squareFeet: parseInt(data.squareFeet.replace(/,/g, ''), 10),
+  yearBuilt: parseInt(data.yearBuilt, 10),
+  lotSize: data.lotSize ? parseFloat(data.lotSize) : undefined,
+}));
 
 type ValuationFormType = z.infer<typeof valuationFormSchema>;
 
@@ -142,9 +152,12 @@ export default function PropertyValuationWidget() {
       description: "Calculating valuation based on market data and comparables...",
     });
     
+    // Transform the string data to the numerical values needed
+    const transformedData = transformedSchema.parse(data);
+    
     // Simulate API call with a delay
     setTimeout(() => {
-      const mockValuation: PropertyValuation = generateMockValuation(data);
+      const mockValuation: PropertyValuation = generateMockValuation(transformedData);
       setValuation(mockValuation);
       setConfidenceLevel(mockValuation.confidenceScore);
     }, 1500);
@@ -282,7 +295,9 @@ export default function PropertyValuationWidget() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property Type</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value || undefined}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Select property type" />
@@ -325,7 +340,9 @@ export default function PropertyValuationWidget() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Bedrooms</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value || undefined}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Bedrooms" />
@@ -351,7 +368,9 @@ export default function PropertyValuationWidget() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Bathrooms</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select 
+                        onValueChange={field.onChange} 
+                        defaultValue={field.value || undefined}>
                         <FormControl>
                           <SelectTrigger>
                             <SelectValue placeholder="Bathrooms" />
