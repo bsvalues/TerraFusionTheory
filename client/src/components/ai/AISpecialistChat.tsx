@@ -3,8 +3,8 @@
  *
  * This component provides an AI-powered chat interface that offers specialized
  * assistance for real estate analysis and technical integration questions.
- * It features two different AI specialists - one for property valuation and
- * one for technical integration support.
+ * It features different AI specialists with contextual property insights
+ * that automatically appear when discussing specific properties.
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -19,6 +19,8 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 import agentService, { QueryContext } from '@/services/agent.service';
+import PropertyInsightCard, { PropertyInsight } from './PropertyInsightCard';
+import propertyInsightsService from '@/services/property-insights.service';
 
 // AI Specialist types
 enum SpecialistType {
@@ -35,6 +37,7 @@ interface Message {
   timestamp: Date;
   specialist: SpecialistType;
   isTyping?: boolean;
+  propertyInsights?: PropertyInsight[];
 }
 
 // Generate a unique ID
