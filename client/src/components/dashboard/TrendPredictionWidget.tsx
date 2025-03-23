@@ -58,12 +58,12 @@ interface PredictedMetricsSnapshot {
 interface PredictionResult {
   predictedMetrics: PredictedMetricsSnapshot;
   confidenceScore: number;
-  historicalData?: Array<{
+  historicalData: Array<{
     date: string;
     medianPrice: number;
     avgDaysOnMarket: number;
   }>;
-  projectedData?: Array<{
+  projectedData: Array<{
     date: string;
     medianPrice: number;
     avgDaysOnMarket: number;
@@ -71,11 +71,11 @@ interface PredictionResult {
 }
 
 interface TrendPredictionProps {
-  areaType?: string;
-  areaValue?: string;
+  selectedArea: string;
+  selectedAreaType: string;
 }
 
-const TrendPredictionWidget = ({ areaType = 'zip', areaValue = '98930' }: TrendPredictionProps) => {
+const TrendPredictionWidget = ({ selectedArea = '98930', selectedAreaType = 'zip' }: TrendPredictionProps) => {
   const [predictionDays, setPredictionDays] = useState<number>(90);
   const { toast } = useToast();
   
@@ -95,10 +95,10 @@ const TrendPredictionWidget = ({ areaType = 'zip', areaValue = '98930' }: TrendP
     error,
     refetch
   } = useQuery({
-    queryKey: ['/api/market/predict', areaValue, predictionDays],
+    queryKey: ['/api/market/predict', selectedArea, predictionDays],
     queryFn: async () => {
       // In a production environment, this would fetch from the real API
-      // `/api/market/predict?area=${areaValue}&daysAhead=${predictionDays}`
+      // `/api/market/predict?area=${selectedArea}&daysAhead=${predictionDays}`
       
       // For now, simulate data based on predictionDays
       const currentDate = new Date();
