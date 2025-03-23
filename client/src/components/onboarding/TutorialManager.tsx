@@ -10,7 +10,6 @@ import React from 'react';
 import { TutorialProvider } from './TutorialContext';
 import TutorialOverlay from './TutorialOverlay';
 import AIAssistant from './AIAssistant';
-import TutorialButton from './TutorialButton';
 
 interface TutorialManagerProps {
   children: React.ReactNode;
@@ -26,7 +25,7 @@ const TutorialManager: React.FC<TutorialManagerProps> = ({
       {children}
       <TutorialOverlay />
       <AIAssistant />
-      {showButton && <TutorialButton />}
+      {/* Tutorial button will be added here */}
     </TutorialProvider>
   );
 };

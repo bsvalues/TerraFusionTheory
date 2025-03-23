@@ -42,3 +42,59 @@
   from { transform: rotate(0deg); }
   to { transform: rotate(360deg); }
 }
+
+/* Tutorial styles */
+.tutorial-target {
+  position: relative;
+  z-index: 60 !important;
+  animation: tutorial-pulse 2s infinite;
+  box-shadow: 0 0 0 4px rgba(var(--primary), 0.4);
+  border-radius: 4px;
+}
+
+@keyframes tutorial-pulse {
+  0% { box-shadow: 0 0 0 0 rgba(var(--primary), 0.7); }
+  70% { box-shadow: 0 0 0 8px rgba(var(--primary), 0); }
+  100% { box-shadow: 0 0 0 0 rgba(var(--primary), 0); }
+}
+
+.tutorial-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 50;
+  pointer-events: none;
+}
+
+.tutorial-overlay * {
+  pointer-events: auto;
+}
+
+/* AI Assistant animations */
+@keyframes assistant-appear {
+  0% { opacity: 0; transform: translateY(20px); }
+  100% { opacity: 1; transform: translateY(0); }
+}
+
+.assistant-appear {
+  animation: assistant-appear 0.3s ease-out forwards;
+}
+
+@keyframes assistant-typing {
+  0% { width: 0; }
+  100% { width: 100%; }
+}
+
+.typing-indicator::after {
+  content: '...';
+  display: inline-block;
+  animation: typing-dots 1.5s infinite;
+}
+
+@keyframes typing-dots {
+  0% { content: '.'; }
+  33% { content: '..'; }
+  66% { content: '...'; }
+}

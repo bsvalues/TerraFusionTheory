@@ -10,7 +10,7 @@ import { useTutorial } from './TutorialContext';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { LucideX, LucideArrowLeft, LucideArrowRight, LucideCheckCircle2 } from 'lucide-react';
-import { Portal } from '@/components/ui/portal';
+import { createPortal } from 'react-dom';
 import { Progress } from '@/components/ui/progress';
 
 // Helper to get element coordinates
@@ -154,95 +154,94 @@ const TutorialOverlay: React.FC = () => {
   const isFirstStep = currentStepIndex === 0;
   const progressPercentage = ((currentStepIndex + 1) / activeCategory.steps.length) * 100;
   
-  return (
-    <Portal>
-      <div className="fixed inset-0 z-50 pointer-events-none">
-        {/* Semi-transparent overlay */}
-        <div className="absolute inset-0 bg-black/50 pointer-events-auto" onClick={endTutorial} />
-        
-        {/* Highlight cutout */}
-        {highlightBox && (
-          <div
-            className="absolute bg-transparent box-content border-2 border-primary z-10 pointer-events-none"
-            style={{
-              top: highlightBox.top - 4,
-              left: highlightBox.left - 4,
-              width: highlightBox.width,
-              height: highlightBox.height,
-              boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.75)'
-            }}
-          />
-        )}
-        
-        {/* Tutorial card */}
+  return createPortal(
+    <div className="fixed inset-0 z-50 pointer-events-none">
+      {/* Semi-transparent overlay */}
+      <div className="absolute inset-0 bg-black/50 pointer-events-auto" onClick={endTutorial} />
+      
+      {/* Highlight cutout */}
+      {highlightBox && (
         <div
-          ref={tooltipRef}
-          className="absolute pointer-events-auto z-20"
+          className="absolute bg-transparent box-content border-2 border-primary z-10 pointer-events-none"
           style={{
-            top: `${position.top}px`,
-            left: `${position.left}px`,
-            maxWidth: '350px',
-            transition: 'top 0.2s, left 0.2s'
+            top: highlightBox.top - 4,
+            left: highlightBox.left - 4,
+            width: highlightBox.width,
+            height: highlightBox.height,
+            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.75)'
           }}
-        >
-          <Card className="shadow-lg border-primary/20">
-            <CardHeader className="pb-2">
-              <div className="flex justify-between items-start">
-                <CardTitle className="text-lg font-semibold">{currentStep.title}</CardTitle>
-                <Button 
-                  variant="ghost" 
-                  size="icon" 
-                  className="h-6 w-6" 
-                  onClick={endTutorial}
-                >
-                  <LucideX className="h-4 w-4" />
-                </Button>
-              </div>
-              <Progress value={progressPercentage} className="h-1 mt-1" />
-            </CardHeader>
-            
-            <CardContent className="text-sm">
-              <p>{currentStep.description}</p>
-            </CardContent>
-            
-            <CardFooter className="flex justify-between pt-2">
-              <div className="flex space-x-2">
-                <Button 
-                  size="sm" 
-                  variant="outline" 
-                  onClick={prevStep}
-                  disabled={isFirstStep}
-                >
-                  <LucideArrowLeft className="mr-1 h-4 w-4" />
-                  Back
-                </Button>
-                
-                <Button 
-                  size="sm" 
-                  onClick={nextStep}
-                >
-                  {isLastStep ? (
-                    <>
-                      <LucideCheckCircle2 className="mr-1 h-4 w-4" />
-                      Finish
-                    </>
-                  ) : (
-                    <>
-                      Next
-                      <LucideArrowRight className="ml-1 h-4 w-4" />
-                    </>
-                  )}
-                </Button>
-              </div>
+        />
+      )}
+      
+      {/* Tutorial card */}
+      <div
+        ref={tooltipRef}
+        className="absolute pointer-events-auto z-20"
+        style={{
+          top: `${position.top}px`,
+          left: `${position.left}px`,
+          maxWidth: '350px',
+          transition: 'top 0.2s, left 0.2s'
+        }}
+      >
+        <Card className="shadow-lg border-primary/20">
+          <CardHeader className="pb-2">
+            <div className="flex justify-between items-start">
+              <CardTitle className="text-lg font-semibold">{currentStep.title}</CardTitle>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6" 
+                onClick={endTutorial}
+              >
+                <LucideX className="h-4 w-4" />
+              </Button>
+            </div>
+            <Progress value={progressPercentage} className="h-1 mt-1" />
+          </CardHeader>
+          
+          <CardContent className="text-sm">
+            <p>{currentStep.description}</p>
+          </CardContent>
+          
+          <CardFooter className="flex justify-between pt-2">
+            <div className="flex space-x-2">
+              <Button 
+                size="sm" 
+                variant="outline" 
+                onClick={prevStep}
+                disabled={isFirstStep}
+              >
+                <LucideArrowLeft className="mr-1 h-4 w-4" />
+                Back
+              </Button>
               
-              <div className="text-xs text-muted-foreground">
-                {currentStepIndex + 1} of {activeCategory.steps.length}
-              </div>
-            </CardFooter>
-          </Card>
-        </div>
+              <Button 
+                size="sm" 
+                onClick={nextStep}
+              >
+                {isLastStep ? (
+                  <>
+                    <LucideCheckCircle2 className="mr-1 h-4 w-4" />
+                    Finish
+                  </>
+                ) : (
+                  <>
+                    Next
+                    <LucideArrowRight className="ml-1 h-4 w-4" />
+                  </>
+                )}
+              </Button>
+            </div>
+            
+            <div className="text-xs text-muted-foreground">
+              {currentStepIndex + 1} of {activeCategory.steps.length}
+            </div>
+          </CardFooter>
+        </Card>
       </div>
-    </Portal>
+    </div>,
+    document.body
   );
 };
 
