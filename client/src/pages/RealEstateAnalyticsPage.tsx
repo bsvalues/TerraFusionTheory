@@ -15,10 +15,13 @@ import {
   LucideHome, 
   LucideBriefcase, 
   LucideSettings,
+  LucideHelpCircle,
+  LucideMonitor,
   Calculator as LucideCalculator 
 } from 'lucide-react';
 import MapContainer from '@/components/mapping/MapContainer';
 import MarketDashboard from '@/components/dashboard/MarketDashboard';
+import Footer from '@/components/layout/Footer';
 
 // Main component
 const RealEstateAnalyticsPage = () => {
@@ -54,6 +57,14 @@ const RealEstateAnalyticsPage = () => {
               <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
                 <LucideCalculator className="h-5 w-5 mr-1" />
                 <span className="hidden md:inline">Valuation</span>
+              </button>
+            </Link>
+            
+            {/* Help Link */}
+            <Link href="/fix-my-screen/help">
+              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
+                <LucideHelpCircle className="h-5 w-5 mr-1" />
+                <span className="hidden md:inline">Help</span>
               </button>
             </Link>
             
@@ -148,17 +159,7 @@ const RealEstateAnalyticsPage = () => {
       </main>
       
       {/* Footer */}
-      <footer className="border-t py-4 px-4 text-center text-sm text-muted-foreground animate-in fade-in-50 slide-in-from-bottom-2 duration-1000 delay-300">
-        <div className="container mx-auto">
-          <p>© 2025 IntelligentEstate. All rights reserved.</p>
-          <div className="flex justify-center mt-2 space-x-4 text-xs">
-            <a href="#" className="hover:text-primary transition-colors duration-200">Terms</a>
-            <a href="#" className="hover:text-primary transition-colors duration-200">Privacy</a>
-            <a href="#" className="hover:text-primary transition-colors duration-200">Support</a>
-            <a href="#" className="hover:text-primary transition-colors duration-200">Documentation</a>
-          </div>
-        </div>
-      </footer>
+      <Footer />
     </div>
   );
 };
