@@ -155,20 +155,24 @@ const TutorialOverlay: React.FC = () => {
   const progressPercentage = ((currentStepIndex + 1) / activeCategory.steps.length) * 100;
   
   return createPortal(
-    <div className="fixed inset-0 z-50 pointer-events-none">
+    <div className="fixed inset-0 z-50 pointer-events-none animate-in fade-in duration-500">
       {/* Semi-transparent overlay */}
-      <div className="absolute inset-0 bg-black/50 pointer-events-auto" onClick={endTutorial} />
+      <div 
+        className="absolute inset-0 bg-black/60 pointer-events-auto backdrop-blur-sm transition-all duration-500 animate-in fade-in zoom-in-95" 
+        onClick={endTutorial} 
+      />
       
       {/* Highlight cutout */}
       {highlightBox && (
         <div
-          className="absolute bg-transparent box-content border-2 border-primary z-10 pointer-events-none"
+          className="absolute bg-transparent box-content border-2 border-primary z-10 pointer-events-none animate-pulse-glow rounded-sm"
           style={{
             top: highlightBox.top - 4,
             left: highlightBox.left - 4,
             width: highlightBox.width,
             height: highlightBox.height,
-            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.75)'
+            boxShadow: '0 0 0 9999px rgba(0, 0, 0, 0.75)',
+            transition: 'all 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
           }}
         />
       )}
@@ -176,41 +180,42 @@ const TutorialOverlay: React.FC = () => {
       {/* Tutorial card */}
       <div
         ref={tooltipRef}
-        className="absolute pointer-events-auto z-20"
+        className="absolute pointer-events-auto z-20 animate-in slide-in-from-bottom-5 fade-in duration-500"
         style={{
           top: `${position.top}px`,
           left: `${position.left}px`,
           maxWidth: '350px',
-          transition: 'top 0.2s, left 0.2s'
+          transition: 'top 0.5s cubic-bezier(0.16, 1, 0.3, 1), left 0.5s cubic-bezier(0.16, 1, 0.3, 1)'
         }}
       >
-        <Card className="shadow-lg border-primary/20">
+        <Card className="shadow-xl border-primary/20 animate-in zoom-in-95 duration-500">
           <CardHeader className="pb-2">
             <div className="flex justify-between items-start">
-              <CardTitle className="text-lg font-semibold">{currentStep.title}</CardTitle>
+              <CardTitle className="text-lg font-semibold animate-in slide-in-from-left-3 fade-in duration-300">{currentStep.title}</CardTitle>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-6 w-6" 
+                className="h-6 w-6 transition-transform hover:scale-110 duration-200" 
                 onClick={endTutorial}
               >
                 <LucideX className="h-4 w-4" />
               </Button>
             </div>
-            <Progress value={progressPercentage} className="h-1 mt-1" />
+            <Progress value={progressPercentage} className="h-1 mt-1 animate-in fade-in duration-700 delay-300" />
           </CardHeader>
           
           <CardContent className="text-sm">
-            <p>{currentStep.description}</p>
+            <p className="animate-in fade-in slide-in-from-bottom-2 duration-500 delay-150">{currentStep.description}</p>
           </CardContent>
           
           <CardFooter className="flex justify-between pt-2">
-            <div className="flex space-x-2">
+            <div className="flex space-x-2 animate-in fade-in slide-in-from-bottom-1 duration-700 delay-300">
               <Button 
                 size="sm" 
                 variant="outline" 
                 onClick={prevStep}
                 disabled={isFirstStep}
+                className="transition-all hover:translate-x-[-2px]"
               >
                 <LucideArrowLeft className="mr-1 h-4 w-4" />
                 Back
@@ -219,6 +224,7 @@ const TutorialOverlay: React.FC = () => {
               <Button 
                 size="sm" 
                 onClick={nextStep}
+                className="transition-all hover:translate-x-[2px]"
               >
                 {isLastStep ? (
                   <>
@@ -234,7 +240,7 @@ const TutorialOverlay: React.FC = () => {
               </Button>
             </div>
             
-            <div className="text-xs text-muted-foreground">
+            <div className="text-xs text-muted-foreground animate-in fade-in duration-700 delay-500">
               {currentStepIndex + 1} of {activeCategory.steps.length}
             </div>
           </CardFooter>

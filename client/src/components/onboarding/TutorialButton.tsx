@@ -38,28 +38,29 @@ const TutorialButton: React.FC<TutorialButtonProps> = ({
   };
 
   return (
-    <div className={`fixed ${positionClasses[position]} z-40 ${className}`}>
+    <div className={`fixed ${positionClasses[position]} z-40 ${className} animate-in fade-in slide-in-from-bottom-5 duration-700`}>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button
             size="icon"
-            className="rounded-full h-12 w-12 shadow-lg"
+            className="rounded-full h-12 w-12 shadow-lg transition-all duration-300 hover:scale-110 hover:shadow-xl hover:bg-primary/90 animate-pulse-glow"
             variant="default"
           >
-            <LucideHelpCircle className="h-6 w-6" />
+            <LucideHelpCircle className="h-6 w-6 transition-transform duration-200" />
             <span className="sr-only">Open Tutorial</span>
           </Button>
         </DropdownMenuTrigger>
         
-        <DropdownMenuContent align="end" className="w-56">
+        <DropdownMenuContent align="end" className="w-56 animate-in zoom-in-95 duration-300">
           <DropdownMenuLabel>Tutorial Categories</DropdownMenuLabel>
           <DropdownMenuSeparator />
           
-          {tutorialCategories.map((category: TutorialCategory) => (
+          {tutorialCategories.map((category: TutorialCategory, index: number) => (
             <DropdownMenuItem
               key={category.id}
               onClick={() => startTutorial(category.id)}
-              className="cursor-pointer"
+              className={`cursor-pointer hover:bg-primary/10 transition-colors duration-200 animate-in slide-in-from-right-3 duration-300 fade-in`}
+              style={{ animationDelay: `${index * 75}ms` }}
             >
               {category.name}
             </DropdownMenuItem>

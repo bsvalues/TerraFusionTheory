@@ -221,22 +221,24 @@ const AIAssistant: React.FC = () => {
     <div className="fixed bottom-4 right-4 z-40 flex flex-col items-end">
       {/* Chat interface */}
       {isOpen && (
-        <Card className={`mb-2 shadow-lg transition-all duration-300 ease-in-out ${
-          isMinimized ? 'w-64 h-16' : 'w-80 sm:w-96 h-96'
-        }`}>
+        <Card 
+          className={`mb-2 shadow-lg transition-all duration-300 ease-in-out animate-in slide-in-from-right-5 fade-in ${
+            isMinimized ? 'w-64 h-16' : 'w-80 sm:w-96 h-96'
+          }`}
+        >
           {/* Header */}
           <CardHeader className="py-3 px-4 flex flex-row items-center justify-between space-y-0 border-b">
             <div className="flex items-center">
-              <Avatar className="h-8 w-8 mr-2">
+              <Avatar className="h-8 w-8 mr-2 animate-in fade-in duration-300">
                 <AvatarImage src="/ai-assistant-avatar.png" />
                 <AvatarFallback className="bg-primary text-primary-foreground">AI</AvatarFallback>
               </Avatar>
-              <div className="font-semibold">AI Assistant</div>
+              <div className="font-semibold animate-in fade-in slide-in-from-left-3 duration-200">AI Assistant</div>
             </div>
             <Button 
               variant="ghost" 
               size="icon" 
-              className="h-8 w-8" 
+              className="h-8 w-8 transition-transform hover:scale-110 duration-200"
               onClick={toggleMinimized}
             >
               {isMinimized ? <LucideMaximize2 className="h-4 w-4" /> : <LucideMinimize2 className="h-4 w-4" />}
@@ -248,17 +250,17 @@ const AIAssistant: React.FC = () => {
             <>
               <CardContent className="p-4 h-[calc(100%-120px)] overflow-y-auto">
                 <div className="flex flex-col space-y-3">
-                  {messages.map((message) => (
+                  {messages.map((message, index) => (
                     <div 
                       key={message.id} 
                       className={`flex ${message.sender === 'user' ? 'justify-end' : 'justify-start'}`}
                     >
                       <div 
-                        className={`max-w-[85%] rounded-lg px-3 py-2 ${
+                        className={`max-w-[85%] rounded-lg px-3 py-2 animate-in ${
                           message.sender === 'user' 
-                            ? 'bg-primary text-primary-foreground' 
-                            : 'bg-muted'
-                        }`}
+                            ? 'slide-in-from-right-3 bg-primary text-primary-foreground' 
+                            : 'slide-in-from-left-3 bg-muted'
+                        } duration-200 delay-${Math.min(index * 100, 500)}`}
                       >
                         {message.sender === 'ai' ? (
                           <div 
@@ -276,14 +278,14 @@ const AIAssistant: React.FC = () => {
               </CardContent>
               
               <CardFooter className="p-2 border-t">
-                <form onSubmit={handleSubmit} className="flex w-full space-x-2">
+                <form onSubmit={handleSubmit} className="flex w-full space-x-2 animate-in fade-in slide-in-from-bottom-2 duration-300">
                   <Input
                     value={inputValue}
                     onChange={(e) => setInputValue(e.target.value)}
                     placeholder="Ask me anything..."
                     className="flex-1"
                   />
-                  <Button type="submit" size="icon" className="h-10 w-10">
+                  <Button type="submit" size="icon" className="h-10 w-10 transition-transform hover:scale-105">
                     <LucideSend className="h-4 w-4" />
                   </Button>
                 </form>
@@ -297,13 +299,13 @@ const AIAssistant: React.FC = () => {
       <Button
         variant={isOpen ? "outline" : "default"}
         size="icon"
-        className="h-12 w-12 rounded-full shadow-lg"
+        className="h-12 w-12 rounded-full shadow-lg transition-all duration-300 hover:scale-110 animate-bounce-slow"
         onClick={toggleOpen}
       >
         {isOpen ? (
-          <LucideMessageSquare className="h-6 w-6" />
+          <LucideMessageSquare className="h-6 w-6 transition-transform duration-200" />
         ) : (
-          <LucideLifeBuoy className="h-6 w-6" />
+          <LucideLifeBuoy className="h-6 w-6 transition-transform duration-200" />
         )}
       </Button>
     </div>
