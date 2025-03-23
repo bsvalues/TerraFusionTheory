@@ -4,37 +4,20 @@ import { storage } from "./storage";
 import * as openaiController from "./controllers/openai.controller";
 import * as aiController from "./controllers/ai.controller";
 import * as connectorsController from "./controllers/connectors.controller";
-import { marketController } from "./controllers/market.controller";
+import * as marketController from "./controllers/market.controller";
 import * as analyticsController from "./controllers/analytics.controller";
-import * as gisController from "./controllers/gis.controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
 import { realEstateAnalyticsService } from "./services/real-estate-analytics.service";
-import { 
-  initializeAgentSystem,
-  createDemoAgents,
-  getRealEstateAgent,
-  getDeveloperAgent,
-  shutdownAgentSystem
-} from "../agents";
-
-// Import specific types from the agent interfaces
-import { 
-  AgentCapability,
-  AgentType,
-  Agent
-} from "../agents/interfaces/agent-interface";
-
-// Import agent registry and coordinator
-import { agentRegistry } from "../agents/core/agent-registry";
-import { agentCoordinator } from "../agents/core/agent-coordinator";
 
 // Track the memory monitor timer globally to allow proper cleanup
 
 import swaggerUi from 'swagger-ui-express';
 import { openApiSpec } from './openapi';
-import agentDemoRoutes from './routes/agent-demo';
+
+// API Documentation setup
+app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
 
 let memoryMonitorTimer: NodeJS.Timeout | null = null;
 
@@ -57,9 +40,6 @@ async function scheduledLogCleanup() {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Apply performance logging middleware to all routes
   app.use(performanceLogger);
-  
-  // API Documentation setup
-  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
   
   // Start memory monitoring - check every 5 minutes to reduce overhead
   memoryMonitorTimer = startMemoryMonitoring(300000);
@@ -111,12 +91,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const projectId = parseInt(req.params.id);
       const { message } = req.body;
-      
-      // Check if message is an object with content property
-      if (message && typeof message === 'object' && message.content) {
-        // Extract the message content
-        req.body.message = message.content;
-      }
       
       // Forward to the message handler in the OpenAI controller
       req.body.projectId = projectId;
@@ -373,16 +347,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/connectors/:name/query/cama", asyncHandler(connectorsController.queryCAMAData));
   app.post("/api/connectors/:name/query/gis", asyncHandler(connectorsController.queryGISData));
   
-  // GIS routes
-  app.post("/api/gis/geocode", asyncHandler(gisController.geocodeAddress));
-  app.get("/api/gis/geojson", asyncHandler(gisController.getGeoJSONData));
-
   // Market Data routes
-  app.get("/api/market/snapshot", asyncHandler(marketController.getMarketSnapshot));
-  app.get("/api/market/predict", asyncHandler(marketController.predictMarketMetrics));
-  app.get("/api/market/alerts", asyncHandler(marketController.getMarketAlerts));
-  app.get("/api/market/neighborhoods", asyncHandler(marketController.analyzeNeighborhoodTrends));
-  app.get("/api/market/spatial", asyncHandler(marketController.getPropertySpatialRelationships));
+  app.get("/api/market/listings", asyncHandler(marketController.getMarketListings));
+  app.get("/api/market/listings/:mlsNumber", asyncHandler(marketController.getMarketListingByMLS));
+  app.get("/api/market/stats", asyncHandler(marketController.getMarketStats));
 
   // Enhanced Analytics API routes
   app.get("/api/analytics/market/:area?", asyncHandler(analyticsController.getMarketSnapshot));
@@ -655,365 +623,6 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error("Error sending test alert:", error);
       res.status(500).json({ error: "Failed to send test alert" });
-    }
-  }));
-
-  // Agent system routes
-  app.get("/api/agents", asyncHandler(async (req, res) => {
-    try {
-      const agents = agentRegistry.getAllAgents().map(agent => ({
-        id: agent.getId(),
-        type: agent.getType?.() || 'unknown',
-        name: agent.getName(),
-        description: agent.getDescription(),
-        state: agent.getState(),
-        capabilities: agent.getCapabilities(),
-        isActive: agent.isActiveAgent?.() || (agent.getStatus() !== 'terminated' && agent.getStatus() !== 'error')
-      }));
-      res.json(agents);
-    } catch (error) {
-      console.error("Error fetching agents:", error);
-      res.status(500).json({ error: "Failed to get agents" });
-    }
-  }));
-
-  app.get("/api/agents/active", asyncHandler(async (req, res) => {
-    try {
-      const agents = agentRegistry.getActiveAgents().map(agent => ({
-        id: agent.getId(),
-        type: agent.getType?.() || 'unknown',
-        name: agent.getName(),
-        description: agent.getDescription(),
-        state: agent.getState(),
-        capabilities: agent.getCapabilities()
-      }));
-      res.json(agents);
-    } catch (error) {
-      console.error("Error fetching active agents:", error);
-      res.status(500).json({ error: "Failed to get active agents" });
-    }
-  }));
-
-  app.get("/api/agents/type/:type", asyncHandler(async (req, res) => {
-    try {
-      const type = req.params.type;
-      const agents = agentRegistry.getAgentsByType(type).map(agent => ({
-        id: agent.getId(),
-        type: agent.getType?.() || 'unknown',
-        name: agent.getName(),
-        description: agent.getDescription(),
-        state: agent.getState(),
-        capabilities: agent.getCapabilities(),
-        isActive: agent.isActiveAgent?.() || (agent.getStatus() !== 'terminated' && agent.getStatus() !== 'error')
-      }));
-      res.json(agents);
-    } catch (error) {
-      console.error("Error fetching agents by type:", error);
-      res.status(500).json({ error: "Failed to get agents by type" });
-    }
-  }));
-
-  app.get("/api/agents/:id", asyncHandler(async (req, res) => {
-    try {
-      const agent = agentRegistry.getAgent(req.params.id);
-      if (!agent) {
-        return res.status(404).json({ error: "Agent not found" });
-      }
-      
-      const agentDetails = {
-        id: agent.getId(),
-        type: agent.getType?.() || 'unknown',
-        name: agent.getName(),
-        description: agent.getDescription(),
-        state: agent.getState(),
-        capabilities: agent.getCapabilities(),
-        isActive: agent.isActiveAgent?.() || (agent.getStatus() !== 'terminated' && agent.getStatus() !== 'error'),
-        diagnostics: agent.getDiagnostics?.() || {
-          status: agent.getStatus(),
-          capabilities: agent.getCapabilities()
-        }
-      };
-      
-      res.json(agentDetails);
-    } catch (error) {
-      console.error("Error fetching agent:", error);
-      res.status(500).json({ error: "Failed to get agent" });
-    }
-  }));
-
-  app.post("/api/agents/:id/execute", asyncHandler(async (req, res) => {
-    try {
-      const { task, inputs, options } = req.body;
-      
-      if (!task) {
-        return res.status(400).json({ error: "Task is required" });
-      }
-      
-      const agent = agentRegistry.getAgent(req.params.id);
-      if (!agent) {
-        return res.status(404).json({ error: "Agent not found" });
-      }
-      
-      if (!agent.execute) {
-        return res.status(400).json({ error: "Agent does not support direct execution" });
-      }
-      
-      const result = await agent.execute(task, inputs || {}, options || {});
-      res.json(result);
-    } catch (error) {
-      console.error("Error executing agent task:", error);
-      res.status(500).json({ 
-        error: "Failed to execute agent task",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }));
-
-  app.post("/api/agents/:id/state", asyncHandler(async (req, res) => {
-    try {
-      const { action } = req.body;
-      
-      if (!action || !['pause', 'resume', 'shutdown'].includes(action)) {
-        return res.status(400).json({ error: "Valid action (pause, resume, shutdown) is required" });
-      }
-      
-      const agent = agentRegistry.getAgent(req.params.id);
-      if (!agent) {
-        return res.status(404).json({ error: "Agent not found" });
-      }
-      
-      let operationSucceeded = true;
-      
-      try {
-        switch (action) {
-          case 'pause':
-            await agent.pause();
-            break;
-          case 'resume':
-            await agent.resume();
-            break;
-          case 'shutdown':
-            if (agent.shutdown) {
-              await agent.shutdown();
-            } else {
-              await agent.stop();
-            }
-            break;
-        }
-      } catch (actionError) {
-        console.error(`Error performing ${action} action:`, actionError);
-        operationSucceeded = false;
-      }
-      
-      if (operationSucceeded) {
-        res.json({ 
-          id: agent.getId(),
-          state: agent.getState(),
-          action,
-          success: true
-        });
-      } else {
-        res.status(400).json({ 
-          error: `Failed to ${action} agent`,
-          currentState: agent.getState(),
-          success: false
-        });
-      }
-    } catch (error) {
-      console.error(`Error changing agent state:`, error);
-      res.status(500).json({ 
-        error: "Failed to change agent state",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }));
-
-  // Agent Demo Routes
-  app.use('/api/agent-demo', agentDemoRoutes);
-
-  app.post("/api/coordinator/execute", asyncHandler(async (req, res) => {
-    try {
-      const { agentId, task, inputs, options } = req.body;
-      
-      if (!agentId || !task) {
-        return res.status(400).json({ error: "Agent ID and task are required" });
-      }
-      
-      const result = await agentCoordinator.assignTask(agentId, task, inputs || {}, options || {});
-      res.json(result);
-    } catch (error) {
-      console.error("Error executing coordinated task:", error);
-      res.status(500).json({ 
-        error: "Failed to execute coordinated task",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }));
-
-  app.post("/api/coordinator/broadcast", asyncHandler(async (req, res) => {
-    try {
-      const { task, inputs, options } = req.body;
-      
-      if (!task) {
-        return res.status(400).json({ error: "Task is required" });
-      }
-      
-      const results = await agentCoordinator.broadcastTask(task, inputs || {}, options || {});
-      res.json(results);
-    } catch (error) {
-      console.error("Error broadcasting task:", error);
-      res.status(500).json({ 
-        error: "Failed to broadcast task",
-        details: error instanceof Error ? error.message : String(error)
-      });
-    }
-  }));
-
-  app.get("/api/coordinator/status", asyncHandler(async (req, res) => {
-    try {
-      const statuses = agentCoordinator.getAllAgentStatuses();
-      const assignments = agentCoordinator.getAllAssignments();
-      
-      res.json({
-        statuses,
-        assignments
-      });
-    } catch (error) {
-      console.error("Error fetching coordinator status:", error);
-      res.status(500).json({ error: "Failed to get coordinator status" });
-    }
-  }));
-
-  // Badge routes
-  app.get("/api/badges", asyncHandler(async (req, res) => {
-    try {
-      const badges = await storage.getBadges();
-      res.json(badges);
-    } catch (error) {
-      console.error("Error fetching badges:", error);
-      res.status(500).json({ error: "Failed to fetch badges" });
-    }
-  }));
-
-  app.get("/api/badges/:id", asyncHandler(async (req, res) => {
-    try {
-      const badge = await storage.getBadgeById(parseInt(req.params.id));
-      if (!badge) {
-        return res.status(404).json({ error: "Badge not found" });
-      }
-      res.json(badge);
-    } catch (error) {
-      console.error("Error fetching badge:", error);
-      res.status(500).json({ error: "Failed to fetch badge" });
-    }
-  }));
-
-  app.get("/api/badges/type/:type", asyncHandler(async (req, res) => {
-    try {
-      const badges = await storage.getBadgesByType(req.params.type as any);
-      res.json(badges);
-    } catch (error) {
-      console.error("Error fetching badges by type:", error);
-      res.status(500).json({ error: "Failed to fetch badges by type" });
-    }
-  }));
-
-  app.get("/api/badges/level/:level", asyncHandler(async (req, res) => {
-    try {
-      const badges = await storage.getBadgesByLevel(req.params.level as any);
-      res.json(badges);
-    } catch (error) {
-      console.error("Error fetching badges by level:", error);
-      res.status(500).json({ error: "Failed to fetch badges by level" });
-    }
-  }));
-
-  app.post("/api/badges", asyncHandler(async (req, res) => {
-    try {
-      const badge = await storage.createBadge(req.body);
-      res.status(201).json(badge);
-    } catch (error) {
-      console.error("Error creating badge:", error);
-      res.status(500).json({ error: "Failed to create badge" });
-    }
-  }));
-
-  app.patch("/api/badges/:id", asyncHandler(async (req, res) => {
-    try {
-      const badge = await storage.getBadgeById(parseInt(req.params.id));
-      if (!badge) {
-        return res.status(404).json({ error: "Badge not found" });
-      }
-      
-      const updatedBadge = await storage.updateBadge({
-        ...badge,
-        ...req.body,
-        id: parseInt(req.params.id)
-      });
-      
-      res.json(updatedBadge);
-    } catch (error) {
-      console.error("Error updating badge:", error);
-      res.status(500).json({ error: "Failed to update badge" });
-    }
-  }));
-
-  app.get("/api/users/:userId/badges", asyncHandler(async (req, res) => {
-    try {
-      const userBadges = await storage.getUserBadgesWithDetails(parseInt(req.params.userId));
-      res.json(userBadges);
-    } catch (error) {
-      console.error("Error fetching user badges:", error);
-      res.status(500).json({ error: "Failed to fetch user badges" });
-    }
-  }));
-
-  app.get("/api/users/:userId/badges/project/:projectId", asyncHandler(async (req, res) => {
-    try {
-      const userBadges = await storage.getUserBadgesByProject(
-        parseInt(req.params.userId),
-        parseInt(req.params.projectId)
-      );
-      res.json(userBadges);
-    } catch (error) {
-      console.error("Error fetching user badges for project:", error);
-      res.status(500).json({ error: "Failed to fetch user badges for project" });
-    }
-  }));
-
-  app.post("/api/users/:userId/badges", asyncHandler(async (req, res) => {
-    try {
-      const userBadge = await storage.awardBadgeToUser({
-        ...req.body,
-        userId: parseInt(req.params.userId)
-      });
-      res.status(201).json(userBadge);
-    } catch (error) {
-      console.error("Error awarding badge to user:", error);
-      res.status(500).json({ error: "Failed to award badge to user" });
-    }
-  }));
-
-  app.patch("/api/users/:userId/badges/:badgeId", asyncHandler(async (req, res) => {
-    try {
-      const { progress, metadata } = req.body;
-      const userBadges = await storage.getUserBadges(parseInt(req.params.userId));
-      const userBadge = userBadges.find(ub => ub.badgeId === parseInt(req.params.badgeId));
-      
-      if (!userBadge) {
-        return res.status(404).json({ error: "User badge not found" });
-      }
-      
-      const updatedUserBadge = await storage.updateUserBadgeProgress(
-        userBadge.id,
-        progress,
-        metadata
-      );
-      
-      res.json(updatedUserBadge);
-    } catch (error) {
-      console.error("Error updating user badge progress:", error);
-      res.status(500).json({ error: "Failed to update user badge progress" });
     }
   }));
 
