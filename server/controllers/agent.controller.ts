@@ -11,6 +11,136 @@ import { LogCategory, LogLevel } from '@shared/schema';
 import { optimizedLogger } from '../services/optimized-logging';
 
 /**
+ * List all available AI agents in the system
+ */
+export async function listAllAgents(req: Request, res: Response) {
+  try {
+    const agents = [
+      {
+        id: "real-estate",
+        name: "Real Estate Specialist",
+        description: "Specialized in property valuation, market trends, and real estate investments",
+        capabilities: [
+          "Property valuation",
+          "Market trend analysis",
+          "Investment strategy",
+          "Neighborhood insights"
+        ]
+      },
+      {
+        id: "developer",
+        name: "Technical Integration Specialist",
+        description: "Specialized in technical implementation, data integration, and system architecture",
+        capabilities: [
+          "API integration",
+          "Data pipeline setup",
+          "System troubleshooting",
+          "Feature implementation"
+        ]
+      }
+    ];
+    
+    return res.json({
+      success: true,
+      agents
+    });
+  } catch (error) {
+    optimizedLogger.error(
+      LogCategory.AI,
+      `Error listing agents: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error }
+    );
+    
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve agent list'
+    });
+  }
+}
+
+/**
+ * Get details about the real estate agent
+ */
+export async function getRealEstateAgent(req: Request, res: Response) {
+  try {
+    const agent = {
+      id: "real-estate",
+      name: "Real Estate Specialist",
+      description: "Specialized in property valuation, market trends, and real estate investments",
+      capabilities: [
+        "Property valuation",
+        "Market trend analysis",
+        "Investment strategy",
+        "Neighborhood insights"
+      ],
+      trainingData: [
+        "Market valuation principles",
+        "Regional property trends",
+        "Investment ROI calculation",
+        "Property feature value assessment"
+      ]
+    };
+    
+    return res.json({
+      success: true,
+      agent
+    });
+  } catch (error) {
+    optimizedLogger.error(
+      LogCategory.AI,
+      `Error retrieving real estate agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error }
+    );
+    
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve real estate agent details'
+    });
+  }
+}
+
+/**
+ * Get details about the developer agent
+ */
+export async function getDeveloperAgent(req: Request, res: Response) {
+  try {
+    const agent = {
+      id: "developer",
+      name: "Technical Integration Specialist",
+      description: "Specialized in technical implementation, data integration, and system architecture",
+      capabilities: [
+        "API integration",
+        "Data pipeline setup",
+        "System troubleshooting",
+        "Feature implementation"
+      ],
+      trainingData: [
+        "Full-stack development patterns",
+        "Database optimization techniques",
+        "API design principles",
+        "GIS data integration"
+      ]
+    };
+    
+    return res.json({
+      success: true,
+      agent
+    });
+  } catch (error) {
+    optimizedLogger.error(
+      LogCategory.AI,
+      `Error retrieving developer agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error }
+    );
+    
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to retrieve developer agent details'
+    });
+  }
+}
+
+/**
  * Ask a question to the real estate agent specialist
  */
 export async function askRealEstateAgent(req: Request, res: Response) {
@@ -21,6 +151,7 @@ export async function askRealEstateAgent(req: Request, res: Response) {
   }
   
   try {
+    // Log with correct type for LogCategory
     optimizedLogger.info(
       LogCategory.AI, 
       `User asked real estate agent: ${question.substring(0, 100)}${question.length > 100 ? '...' : ''}`,
@@ -130,8 +261,9 @@ export async function askDeveloperAgent(req: Request, res: Response) {
 
 /**
  * Handle collaboration between agents for complex questions
+ * (Function name updated to match route definition)
  */
-export async function handleAgentCollaboration(req: Request, res: Response) {
+export async function collaborateAgents(req: Request, res: Response) {
   const { question, context } = req.body;
   
   if (!question) {
@@ -183,6 +315,61 @@ export async function handleAgentCollaboration(req: Request, res: Response) {
     return res.status(500).json({
       success: false,
       message: 'Failed to process your collaborative question'
+    });
+  }
+}
+
+/**
+ * Search agent memory for relevant information
+ */
+export async function searchAgentMemory(req: Request, res: Response) {
+  const { query, limit = 5 } = req.body;
+  
+  if (!query) {
+    throw new ValidationError('Search query is required');
+  }
+  
+  try {
+    optimizedLogger.info(
+      LogCategory.AI,
+      `Searching agent memory: ${query}`,
+      { userSessionId: req.sessionID }
+    );
+    
+    // Call to MCP tool to search vector memory
+    const response = await fetch('http://localhost:5000/api/tools/mcp', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        action: 'search_vector_memory',
+        query,
+        limit: parseInt(limit.toString(), 10)
+      }),
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new ServiceError(`MCP memory search responded with error: ${errorData.message || 'Unknown error'}`);
+    }
+    
+    const data = await response.json();
+    
+    return res.json({
+      success: true,
+      results: data.results || []
+    });
+  } catch (error) {
+    optimizedLogger.error(
+      LogCategory.AI,
+      `Error searching agent memory: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      { error, query }
+    );
+    
+    return res.status(500).json({
+      success: false,
+      message: 'Failed to search agent memory'
     });
   }
 }

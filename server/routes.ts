@@ -364,6 +364,58 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analytics/spatial/:area?", asyncHandler(analyticsController.getPropertySpatialRelationships));
   app.get("/api/analytics/documents/:fileName", asyncHandler(analyticsController.getPropertyDocument));
   app.post("/api/analytics/refresh", asyncHandler(analyticsController.refreshAllData));
+  
+  // AI Agent API routes
+  app.get("/api/agents", asyncHandler(agentController.listAllAgents));
+  app.get("/api/agents/real-estate", asyncHandler(agentController.getRealEstateAgent));
+  app.get("/api/agents/developer", asyncHandler(agentController.getDeveloperAgent));
+  app.post("/api/agents/real-estate/ask", asyncHandler(agentController.askRealEstateAgent));
+  app.post("/api/agents/developer/ask", asyncHandler(agentController.askDeveloperAgent));
+  app.post("/api/agents/collaborate", asyncHandler(agentController.collaborateAgents));
+  app.post("/api/agents/memory/search", asyncHandler(agentController.searchAgentMemory));
+  
+  // MCP Tool API endpoint (needed for agent functionality)
+  app.post("/api/tools/mcp", asyncHandler(async (req, res) => {
+    try {
+      const { action, question, query, context, limit } = req.body;
+      
+      // For now, return mock responses for testing
+      // In a real implementation, this would connect to the MCP tool service
+      let response = {};
+      
+      if (action === 'process_real_estate_query') {
+        response = {
+          result: "Based on current market trends, property values are most affected by location, square footage, age of the property, recent renovations, local school ratings, proximity to amenities, and economic factors in the region.",
+          source: "agent"
+        };
+      } else if (action === 'process_technical_query') {
+        response = {
+          result: "To integrate the MCP tool with your frontend, you'll need to create an API client that communicates with the MCP endpoints. Start by setting up an agent.service.ts file that exports functions to call each endpoint, then use these in your React components through custom hooks.",
+          source: "agent"
+        };
+      } else if (action === 'handle_collaboration') {
+        response = {
+          result: "For analyzing property values in Grandview, I recommend a combined approach. From a technical perspective, you should implement a data pipeline that ingests sales data from the local MLS via their API, then use PostgreSQL for storage with PostGIS extensions for geospatial analysis. For the analysis layer, implement a machine learning model that considers both property attributes and location data to generate accurate valuations.",
+          source: "collaboration"
+        };
+      } else if (action === 'search_vector_memory') {
+        response = {
+          results: [
+            { id: "mem1", text: "Property valuation depends on factors like location, square footage, and market trends.", score: 0.98 },
+            { id: "mem2", text: "Real estate in Grandview has seen a 5% increase in median sales price over the last year.", score: 0.85 },
+            { id: "mem3", text: "Technical integration with multiple data sources requires proper ETL pipeline design.", score: 0.72 }
+          ]
+        };
+      } else {
+        return res.status(400).json({ error: `Unknown action: ${action}` });
+      }
+      
+      return res.json(response);
+    } catch (error) {
+      console.error("Error processing MCP tool request:", error);
+      return res.status(500).json({ error: "Failed to process MCP tool request" });
+    }
+  }));
 
   // Initialize the real estate analytics service during startup
   try {
