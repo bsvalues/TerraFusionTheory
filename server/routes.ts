@@ -11,13 +11,11 @@ import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "
 import { alertManager, AlertSeverity } from "./services/alert";
 import { realEstateAnalyticsService } from "./services/real-estate-analytics.service";
 
-// Track the memory monitor timer globally to allow proper cleanup
-
+// Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';
 import { openApiSpec } from './openapi';
 
-// API Documentation setup
-app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
+// Track the memory monitor timer globally to allow proper cleanup
 
 let memoryMonitorTimer: NodeJS.Timeout | null = null;
 
@@ -40,6 +38,9 @@ async function scheduledLogCleanup() {
 export async function registerRoutes(app: Express): Promise<Server> {
   // Apply performance logging middleware to all routes
   app.use(performanceLogger);
+  
+  // API Documentation setup
+  app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
   
   // Start memory monitoring - check every 5 minutes to reduce overhead
   memoryMonitorTimer = startMemoryMonitoring(300000);

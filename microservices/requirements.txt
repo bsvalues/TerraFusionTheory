@@ -1,0 +1,36 @@
+# Core dependencies
+fastapi>=0.103.1
+uvicorn>=0.23.2
+sqlalchemy>=2.0.20
+pandas>=2.1.0
+numpy>=1.25.2
+python-dotenv>=1.0.0
+psycopg2-binary>=2.9.7
+pydantic>=2.3.0
+
+# ETL dependencies
+apache-airflow>=2.7.0
+apache-airflow-providers-http>=4.5.1
+apache-airflow-providers-postgres>=5.6.0
+
+# Geospatial dependencies
+geopy>=2.3.0
+shapely>=2.0.1
+geopandas>=0.13.2
+
+# Machine learning dependencies
+scikit-learn>=1.3.0
+xgboost>=1.7.6
+lightgbm>=4.0.0
+prophet>=1.1.4
+tensorflow>=2.13.0
+
+# Visualization dependencies
+matplotlib>=3.7.2
+plotly>=5.16.1
+seaborn>=0.12.2
+
+# Utility dependencies
+tqdm>=4.66.1
+requests>=2.31.0
+aiohttp>=3.8.5
