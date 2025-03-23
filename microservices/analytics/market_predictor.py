@@ -36,10 +36,20 @@ class MarketPredictor:
         return max(0.1, base_confidence - volatility_impact - time_decay)
         
     def predict(self, periods: int = 30) -> Dict[str, any]:
+        # Generate base forecasts
         future = self.price_model.make_future_dataframe(periods=periods)
         price_forecast = self.price_model.predict(future)
         inventory_forecast = self.inventory_model.predict(future)
         dom_forecast = self.dom_model.predict(future)
+        
+        # Analyze market sentiment
+        sentiment_score = self.analyze_market_sentiment()
+        confidence_adjustment = self.calculate_sentiment_impact(sentiment_score)
+        
+        # Adjust forecasts based on sentiment
+        price_forecast['yhat'] *= (1 + confidence_adjustment)
+        price_forecast['yhat_upper'] *= (1 + confidence_adjustment * 1.2)
+        price_forecast['yhat_lower'] *= (1 + confidence_adjustment * 0.8)
         
         return {
             'dates': price_forecast['ds'].tail(periods).tolist(),

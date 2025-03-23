@@ -464,6 +464,33 @@ export class MarketMonitor {
    * @param area Area name
    * @returns Market metrics snapshot
    */
+  private detectMarketPatterns(listings: PropertyListing[]): MarketPattern[] {
+    const patterns: MarketPattern[] = [];
+    const priceHistory = listings.map(l => l.price).sort((a, b) => a - b);
+    
+    // Detect price clustering
+    const clusters = this.findPriceClusters(priceHistory);
+    if (clusters.length > 1) {
+      patterns.push({
+        type: 'PRICE_CLUSTERING',
+        confidence: 0.85,
+        details: `Found ${clusters.length} distinct price clusters`
+      });
+    }
+    
+    // Detect seasonal patterns
+    const seasonality = this.analyzeSeasonality(listings);
+    if (seasonality.score > 0.7) {
+      patterns.push({
+        type: 'SEASONAL_VARIATION',
+        confidence: seasonality.score,
+        details: seasonality.description
+      });
+    }
+    
+    return patterns;
+  }
+
   private calculateMarketMetrics(
     listings: PropertyListing[],
     startDate: Date,

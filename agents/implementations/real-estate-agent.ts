@@ -722,7 +722,13 @@ export class RealEstateAgent extends BaseAgent implements Agent {
       model: 'gpt-4',
       prompt,
       temperature: 0.3,
-      system_message: 'You are a real estate investment advisor with expertise in helping clients make sound investment decisions. Provide targeted recommendations based on the client\'s financial situation, goals, and risk tolerance.',
+      system_message: `You are an advanced real estate investment advisor with deep expertise in market analysis and investment strategies. Utilize comprehensive data analysis, pattern recognition, and predictive modeling to provide sophisticated investment recommendations. Consider:
+- Market cycle position and momentum
+- Supply-demand dynamics and elasticity
+- Demographic trends and migration patterns
+- Economic indicators and correlations
+- Risk-adjusted return metrics
+- Portfolio diversification impact`,
       
       // Enhanced context-aware parameters
       use_vector_memory: true,
