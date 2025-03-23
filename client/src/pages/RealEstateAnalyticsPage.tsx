@@ -60,13 +60,25 @@ const RealEstateAnalyticsPage = () => {
               </button>
             </Link>
             
-            {/* Help Link */}
-            <Link href="/fix-my-screen/help">
-              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
+            {/* Help Links */}
+            <div className="relative group">
+              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary group-hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
                 <LucideHelpCircle className="h-5 w-5 mr-1" />
                 <span className="hidden md:inline">Help</span>
               </button>
-            </Link>
+              <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-popover border hidden group-hover:block z-50 animate-in slide-in-from-top-5 fade-in-50 duration-200">
+                <div className="py-1 rounded-md bg-popover">
+                  <Link href="/help" className="flex items-center px-4 py-2 text-sm hover:bg-secondary transition-colors">
+                    <LucideHelpCircle className="h-4 w-4 mr-2" />
+                    Help Center
+                  </Link>
+                  <Link href="/fix-my-screen/help" className="flex items-center px-4 py-2 text-sm hover:bg-secondary transition-colors">
+                    <LucideMonitor className="h-4 w-4 mr-2" />
+                    Display Issues
+                  </Link>
+                </div>
+              </div>
+            </div>
             
             {/* Other action buttons */}
             {[
