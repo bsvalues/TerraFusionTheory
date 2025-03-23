@@ -334,7 +334,12 @@ const AISpecialistChat = () => {
                           {message.sender === 'ai' && (
                             <Avatar className="h-8 w-8 border bg-primary/10">
                               <AvatarFallback className="text-xs">
-                                {activeSpecialist === SpecialistType.PROPERTY ? 'RE' : 'TS'}
+                                {message.specialist === SpecialistType.PROPERTY 
+                                  ? 'RE' 
+                                  : message.specialist === SpecialistType.TECHNICAL 
+                                    ? 'TS'
+                                    : 'AI'
+                                }
                               </AvatarFallback>
                             </Avatar>
                           )}
