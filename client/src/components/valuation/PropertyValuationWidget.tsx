@@ -125,8 +125,8 @@ export default function PropertyValuationWidget() {
     resolver: zodResolver(valuationFormSchema),
     defaultValues: {
       propertyType: '',
-      bedrooms: '',
-      bathrooms: '',
+      bedrooms: '',  // These will be transformed to numbers by the schema
+      bathrooms: '', // But are initially strings in the form
       squareFeet: '',
       yearBuilt: '',
       lotSize: '',
