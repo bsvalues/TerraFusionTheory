@@ -12,6 +12,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { queryClient } from '@/lib/queryClient';
 import RealEstateAnalyticsPage from './pages/RealEstateAnalyticsPage';
 import PropertyValuationPage from './pages/PropertyValuationPage';
+import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import { 
   TutorialManager, 
   TutorialButton, 
@@ -48,6 +49,7 @@ const App = () => {
           <Switch>
             <Route path="/" component={RealEstateAnalyticsPage} />
             <Route path="/valuation" component={PropertyValuationPage} />
+            <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
             {/* Add more routes as needed */}
           </Switch>
           
