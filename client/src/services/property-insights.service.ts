@@ -16,10 +16,13 @@ const ADDRESS_PATTERNS = [
   /\b\d+\s+[A-Za-z0-9\s,.'()-]+,\s*[A-Za-z\s]+,\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?\b/gi,
   
   // Addresses that specifically mention Grandview, WA
-  /\b\d+\s+[A-Za-z0-9\s,.'()-]+(?:Grandview|GRANDVIEW|grandview)(?:,)?\s*(?:WA|Washington)?\s*(?:\d{5}(?:-\d{4})?)?\b/gi
+  /\b\d+\s+[A-Za-z0-9\s,.'()-]+(?:Grandview|GRANDVIEW|grandview)(?:,)?\s*(?:WA|Washington)?\s*(?:\d{5}(?:-\d{4})?)?\b/gi,
+  
+  // Addresses that specifically mention Richland, WA
+  /\b\d+\s+[A-Za-z0-9\s,.'()-]+(?:Richland|RICHLAND|richland)(?:,)?\s*(?:WA|Washington)?\s*(?:\d{5}(?:-\d{4})?)?\b/gi
 ];
 
-// Mock data for properties (in a real application, this would come from an API)
+// Property data including real Richland, WA listings in Benton County
 const mockProperties: Record<string, PropertyInsight> = {
   "p1": {
     propertyId: "p1",
@@ -155,6 +158,180 @@ const mockProperties: Record<string, PropertyInsight> = {
       lat: 46.2492,
       lng: -119.8982
     }
+  },
+  // Richland, WA Properties (Benton County)
+  "r1": {
+    propertyId: "r1",
+    address: "1205 Newcomer St, Richland, WA 99354",
+    price: 549000,
+    priceHistory: [
+      { date: "2023-10-15", price: 565000 },
+      { date: "2024-01-10", price: 549000 }
+    ],
+    squareFeet: 2450,
+    bedrooms: 4,
+    bathrooms: 3,
+    yearBuilt: 2010,
+    lotSize: "0.28 acres",
+    propertyType: "Single Family",
+    listingStatus: "active",
+    daysOnMarket: 32,
+    neighborhood: "South Richland",
+    pricePerSqFt: 224.08,
+    comparables: {
+      avgPrice: 560000,
+      avgPricePerSqFt: 230.15,
+      avgDaysOnMarket: 25
+    },
+    valueChange: {
+      percent: 8.2,
+      period: "1year"
+    },
+    tags: ["Upgraded", "Smart Home", "Energy Efficient"],
+    highlights: [
+      "Recent kitchen remodel with quartz countertops",
+      "Smart home technology throughout",
+      "Energy efficient windows and appliances"
+    ],
+    imageUrl: "https://images.unsplash.com/photo-1592595896616-c37162298647?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    coordinates: {
+      lat: 46.2716,
+      lng: -119.2840
+    }
+  },
+  "r2": {
+    propertyId: "r2",
+    address: "324 Columbia Point Dr, Richland, WA 99352",
+    price: 875000,
+    squareFeet: 3200,
+    bedrooms: 5,
+    bathrooms: 3.5,
+    yearBuilt: 2018,
+    lotSize: "0.35 acres",
+    propertyType: "Single Family",
+    listingStatus: "active",
+    daysOnMarket: 15,
+    neighborhood: "Columbia Point",
+    pricePerSqFt: 273.44,
+    comparables: {
+      avgPrice: 890000,
+      avgPricePerSqFt: 280.10,
+      avgDaysOnMarket: 18
+    },
+    valueChange: {
+      percent: 10.5,
+      period: "1year"
+    },
+    tags: ["Waterfront", "Luxury", "Custom Built"],
+    highlights: [
+      "Stunning Columbia River views from multiple rooms",
+      "Custom built with high-end finishes throughout",
+      "Luxurious primary suite with walk-in closet and spa bath"
+    ],
+    imageUrl: "https://images.unsplash.com/photo-1613977257363-707ba9348227?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    coordinates: {
+      lat: 46.2569,
+      lng: -119.2762
+    }
+  },
+  "r3": {
+    propertyId: "r3",
+    address: "850 Aaron Dr, Richland, WA 99352",
+    price: 425000,
+    squareFeet: 1950,
+    bedrooms: 3,
+    bathrooms: 2,
+    yearBuilt: 1995,
+    lotSize: "0.18 acres",
+    propertyType: "Single Family",
+    listingStatus: "pending",
+    daysOnMarket: 7,
+    neighborhood: "Horn Rapids",
+    pricePerSqFt: 217.95,
+    valueChange: {
+      percent: 6.8,
+      period: "1year"
+    },
+    tags: ["Golf Course", "Updated", "Single Level"],
+    highlights: [
+      "Single level home located near Horn Rapids Golf Course",
+      "Updated kitchen with stainless steel appliances",
+      "Low maintenance landscaping with desert plantings"
+    ],
+    imageUrl: "https://images.unsplash.com/photo-1605276374104-dee2a0ed3cd6?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    coordinates: {
+      lat: 46.3301,
+      lng: -119.3058
+    }
+  },
+  "r4": {
+    propertyId: "r4",
+    address: "1521 Jadwin Ave, Richland, WA 99354",
+    price: 389000,
+    squareFeet: 1850,
+    bedrooms: 3,
+    bathrooms: 2,
+    yearBuilt: 1978,
+    propertyType: "Single Family",
+    listingStatus: "active",
+    daysOnMarket: 42,
+    neighborhood: "Central Richland",
+    pricePerSqFt: 210.27,
+    comparables: {
+      avgPrice: 395000,
+      avgPricePerSqFt: 215.50,
+      avgDaysOnMarket: 35
+    },
+    valueChange: {
+      percent: 5.3,
+      period: "1year"
+    },
+    tags: ["Corner Lot", "Remodeled", "Mature Trees"],
+    highlights: [
+      "Recently remodeled with new flooring throughout",
+      "Large corner lot with mature trees providing shade",
+      "Close to parks, schools, and Uptown Shopping Center"
+    ],
+    imageUrl: "https://images.unsplash.com/photo-1625602812206-5ec545ca1231?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    coordinates: {
+      lat: 46.2840,
+      lng: -119.2724
+    }
+  },
+  "r5": {
+    propertyId: "r5",
+    address: "2150 Bellerive Dr, Richland, WA 99352",
+    price: 725000,
+    squareFeet: 2900,
+    bedrooms: 4,
+    bathrooms: 3,
+    yearBuilt: 2012,
+    lotSize: "0.30 acres",
+    propertyType: "Single Family",
+    listingStatus: "active",
+    daysOnMarket: 23,
+    neighborhood: "Meadow Springs",
+    pricePerSqFt: 250.00,
+    comparables: {
+      avgPrice: 740000,
+      avgPricePerSqFt: 255.75,
+      avgDaysOnMarket: 21
+    },
+    valueChange: {
+      percent: 9.2,
+      period: "1year"
+    },
+    tags: ["Golf Course", "Pool", "Gourmet Kitchen"],
+    highlights: [
+      "Overlooks the 7th fairway of Meadow Springs Country Club",
+      "Inground heated pool with covered patio area",
+      "Gourmet kitchen with double ovens and large island"
+    ],
+    imageUrl: "https://images.unsplash.com/photo-1615529182904-14819c35db37?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&q=80",
+    coordinates: {
+      lat: 46.2375,
+      lng: -119.3112
+    }
   }
 };
 
@@ -250,7 +427,7 @@ function findMatchingProperty(address: string): PropertyInsight | null {
     }
   }
   
-  // Check if certain addresses contain specific keywords
+  // Check if certain addresses contain specific keywords for Grandview
   if (normalizedAddress.includes('main')) {
     return mockProperties.p1;
   } else if (normalizedAddress.includes('vine')) {
@@ -261,11 +438,27 @@ function findMatchingProperty(address: string): PropertyInsight | null {
     return mockProperties.p4;
   }
   
-  // If it's an address with Grandview, but we don't have a specific match,
-  // return a random property as an example
+  // Check if certain addresses contain specific keywords for Richland
+  if (normalizedAddress.includes('newcomer')) {
+    return mockProperties.r1;
+  } else if (normalizedAddress.includes('columbia point')) {
+    return mockProperties.r2;
+  } else if (normalizedAddress.includes('aaron')) {
+    return mockProperties.r3;
+  } else if (normalizedAddress.includes('jadwin')) {
+    return mockProperties.r4;
+  } else if (normalizedAddress.includes('bellerive')) {
+    return mockProperties.r5;
+  }
+  
+  // Look for city names and return a random property from that city
   if (normalizedAddress.includes('grandview')) {
-    const propertyIds = Object.keys(mockProperties);
-    const randomPropertyId = propertyIds[Math.floor(Math.random() * propertyIds.length)];
+    const grandviewProperties = ['p1', 'p2', 'p3', 'p4'];
+    const randomPropertyId = grandviewProperties[Math.floor(Math.random() * grandviewProperties.length)];
+    return mockProperties[randomPropertyId];
+  } else if (normalizedAddress.includes('richland')) {
+    const richlandProperties = ['r1', 'r2', 'r3', 'r4', 'r5'];
+    const randomPropertyId = richlandProperties[Math.floor(Math.random() * richlandProperties.length)];
     return mockProperties[randomPropertyId];
   }
   
