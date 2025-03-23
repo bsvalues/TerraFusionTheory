@@ -1,154 +1,126 @@
-# BS Intelligent Agent - Enterprise-Grade AI Developer Assistant
+# IntelligentEstate: AI-Powered Real Estate Analytics Platform
 
-The BS Intelligent Agent is an enterprise-grade AI developer assistant built to streamline the entire software development lifecycle. It integrates with OpenAI's GPT models to provide intelligent assistance for requirements analysis, architecture design, coding, debugging, and documentation.
+A cutting-edge, full-stack AI application for real estate analytics with advanced ETL pipelines, microservices architecture, real-time geospatial analysis, machine learning predictions, and interactive visualizations.
 
-## Key Features
+## Key Components
 
-- **AI-Powered Development Assistance**: Leverages OpenAI's advanced GPT models to help with requirements analysis, architecture design, code generation, debugging, and documentation.
-- **Comprehensive Testing**: Robust test suite covering both unit and integration tests for all major components.
-- **Enterprise-Grade Error Handling**: Structured error hierarchy with specific error types and comprehensive logging.
-- **Real-Time Monitoring**: Automated performance and error monitoring with configurable alerts.
-- **Continuous Integration/Deployment**: GitHub Actions workflow for automated testing, code quality checks, and deployment.
+### 1. Real-Time Data Pipeline with Apache Airflow
+- Automated ETL workflows for real estate data ingestion
+- Scheduled data processing jobs
+- Visual workflow management
+- Multi-source data integration
 
-## System Architecture
+### 2. FastAPI Microservices Architecture
+- High-performance async API endpoints
+- Auto-generated Swagger documentation
+- Independently scalable microservices
+- Resilient service isolation
 
-The system follows a modular architecture with clear separation of concerns:
+### 3. Real-Time Geospatial Analytics
+- Interactive mapping with Leaflet
+- Advanced spatial queries with Turf.js
+- Property boundary visualization
+- Proximity analysis to amenities
 
-### Server-Side Components
+### 4. Machine Learning Prediction Engine
+- Property valuation models
+- Market trend forecasting
+- Smart investment analysis
+- Automated model training and evaluation
 
-- **API Layer**: Express.js RESTful API endpoints for client communication
-- **Service Layer**: Core business logic including OpenAI integrations
-- **Data Layer**: Storage interfaces and implementations for data persistence
-- **Error Handling**: Comprehensive error handling framework with custom error types
-- **Monitoring**: Real-time monitoring and alerting system for performance and errors
+### 5. Interactive Data Visualization Dashboard
+- Real-time market metrics
+- Customizable analytics views
+- Comparative market analysis
+- Exportable reports and insights
 
-### Client-Side Components
+## Architecture Overview
 
-- **UI Layer**: React-based user interface with modular components
-- **API Integration**: TanStack Query-based data fetching and state management
-- **Error Handling**: Client-side error boundary and error logging
-- **Feedback System**: User feedback collection and management
-
-## Error Handling
-
-The system implements a comprehensive error handling strategy:
-
-- **Structured Error Hierarchy**: All errors extend from a base `AppError` class with specific subtypes
-- **Error Categorization**: Errors are categorized by type (validation, authentication, external service, etc.)
-- **Contextual Information**: All errors include relevant context for easier troubleshooting
-- **Consistent Response Format**: Standardized error response format across all API endpoints
-- **Error Logging**: Detailed error logging with severity levels, categories, and contextual information
-
-## Monitoring & Alerting
-
-The system includes automated monitoring and alerting capabilities:
-
-- **Performance Metrics**: Tracking of API response times, error rates, and resource usage
-- **AI Usage Monitoring**: Tracking of OpenAI API usage and token consumption
-- **Configurable Thresholds**: Warning and critical thresholds for key metrics
-- **Multiple Alert Channels**: Support for console, email, and Slack notifications
-- **Scheduled Checks**: Automated periodic checks of system health and performance
-
-## CI/CD Pipeline
-
-Automated continuous integration and deployment pipeline with:
-
-- **Automated Testing**: Unit and integration tests run on every commit
-- **Code Quality Checks**: ESLint static code analysis and TypeScript type checking
-- **Security Scanning**: Vulnerability scanning of dependencies
-- **Automated Deployment**: Streamlined deployment to staging and production environments
-- **Environment Segregation**: Separate staging and production environments with appropriate safeguards
-
-## Testing Strategy
-
-Comprehensive test coverage with:
-
-- **Unit Tests**: Testing of individual functions and components in isolation
-- **Integration Tests**: Testing of interactions between components
-- **API Tests**: Testing of API endpoints
-- **Service Tests**: Testing of service layer functionality
-- **Mock/Stub Strategy**: Consistent approach to mocking external dependencies
-
-### Test Architecture
-
-The test suite is organized according to the application's architecture:
+The platform consists of the following interconnected components:
 
 ```
-tests/
-  ├── components/            # React component tests
-  ├── controllers/           # API controller tests
-  ├── hooks/                 # React custom hook tests
-  ├── mocks/                 # Mock data and mock implementations
-  ├── services/              # Service layer tests
-  │   ├── ai/                # AI service tests
-  │   ├── connectors/        # Data connector tests
-  │   ├── enrichment/        # Data enrichment tests
-  │   └── monitoring/        # Monitoring service tests
-  └── utils/                 # Test utilities
+┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
+│                 │       │                 │       │                 │
+│  Data Sources   │──────▶│  ETL Pipeline   │──────▶│   PostgreSQL    │
+│  (MLS, Tax,     │       │  (Airflow)      │       │   Database      │
+│   County, etc.) │       │                 │       │                 │
+└─────────────────┘       └─────────────────┘       └────────┬────────┘
+                                                             │
+                                                             ▼
+┌─────────────────┐       ┌─────────────────────────────────────────────┐
+│                 │       │                                             │
+│    React UI     │◀─────▶│              Microservices                 │
+│    Frontend     │       │  ┌───────────┐┌───────────┐┌───────────┐   │
+│                 │       │  │ Property  ││  Market   ││ Spatial   │   │
+└─────────────────┘       │  │ Service   ││  Service  ││ Service   │   │
+                          │  └───────────┘└───────────┘└───────────┘   │
+                          │  ┌───────────┐                             │
+                          │  │ Analytics │                             │
+                          │  │ Service   │                             │
+                          │  └───────────┘                             │
+                          └─────────────────────────────────────────────┘
 ```
-
-### Running Tests
-
-We provide several scripts for running tests:
-
-```bash
-# Run all tests
-./tests/run-tests.sh
-
-# Run a single test file
-./tests/run-single-test.sh services/monitoring/market.monitor.test.ts
-
-# Generate coverage report
-./tests/generate-coverage-report.sh
-
-# Run tests with clean cache
-./tests/run-tests-clean.sh
-
-# Run tests in parallel for faster execution
-./tests/run-tests-parallel.sh
-```
-
-For detailed information about the testing infrastructure, please see the [tests/README.md](tests/README.md) file.
 
 ## Getting Started
 
 ### Prerequisites
-
-- Node.js 18+
-- npm or yarn
-- OpenAI API key
+- Python 3.11+
+- Node.js 
+- PostgreSQL database
 
 ### Installation
 
-1. Clone the repository
-2. Install dependencies:
-   ```
-   npm install
-   ```
-3. Set up environment variables:
-   ```
-   OPENAI_API_KEY=your_openai_api_key
-   ```
-4. Start the development server:
-   ```
-   npm run dev
-   ```
-
-### Running Tests
-
+1. Clone the repository:
 ```
-npm test
+git clone https://github.com/yourusername/intelligentestate.git
+cd intelligentestate
 ```
 
-### Monitoring
+2. Initialize the database:
+```
+cd microservices
+python init_database.py
+```
 
-The system includes a built-in monitoring dashboard accessible at `/monitoring` that shows:
+3. Start the microservices:
+```
+python launch.py
+```
 
-- API usage statistics
-- Error rates and recent errors
-- Performance metrics
-- AI service usage
+4. For ETL pipeline setup:
+```
+cd etl
+export AIRFLOW_HOME=$(pwd)
+airflow db init
+airflow scheduler
+```
+
+5. Start the React frontend:
+```
+cd client
+npm install
+npm run dev
+```
+
+## API Documentation
+
+Each microservice provides its own Swagger documentation at the `/docs` endpoint:
+
+- Property Service: http://localhost:8001/docs
+- Market Service: http://localhost:8002/docs
+- Spatial Service: http://localhost:8003/docs
+- Analytics Service: http://localhost:8004/docs
+
+## Technologies Used
+
+- **Backend**: Python, FastAPI, SQLAlchemy, Apache Airflow
+- **Database**: PostgreSQL
+- **ML Stack**: scikit-learn, NumPy, Pandas
+- **Frontend**: React, TypeScript, Shadcn
+- **Geospatial**: Leaflet, Turf.js, GeoJSON
+- **Visualization**: D3.js, Recharts, Plotly
+- **DevOps**: Docker, GitHub Actions (planned)
 
 ## License
 
-Proprietary - All Rights Reserved
+This project is licensed under the MIT License - see the LICENSE file for details.
