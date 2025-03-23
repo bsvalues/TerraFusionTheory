@@ -164,15 +164,24 @@ export default function PropertyValuationWidget() {
       description: "Calculating valuation based on market data and comparables...",
     });
     
-    // Transform the string data to the numerical values needed
-    const transformedData = transformedSchema.parse(data);
-    
-    // Simulate API call with a delay
-    setTimeout(() => {
-      const mockValuation: PropertyValuation = generateMockValuation(transformedData);
-      setValuation(mockValuation);
-      setConfidenceLevel(mockValuation.confidenceScore);
-    }, 1500);
+    try {
+      // Transform the string data to the numerical values needed
+      const transformedData = transformedSchema.parse(data);
+      
+      // Simulate API call with a delay
+      setTimeout(() => {
+        const mockValuation: PropertyValuation = generateMockValuation(transformedData);
+        setValuation(mockValuation);
+        setConfidenceLevel(mockValuation.confidenceScore);
+      }, 1500);
+    } catch (error) {
+      console.error("Error transforming form data:", error);
+      toast({
+        title: "Error processing form data",
+        description: "Please check your inputs and try again.",
+        variant: "destructive",
+      });
+    }
   };
   
   // Generate mock valuation data based on form inputs
