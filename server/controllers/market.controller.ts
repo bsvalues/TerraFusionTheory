@@ -203,6 +203,80 @@ export class MarketController {
       next(error);
     }
   }
+
+  /**
+   * Get detailed market analysis with ML predictions
+   */
+  getDetailedMarketAnalysis = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { area = 'Grandview', timeframe = '90' } = req.query;
+      const daysAhead = parseInt(timeframe as string);
+      
+      if (!area || typeof area !== 'string') {
+        throw new AppError('Area parameter is required', 400, 'VALIDATION_ERROR', true);
+      }
+
+      const analysis = await realEstateAnalyticsService.getDetailedMarketAnalysis(area, daysAhead);
+      
+      res.json({
+        success: true,
+        data: analysis,
+        metadata: {
+          generatedAt: new Date().toISOString(),
+          modelVersion: analysis.modelVersion,
+          confidenceScore: analysis.confidenceScore
+        }
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get market comparison across multiple areas
+   */
+  getMarketComparison = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { areas } = req.query;
+      
+      if (!areas) {
+        throw new AppError('Areas parameter is required', 400, 'VALIDATION_ERROR', true);
+      }
+
+      const areaList = (areas as string).split(',');
+      const comparison = await realEstateAnalyticsService.getMarketComparison(areaList);
+      
+      res.json({
+        success: true,
+        data: comparison
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
+
+  /**
+   * Get investment opportunity score
+   */
+  getInvestmentScore = async (req: Request, res: Response, next: NextFunction) => {
+    try {
+      const { propertyId } = req.params;
+      const { analysisType = 'comprehensive' } = req.query;
+      
+      if (!propertyId) {
+        throw new AppError('Property ID is required', 400, 'VALIDATION_ERROR', true);
+      }
+
+      const score = await realEstateAnalyticsService.calculateInvestmentScore(propertyId, analysisType as string);
+      
+      res.json({
+        success: true,
+        data: score
+      });
+    } catch (error) {
+      next(error);
+    }
+  }
 }
 
 export const marketController = new MarketController();

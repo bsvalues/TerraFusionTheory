@@ -77,6 +77,92 @@ export const openApiSpec: OpenAPIV3.Document = {
           }
         }
       }
+    },
+    '/api/market/analysis/{area}': {
+      get: {
+        summary: 'Get detailed market analysis with ML predictions',
+        parameters: [
+          {
+            name: 'area',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'timeframe',
+            in: 'query',
+            required: false,
+            schema: { type: 'string', default: '90' }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Detailed market analysis',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/MarketAnalysis' }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/market/comparison': {
+      get: {
+        summary: 'Compare market metrics across multiple areas',
+        parameters: [
+          {
+            name: 'areas',
+            in: 'query',
+            required: true,
+            schema: { type: 'string' },
+            description: 'Comma-separated list of areas'
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Market comparison data',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/MarketComparison' }
+              }
+            }
+          }
+        }
+      }
+    },
+    '/api/market/investment-score/{propertyId}': {
+      get: {
+        summary: 'Get investment opportunity score for a property',
+        parameters: [
+          {
+            name: 'propertyId',
+            in: 'path',
+            required: true,
+            schema: { type: 'string' }
+          },
+          {
+            name: 'analysisType',
+            in: 'query',
+            required: false,
+            schema: { 
+              type: 'string',
+              enum: ['basic', 'comprehensive', 'predictive'],
+              default: 'comprehensive'
+            }
+          }
+        ],
+        responses: {
+          '200': {
+            description: 'Investment opportunity score',
+            content: {
+              'application/json': {
+                schema: { $ref: '#/components/schemas/InvestmentScore' }
+              }
+            }
+          }
+        }
+      }
     }
   },
   components: {
