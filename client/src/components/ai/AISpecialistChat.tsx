@@ -66,11 +66,11 @@ const AISpecialistChat = () => {
     if (isOpen && messages.length === 0) {
       const welcomeMessages: Record<SpecialistType, string> = {
         [SpecialistType.PROPERTY]: 
-          "Hello! I'm your Property Valuation Specialist. I can help you analyze market trends, evaluate property values, and understand investment opportunities. How can I assist you today?",
+          "Hello! I'm your Property Valuation Specialist. I can help you analyze market trends, evaluate property values, and understand investment opportunities. Just mention a property address like '123 Main St, Grandview, WA' and I'll show you detailed insights! How can I assist you today?",
         [SpecialistType.TECHNICAL]: 
           "Welcome! I'm your Technical Integration Specialist. I can help with integrating data sources, troubleshooting technical issues, and optimizing your analytics workflow. What can I help you with?",
         [SpecialistType.COLLABORATIVE]:
-          "Welcome to Collaborative Mode! Here, both the Real Estate and Technical specialists work together to provide comprehensive answers that combine real estate expertise with technical implementation knowledge. How can we assist you today?"
+          "Welcome to Collaborative Mode! Here, both the Real Estate and Technical specialists work together to provide comprehensive answers that combine real estate expertise with technical implementation knowledge. You can ask about specific properties like '456 Vine Avenue, Grandview' and I'll show you property insights alongside technical information. How can we assist you today?"
       };
       
       // Add welcome message for active specialist
@@ -153,13 +153,30 @@ const AISpecialistChat = () => {
   };
 
   // Add AI message helper
-  const addAIMessage = (content: string) => {
+  const addAIMessage = async (content: string) => {
+    // Only check for property insights if in property or collaborative mode
+    let propertyInsights: PropertyInsight[] | undefined;
+    
+    if (activeSpecialist === SpecialistType.PROPERTY || activeSpecialist === SpecialistType.COLLABORATIVE) {
+      try {
+        // Detect property addresses in the AI response
+        const insightResponse = await propertyInsightsService.detectPropertyInsights(content);
+        
+        if (insightResponse.detected && insightResponse.properties.length > 0) {
+          propertyInsights = insightResponse.properties;
+        }
+      } catch (error) {
+        console.error('Error detecting property insights:', error);
+      }
+    }
+    
     const aiMessage: Message = {
       id: generateId(),
       content,
       sender: 'ai',
       timestamp: new Date(),
-      specialist: activeSpecialist
+      specialist: activeSpecialist,
+      propertyInsights
     };
     
     setMessages(prev => [...prev, aiMessage]);
@@ -363,7 +380,35 @@ const AISpecialistChat = () => {
                                 <div className="w-2 h-2 rounded-full bg-current animate-bounce"></div>
                               </div>
                             ) : (
-                              <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                              <div className="flex flex-col gap-3">
+                                <div className="text-sm whitespace-pre-wrap">{message.content}</div>
+                                
+                                {/* Property Insights */}
+                                {message.propertyInsights && message.propertyInsights.length > 0 && (
+                                  <div className="mt-2 space-y-3">
+                                    {message.propertyInsights.map((property) => (
+                                      <PropertyInsightCard
+                                        key={property.propertyId}
+                                        insight={property}
+                                        compact={true}
+                                        className="mt-2"
+                                        onViewDetails={(id) => {
+                                          toast({
+                                            title: "Property Details",
+                                            description: `Viewing details for property at ${property.address}`,
+                                          });
+                                        }}
+                                        onViewOnMap={(coordinates) => {
+                                          toast({
+                                            title: "Property Location",
+                                            description: `Viewing location at ${coordinates.lat.toFixed(4)}, ${coordinates.lng.toFixed(4)}`,
+                                          });
+                                        }}
+                                      />
+                                    ))}
+                                  </div>
+                                )}
+                              </div>
                             )}
                             <div 
                               className={cn(
