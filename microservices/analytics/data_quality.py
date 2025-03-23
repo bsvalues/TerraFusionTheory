@@ -62,3 +62,47 @@ class DataQualityChecker:
                 ]
                 
         return clean_data
+import pandas as pd
+import numpy as np
+from typing import Dict, List, Tuple
+
+class DataQualityChecker:
+    def __init__(self):
+        self.anomaly_thresholds = {
+            'price': {'min': 10000, 'max': 10000000},
+            'square_feet': {'min': 200, 'max': 15000},
+            'year_built': {'min': 1800, 'max': 2024}
+        }
+        
+    def check_data_quality(self, data: pd.DataFrame) -> Dict[str, List[str]]:
+        issues = {
+            'missing_values': self._check_missing_values(data),
+            'anomalies': self._check_anomalies(data),
+            'consistency': self._check_data_consistency(data)
+        }
+        return issues
+        
+    def _check_missing_values(self, data: pd.DataFrame) -> List[str]:
+        missing = data.isnull().sum()
+        return [f"Column {col} has {count} missing values" 
+                for col, count in missing.items() if count > 0]
+                
+    def _check_anomalies(self, data: pd.DataFrame) -> List[str]:
+        issues = []
+        for col, limits in self.anomaly_thresholds.items():
+            if col in data.columns:
+                outliers = data[
+                    (data[col] < limits['min']) | 
+                    (data[col] > limits['max'])
+                ]
+                if len(outliers) > 0:
+                    issues.append(f"Found {len(outliers)} anomalies in {col}")
+        return issues
+        
+    def _check_data_consistency(self, data: pd.DataFrame) -> List[str]:
+        issues = []
+        if 'price' in data.columns and 'square_feet' in data.columns:
+            price_per_sqft = data['price'] / data['square_feet']
+            if (price_per_sqft > 1000).any():
+                issues.append("Unusually high price per square foot detected")
+        return issues
