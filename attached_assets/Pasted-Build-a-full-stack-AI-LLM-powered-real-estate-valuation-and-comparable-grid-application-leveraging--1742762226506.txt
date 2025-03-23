@@ -1,0 +1,48 @@
+Build a full-stack, AI LLM-powered real estate valuation and comparable grid application leveraging actual live data connections. Your implementation should include:
+
+### Dynamic Roadmap & Progress Tracking
+- Implement an interactive Kanban board integrated directly with Jira to visualize progress and tasks.
+- Track real-time milestone completion against actual live SQL database updates and deployments.
+
+### Modular File and Folder Structure
+- Use the predefined folder structure with specific modules for residential, commercial, and land valuations.
+- Dedicated sub-modules for data ingestion, comparable grid processing, valuation scoring algorithms, and dynamic data management.
+
+### Secure Live Data Connection & Integration
+- Set up secure, encrypted connections to your live SQL databases (PostgreSQL/MySQL), strictly avoiding any demo data.
+- Implement real-time data fetch, caching strategies, and error handling for continuous, robust connectivity.
+- Integrate ORM layers or direct SQL connections based on optimal performance metrics.
+
+### Intelligent Troubleshooting with Continuous Testing
+- Automated data quality checks against actual data constraints to proactively detect issues.
+- AI-driven debugging mechanism utilizing historical logs from real database interactions to suggest solutions for common and uncommon data anomalies.
+
+### Comprehensive Documentation
+- Detailed OpenAPI documentation for APIs directly linked to actual database schemas.
+- Real-time generated documentation reflecting database schema changes, including ER diagrams.
+- Developer handbook covering real-data handling protocols, troubleshooting guides, and data-integrity maintenance.
+
+### Modular Plug-and-Play Architecture
+- Clear, standardized interfaces for integrating new property data streams or valuation modules dynamically.
+- Plugin manager to support the seamless integration or removal of data-driven valuation methodologies.
+
+### AI & LLM Agent Playground
+- A streamlined playground integrated with your real data environment for accurate model experimentation.
+- Utilize scikit-learn for rapid experimentation with valuation models.
+- Employ Dask for scalable parallel processing of large real estate datasets.
+- Integrate Ray for efficient distributed execution and hyperparameter tuning.
+- Implement MLflow for comprehensive experiment tracking, version control, and comparison of valuation model performance.
+- Leverage PyCaret for rapid prototyping, comparison, and visualization of different valuation models.
+- Use matplotlib-venn for clear visualization of intersections and overlaps between model predictions.
+- Vector database integration for advanced semantic search across historical real-world appraisal data.
+
+### Packaged Deployment
+- Production-grade Dockerfiles and Helm charts for deploying to cloud (AWS/Azure/GCP), hybrid, or on-premise infrastructures.
+- Advanced CI/CD pipeline using GitHub Actions or Jenkins for continuous delivery integrated directly with your live database schema updates.
+- Always utilize GitHub open-source solutions when available to enhance transparency, collaboration, and continuous improvement.
+
+### AI-driven Continuous Feedback & Learning
+- Implement adaptive learning mechanisms using user feedback collected from real property valuation outcomes.
+- Continuous retraining pipelines triggered by data drift or changes detected in your production database environment.
+
+Ensure compliance with data privacy and industry standards, utilizing actual operational data securely and effectively at every stage.
