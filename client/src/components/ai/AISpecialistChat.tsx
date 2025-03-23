@@ -8,7 +8,7 @@
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, MinusCircle, ChevronUp } from 'lucide-react';
+import { MessageSquare, X, MinusCircle, ChevronUp, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -18,11 +18,13 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import agentService, { QueryContext } from '@/services/agent.service';
 
 // AI Specialist types
 enum SpecialistType {
   PROPERTY = 'property',
-  TECHNICAL = 'technical'
+  TECHNICAL = 'technical',
+  COLLABORATIVE = 'collaborative'
 }
 
 // Message interface
@@ -63,7 +65,9 @@ const AISpecialistChat = () => {
         [SpecialistType.PROPERTY]: 
           "Hello! I'm your Property Valuation Specialist. I can help you analyze market trends, evaluate property values, and understand investment opportunities. How can I assist you today?",
         [SpecialistType.TECHNICAL]: 
-          "Welcome! I'm your Technical Integration Specialist. I can help with integrating data sources, troubleshooting technical issues, and optimizing your analytics workflow. What can I help you with?"
+          "Welcome! I'm your Technical Integration Specialist. I can help with integrating data sources, troubleshooting technical issues, and optimizing your analytics workflow. What can I help you with?",
+        [SpecialistType.COLLABORATIVE]:
+          "Welcome to Collaborative Mode! Here, both the Real Estate and Technical specialists work together to provide comprehensive answers that combine real estate expertise with technical implementation knowledge. How can we assist you today?"
       };
       
       // Add welcome message for active specialist
@@ -103,31 +107,29 @@ const AISpecialistChat = () => {
     ]);
     
     try {
-      // Call the appropriate endpoint based on specialist type
-      const endpoint = activeSpecialist === SpecialistType.PROPERTY 
-        ? '/api/agents/real-estate/ask'
-        : '/api/agents/developer/ask';
+      const context: QueryContext = { 
+        currentSpecialist: activeSpecialist,
+        source: 'ai_specialist_chat'
+      };
       
-      const response = await fetch(endpoint, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ 
-          question: input,
-          context: { currentSpecialist: activeSpecialist }
-        }),
-      });
+      let response: string;
       
-      if (!response.ok) {
-        throw new Error('Failed to get response from AI');
+      // Use agent service based on active specialist
+      if (activeSpecialist === SpecialistType.COLLABORATIVE) {
+        // Use collaborative mode with both agents
+        context.enableCollaboration = true;
+        response = await agentService.askCollaborative(input, context);
+      } else if (activeSpecialist === SpecialistType.PROPERTY) {
+        // Use real estate agent
+        response = await agentService.askRealEstateAgent(input, context);
+      } else {
+        // Use developer agent
+        response = await agentService.askDeveloperAgent(input, context);
       }
-      
-      const data = await response.json();
       
       // Remove typing indicator and add AI response
       setMessages(prev => prev.filter(m => m.id !== typingIndicatorId));
-      addAIMessage(data.response || "I'm sorry, I couldn't process your request at this time.");
+      addAIMessage(response);
     } catch (error) {
       console.error('Error getting AI response:', error);
       
@@ -297,18 +299,24 @@ const AISpecialistChat = () => {
                   onValueChange={(value) => handleSpecialistChange(value as SpecialistType)}
                   className="h-full flex flex-col"
                 >
-                  <TabsList className="w-full h-auto p-0 bg-muted/30 grid grid-cols-2">
+                  <TabsList className="w-full h-auto p-0 bg-muted/30 grid grid-cols-3">
                     <TabsTrigger 
                       value={SpecialistType.PROPERTY}
                       className="text-xs py-2"
                     >
-                      Property Specialist
+                      Property
                     </TabsTrigger>
                     <TabsTrigger 
                       value={SpecialistType.TECHNICAL}
                       className="text-xs py-2"
                     >
-                      Technical Specialist
+                      Technical
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value={SpecialistType.COLLABORATIVE}
+                      className="text-xs py-2"
+                    >
+                      Collaborative
                     </TabsTrigger>
                   </TabsList>
 
