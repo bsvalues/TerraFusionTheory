@@ -43,6 +43,7 @@ interface TutorialContextType {
   goToStep: (index: number) => void;
   markStepComplete: () => void;
   categories: TutorialCategory[];
+  tutorialCategories: TutorialCategory[]; // For TutorialButton dropdown
   aiAssistantMessage: string;
   updateAiMessage: (message: string) => void;
 }
@@ -60,6 +61,7 @@ const TutorialContext = createContext<TutorialContextType>({
   goToStep: () => {},
   markStepComplete: () => {},
   categories: [],
+  tutorialCategories: [],
   aiAssistantMessage: '',
   updateAiMessage: () => {},
 });
@@ -422,6 +424,7 @@ export const TutorialProvider: React.FC<{ children: ReactNode }> = ({ children }
     goToStep,
     markStepComplete,
     categories: tutorialCategories,
+    tutorialCategories,
     aiAssistantMessage,
     updateAiMessage,
   };
