@@ -48,6 +48,21 @@ class MarketPredictor:
         self.feature_selector = SelectFromModel(Lasso(alpha=0.01))
         
     def train(self, historical_data: pd.DataFrame):
+        # Initialize tracking and quality checking
+        mlflow_tracker = MLflowTracker()
+        data_checker = DataQualityChecker()
+        
+        # Check data quality
+        is_valid, issues = data_checker.check_data_quality(historical_data)
+        if not is_valid:
+            print("Data quality issues found:")
+            for issue in issues:
+                print(f"- {issue}")
+            historical_data = data_checker.clean_data(historical_data)
+            
+        # Start MLflow tracking
+        mlflow_tracker.start_run("market_prediction_training")
+        
         # Time series training
         price_df = pd.DataFrame({
             'ds': historical_data['date'],
@@ -68,12 +83,42 @@ class MarketPredictor:
         
     def _engineer_features(self, data: pd.DataFrame) -> pd.DataFrame:
         features = pd.DataFrame()
+        
+        # Basic features
         features['sqft'] = data['sqft']
-        features['beds'] = data['beds']
+        features['beds'] = data['beds'] 
         features['baths'] = data['baths']
         features['lot_size'] = data['lot_size']
         features['year_built'] = data['year_built']
         features['days_on_market'] = data['days_on_market']
+
+        # Advanced features
+        features['price_per_sqft'] = data['price'] / data['sqft']
+        features['beds_per_sqft'] = data['beds'] / data['sqft']
+        features['total_rooms'] = data['beds'] + data['baths']
+        features['age'] = pd.to_datetime('now').year - data['year_built']
+        features['is_new'] = (features['age'] <= 5).astype(int)
+        
+        # Market dynamics
+        features['month'] = pd.to_datetime(data['date']).dt.month
+        features['season'] = pd.to_datetime(data['date']).dt.quarter
+        features['market_velocity'] = data['price'].pct_change().fillna(0)
+        features['price_momentum'] = data['price'].rolling(window=3).mean().pct_change().fillna(0)
+        
+        # Location features
+        if 'zip_code' in data.columns:
+            features = pd.concat([features, pd.get_dummies(data['zip_code'], prefix='zip')], axis=1)
+            
+        # Interaction terms
+        features['price_age_ratio'] = data['price'] / (features['age'] + 1)
+        features['sqft_lot_ratio'] = data['sqft'] / data['lot_size']
+        
+        # Feature scaling
+        numeric_cols = features.select_dtypes(include=['float64', 'int64']).columns
+        for col in numeric_cols:
+            features[f'{col}_norm'] = (features[col] - features[col].mean()) / features[col].std()
+            
+        return features
         
         # Advanced features
         features['price_per_sqft'] = data['price'] / data['sqft']
