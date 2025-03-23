@@ -10,7 +10,7 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { queryClient } from '@/lib/queryClient';
 import RealEstateAnalyticsPage from './pages/RealEstateAnalyticsPage';
-import TutorialManager from './components/onboarding/TutorialManager';
+import { TutorialManager, TutorialButton } from './components/onboarding';
 
 // Main App component
 const App = () => {
@@ -22,6 +22,7 @@ const App = () => {
             <Route path="/" component={RealEstateAnalyticsPage} />
             {/* Add more routes as needed */}
           </Switch>
+          <TutorialButton position="bottom-right" />
           <Toaster />
         </div>
       </TutorialManager>

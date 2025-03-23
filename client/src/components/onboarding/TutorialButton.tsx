@@ -7,7 +7,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
-import { useTutorial } from './TutorialContext';
+import { useTutorial, TutorialCategory } from './TutorialContext';
 import { LucideHelpCircle } from 'lucide-react';
 import {
   DropdownMenu,
