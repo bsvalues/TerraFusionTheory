@@ -19,7 +19,7 @@ import { scheduler } from './scheduler.service';
 export class RealEstateAnalyticsService {
   private static instance: RealEstateAnalyticsService;
   private initialized = false;
-  
+
   // Cache for expensive operations
   private cache: {
     marketSnapshots: Map<string, { timestamp: number; data: MarketMetricsSnapshot }>;
@@ -27,7 +27,7 @@ export class RealEstateAnalyticsService {
     geoJsonData: Map<string, { timestamp: number; data: GeoJSONFeatureCollection }>;
     alerts: MarketAlert[];
   };
-  
+
   // Cache expiration time (in milliseconds)
   private cacheExpiration = {
     marketSnapshots: 3600000, // 1 hour
@@ -35,7 +35,7 @@ export class RealEstateAnalyticsService {
     geoJsonData: 86400000, // 24 hours
     alerts: 3600000 // 1 hour
   };
-  
+
   private constructor() {
     this.cache = {
       marketSnapshots: new Map(),
@@ -44,7 +44,7 @@ export class RealEstateAnalyticsService {
       alerts: []
     };
   }
-  
+
   /**
    * Get the singleton instance
    */
@@ -54,7 +54,7 @@ export class RealEstateAnalyticsService {
     }
     return RealEstateAnalyticsService.instance;
   }
-  
+
   /**
    * Initialize the service
    */
@@ -62,7 +62,7 @@ export class RealEstateAnalyticsService {
     if (this.initialized) {
       return;
     }
-    
+
     try {
       // Log initialization start
       await storage.createLog({
@@ -79,18 +79,18 @@ export class RealEstateAnalyticsService {
         endpoint: null,
         tags: ['initialization']
       });
-      
+
       // Initialize data refresh service and schedule jobs
       dataRefreshService.initialize();
-      
+
       // Schedule cache cleanup
       scheduler.addJob('cache-cleanup', 60, this.cleanupCache.bind(this));
-      
+
       // Schedule alert generation
       scheduler.addJob('market-alerts', 720, this.generateMarketAlerts.bind(this));
-      
+
       this.initialized = true;
-      
+
       // Log successful initialization
       await storage.createLog({
         level: LogLevel.INFO,
@@ -128,18 +128,18 @@ export class RealEstateAnalyticsService {
         endpoint: null,
         tags: ['initialization', 'error']
       });
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Refresh all data sources
    */
   public async refreshAllData(): Promise<void> {
     return dataRefreshService.refreshAllData();
   }
-  
+
   /**
    * Get market snapshot for a specific area
    * @param area The area to analyze (city, zip, etc.)
@@ -148,23 +148,23 @@ export class RealEstateAnalyticsService {
   public async getMarketSnapshot(area: string, forceRefresh: boolean = false): Promise<MarketMetricsSnapshot> {
     const cacheKey = `snapshot-${area}`;
     const cached = this.cache.marketSnapshots.get(cacheKey);
-    
+
     if (!forceRefresh && cached && Date.now() - cached.timestamp < this.cacheExpiration.marketSnapshots) {
       return cached.data;
     }
-    
+
     // Generate new snapshot
     const snapshot = await marketMonitor.generateSnapshot(area);
-    
+
     // Cache the result
     this.cache.marketSnapshots.set(cacheKey, {
       timestamp: Date.now(),
       data: snapshot
     });
-    
+
     return snapshot;
   }
-  
+
   /**
    * Get property listings with validation and enrichment
    * @param queryParams Query parameters for filtering listings
@@ -183,49 +183,49 @@ export class RealEstateAnalyticsService {
     try {
       // Get market data connectors
       const marketConnectors = connectorFactory.getConnectorsByType('market');
-      
+
       if (marketConnectors.length === 0) {
         throw new Error('No market data connectors available');
       }
-      
+
       // Use the first connector for now (could implement a strategy to select the best connector)
       const connector = marketConnectors[0];
-      
+
       // Fetch listings
       const result = await connector.fetchData(queryParams);
       let listings = result.data;
       let validationIssues = 0;
-      
+
       // Validate if requested
       if (validate) {
         // Calculate market statistics for validation
         await dataValidator.calculateMarketStats(listings);
-        
+
         // Validate each listing
         listings = await Promise.all(listings.map(async (listing) => {
           const validationResult = dataValidator.validateListing(listing);
-          
+
           if (!validationResult.isValid || validationResult.anomalies.length > 0) {
             validationIssues++;
-            
+
             // Add validation results to the listing for UI display
             return {
               ...listing,
               validationResult
             };
           }
-          
+
           return listing;
         }));
       }
-      
+
       // Enrich if requested
       if (enrich) {
         listings = await Promise.all(
           listings.map(listing => geospatialEnricher.enrichPropertyListing(listing))
         );
       }
-      
+
       return {
         listings,
         total: result.total,
@@ -254,11 +254,11 @@ export class RealEstateAnalyticsService {
         endpoint: null,
         tags: ['property-listings', 'error']
       });
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Get property documents
    * @param fileName The name of the document to retrieve
@@ -267,14 +267,14 @@ export class RealEstateAnalyticsService {
     try {
       // Get PDF connectors
       const pdfConnectors = connectorFactory.getConnectorsByType('pdf');
-      
+
       if (pdfConnectors.length === 0) {
         throw new Error('No PDF connectors available');
       }
-      
+
       // Use the first connector
       const connector = pdfConnectors[0];
-      
+
       // Fetch document
       return await connector.getDocumentByName(fileName, true);
     } catch (error) {
@@ -300,11 +300,11 @@ export class RealEstateAnalyticsService {
         endpoint: null,
         tags: ['property-document', 'error']
       });
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Get GeoJSON data for property listings
    * @param queryParams Query parameters for filtering listings
@@ -314,23 +314,23 @@ export class RealEstateAnalyticsService {
       // Create cache key from query parameters
       const cacheKey = `geojson-${JSON.stringify(queryParams)}`;
       const cached = this.cache.geoJsonData.get(cacheKey);
-      
+
       if (cached && Date.now() - cached.timestamp < this.cacheExpiration.geoJsonData) {
         return cached.data;
       }
-      
+
       // Get property listings
       const { listings } = await this.getPropertyListings(queryParams, false, true);
-      
+
       // Convert to GeoJSON
       const geoJson = geospatialEnricher.convertListingsToGeoJSON(listings);
-      
+
       // Cache the result
       this.cache.geoJsonData.set(cacheKey, {
         timestamp: Date.now(),
         data: geoJson
       });
-      
+
       return geoJson;
     } catch (error) {
       console.error('Error generating GeoJSON data:', error);
@@ -355,11 +355,11 @@ export class RealEstateAnalyticsService {
         endpoint: null,
         tags: ['geojson', 'error']
       });
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Analyze neighborhood trends
    * @param area The area to analyze (city, zip, etc.)
@@ -379,7 +379,7 @@ export class RealEstateAnalyticsService {
     try {
       // Get property listings for the area
       const { listings } = await this.getPropertyListings({ city: area, limit: 1000 }, false, true);
-      
+
       // Analyze neighborhood trends
       return geospatialEnricher.analyzeNeighborhoodTrends(listings);
     } catch (error) {
@@ -405,11 +405,11 @@ export class RealEstateAnalyticsService {
         endpoint: null,
         tags: ['neighborhood-trends', 'error']
       });
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Get market alerts
    */
@@ -418,13 +418,13 @@ export class RealEstateAnalyticsService {
     if (this.cache.alerts.length > 0) {
       return this.cache.alerts;
     }
-    
+
     // Generate new alerts
     await this.generateMarketAlerts();
-    
+
     return this.cache.alerts;
   }
-  
+
   /**
    * Predict future market metrics
    * @param area The area to analyze
@@ -433,10 +433,53 @@ export class RealEstateAnalyticsService {
   public async predictMarketMetrics(area: string, daysAhead: number = 90): Promise<{
     predictedMetrics: Partial<MarketMetricsSnapshot>;
     confidenceScore: number;
+    current: MarketMetricsSnapshot;
+    alerts: MarketAlert[];
+    lastUpdated: string;
   }> {
-    return marketMonitor.predictMarketMetrics(area, daysAhead);
+    try {
+      const snapshot = await this.getMarketSnapshot(area, true);
+      const predictions = await marketMonitor.predictMarketMetrics(area, daysAhead);
+
+      // Generate market insight alerts
+      const alerts = await marketMonitor.checkForMarketChanges();
+      this.cache.alerts = alerts;
+
+      // Combine current metrics with predictions
+      return {
+        current: snapshot,
+        predicted: predictions,
+        alerts: alerts.filter(alert => alert.affectedArea === area),
+        lastUpdated: new Date().toISOString()
+      };
+    } catch (error) {
+      console.error(`Error predicting market metrics for ${area}:`, error);
+      await storage.createLog({
+        level: LogLevel.ERROR,
+        category: LogCategory.SYSTEM,
+        message: `Failed to predict market metrics for ${area}: ${error instanceof Error ? error.message : 'Unknown error'}`,
+        details: JSON.stringify({
+          area,
+          daysAhead,
+          error: error instanceof Error ? {
+            name: error.name,
+            message: error.message,
+            stack: error.stack
+          } : error
+        }),
+        source: 'real-estate-analytics',
+        projectId: null,
+        userId: null,
+        sessionId: null,
+        duration: null,
+        statusCode: null,
+        endpoint: null,
+        tags: ['market-prediction', 'error']
+      });
+      throw error;
+    }
   }
-  
+
   /**
    * Get spatial relationships between properties
    * @param area The area to analyze
@@ -445,7 +488,7 @@ export class RealEstateAnalyticsService {
     try {
       // Get property listings for the area
       const { listings } = await this.getPropertyListings({ city: area, limit: 500 }, false, true);
-      
+
       // Analyze spatial relationships
       return geospatialEnricher.analyzeSpatialRelationships(listings);
     } catch (error) {
@@ -471,11 +514,11 @@ export class RealEstateAnalyticsService {
         endpoint: null,
         tags: ['spatial-relationships', 'error']
       });
-      
+
       throw error;
     }
   }
-  
+
   /**
    * Clean up expired cache entries
    */
@@ -483,7 +526,7 @@ export class RealEstateAnalyticsService {
     try {
       const now = Date.now();
       let cleanedEntries = 0;
-      
+
       // Clean market snapshots cache
       for (const [key, value] of this.cache.marketSnapshots.entries()) {
         if (now - value.timestamp > this.cacheExpiration.marketSnapshots) {
@@ -491,7 +534,7 @@ export class RealEstateAnalyticsService {
           cleanedEntries++;
         }
       }
-      
+
       // Clean property details cache
       for (const [key, value] of this.cache.propertyDetails.entries()) {
         if (now - value.timestamp > this.cacheExpiration.propertyDetails) {
@@ -499,7 +542,7 @@ export class RealEstateAnalyticsService {
           cleanedEntries++;
         }
       }
-      
+
       // Clean GeoJSON data cache
       for (const [key, value] of this.cache.geoJsonData.entries()) {
         if (now - value.timestamp > this.cacheExpiration.geoJsonData) {
@@ -507,7 +550,7 @@ export class RealEstateAnalyticsService {
           cleanedEntries++;
         }
       }
-      
+
       // Log cache cleanup
       await storage.createLog({
         level: LogLevel.INFO,
@@ -551,7 +594,7 @@ export class RealEstateAnalyticsService {
       });
     }
   }
-  
+
   /**
    * Generate market alerts
    */
@@ -559,13 +602,13 @@ export class RealEstateAnalyticsService {
     try {
       // Get market snapshot for Grandview area
       await this.getMarketSnapshot('Grandview', true);
-      
+
       // Generate alerts
       const alerts = await marketMonitor.checkForMarketChanges();
-      
+
       // Update cached alerts
       this.cache.alerts = alerts;
-      
+
       // Log alert generation
       await storage.createLog({
         level: LogLevel.INFO,
