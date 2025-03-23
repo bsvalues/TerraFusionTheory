@@ -49,8 +49,10 @@ import {
   LucideArrowUp, 
   LucideArrowDown, 
   LucideBadgeDollarSign, 
-  LucideCalendarDays 
+  LucideCalendarDays,
+  LucideBrainCircuit
 } from 'lucide-react';
+import TrendPredictionWidget from './TrendPredictionWidget';
 
 // Types
 interface MarketMetric {
@@ -374,6 +376,13 @@ const MarketDashboard = () => {
               <TabsTrigger value="hotspots">
                 <LucideTrendingUp className="mr-2 h-4 w-4" />
                 Market Hotspots
+              </TabsTrigger>
+              <TabsTrigger 
+                value="prediction" 
+                className="animate-in fade-in-0 slide-in-from-right-3 duration-500 delay-300"
+              >
+                <LucideBrainCircuit className="mr-2 h-4 w-4 text-primary" />
+                AI Prediction
               </TabsTrigger>
             </TabsList>
             
