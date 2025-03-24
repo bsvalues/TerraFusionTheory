@@ -36,11 +36,12 @@ export const getPropertyValuation = async (req: Request, res: Response) => {
     );
 
     res.status(200).json(valuation);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in property valuation:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({
       error: 'Failed to calculate property valuation',
-      details: error.message
+      details: errorMessage
     });
   }
 };
@@ -80,11 +81,12 @@ export const getComparableProperties = async (req: Request, res: Response) => {
     );
 
     res.status(200).json(adjustedComparables);
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('Error in comparable properties:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
     res.status(500).json({
       error: 'Failed to calculate comparable properties',
-      details: error.message
+      details: errorMessage
     });
   }
 };

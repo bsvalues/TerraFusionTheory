@@ -390,6 +390,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/agents/collaborate", asyncHandler(agentController.collaborateAgents));
   app.post("/api/agents/memory/search", asyncHandler(agentController.searchAgentMemory));
   
+  // Property Valuation API routes
+  app.post("/api/valuation/property", asyncHandler(propertyValuationController.getPropertyValuation));
+  app.post("/api/valuation/comparables", asyncHandler(propertyValuationController.getComparableProperties));
+  
   // MCP Tool API endpoint (needed for agent functionality)
   app.post("/api/tools/mcp", asyncHandler(async (req, res) => {
     try {

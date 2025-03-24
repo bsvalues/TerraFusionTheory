@@ -16,6 +16,7 @@ import NeighborhoodSentimentPage from './pages/NeighborhoodSentimentPage';
 import SentimentMapPage from './pages/SentimentMapPage';
 import SentimentTrendPage from './pages/SentimentTrendPage';
 import PropertyEnrichmentDemo from './pages/PropertyEnrichmentDemo';
+import PropertyValuationDemo from './pages/PropertyValuationDemo';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import NotFoundPage from './pages/NotFoundPage';
