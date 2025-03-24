@@ -7,12 +7,8 @@ from .db_init import (
     Base, 
     PropertyListing, 
     PropertyValuation, 
-    DataSource, 
-    DataFetchLog, 
-    ETLJob, 
     SpatialData, 
     MarketMetrics, 
     MarketPrediction, 
-    MLModel, 
     init_db
 )
