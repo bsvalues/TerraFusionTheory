@@ -90,6 +90,7 @@ const App = () => {
               <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
               <Route path="/dev-auth" component={DevAuthLoginPage} />
               <Route path="/dev-auth/admin" component={DevAuthAdminPage} />
+              <Route path="/admin/users" component={UserAdminPage} />
               <Route component={NotFoundPage} />
             </Switch>
             

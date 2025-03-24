@@ -17,7 +17,7 @@ import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 // Form schema for token generation
 const tokenFormSchema = z.object({
-  userId: z.string().min(1, { message: 'User ID is required' }),
+  userId: z.string().min(1, { message: 'User ID is required' }).transform(val => parseInt(val, 10)),
   expirationMinutes: z.string().transform(val => parseInt(val, 10)).pipe(
     z.number().min(5, { message: 'Minimum expiration is 5 minutes' }).max(1440, { message: 'Maximum expiration is 24 hours (1440 minutes)' })
   ),
@@ -118,7 +118,7 @@ const DevAuthAdminPage: React.FC = () => {
     
     try {
       const response = await axios.post('/api/dev-auth/token', {
-        userId: parseInt(values.userId, 10),
+        userId: values.userId, // Now it's already a number due to transform
         expirationMinutes: values.expirationMinutes,
       });
       
