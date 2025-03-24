@@ -93,6 +93,7 @@ const App = () => {
               <Route path="/mass-appraisal" component={MassAppraisalPage} />
               <Route path="/market-heat-map" component={MarketHeatMapPage} />
               <Route path="/valuation-assistant" component={ValuationAssistantPage} />
+              <Route path="/adaptive-color-scheme" component={AdaptiveColorSchemePage} />
               <Route path="/recommendations" component={RecommendationsPage} />
               <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
               <Route path="/help" component={HelpCenterPage} />

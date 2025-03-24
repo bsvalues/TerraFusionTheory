@@ -17,7 +17,8 @@ import {
   LucideSettings,
   LucideHelpCircle,
   LucideMonitor,
-  Calculator as LucideCalculator 
+  Calculator as LucideCalculator,
+  Palette as LucidePalette
 } from 'lucide-react';
 import MapContainer from '@/components/mapping/MapContainer';
 import MarketDashboard from '@/components/dashboard/MarketDashboard';
@@ -93,6 +94,14 @@ const RealEstateAnalyticsPage = () => {
               <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium bg-secondary/40">
                 <LucideCalculator className="h-5 w-5 mr-1 text-primary" />
                 <span className="hidden md:inline">Valuation Demo</span>
+              </button>
+            </Link>
+
+            {/* Adaptive Color Scheme Link */}
+            <Link href="/adaptive-color-scheme">
+              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
+                <LucidePalette className="h-5 w-5 mr-1 text-purple-500" />
+                <span className="hidden md:inline">Color Schemes</span>
               </button>
             </Link>
             
