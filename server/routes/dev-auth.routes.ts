@@ -8,27 +8,18 @@
 import express, { Request, Response } from 'express';
 import { devAuthService } from '../services/dev-auth.service';
 import { IStorage } from '../storage';
-import { OptimizedLogger } from '../services/optimized-logging';
-import { LogCategory } from '@shared/schema';
 
 const router = express.Router();
 
 // Basic verification that we're not in production
 const isDevelopment = process.env.NODE_ENV !== 'production';
 
-// Initialize logger
-const logger = OptimizedLogger.getInstance();
-
 /**
  * Middleware to check if dev auth is enabled
  */
 const checkDevAuthEnabled = (req: Request, res: Response, next: express.NextFunction) => {
   if (!isDevelopment) {
-    logger.critical(
-      LogCategory.SECURITY,
-      'Attempted to access dev auth routes in production',
-      { source: 'DevAuthRoutes', ip: req.ip, path: req.path }
-    );
+    console.error(`SECURITY: Attempted to access dev auth routes in production from IP ${req.ip}, path ${req.path}`);
     return res.status(404).json({ error: 'Not found' });
   }
   next();
@@ -110,22 +101,12 @@ export default function registerDevAuthRoutes(app: express.Express, storage: ISt
     // Set user in session
     if (req.session) {
       req.session.user = { id: userId };
-      
-      logger.info(
-        LogCategory.SECURITY,
-        `Dev auth login successful for user ${userId}`,
-        { source: 'DevAuthRoutes', userId, ip: req.ip }
-      );
+      console.info(`[DevAuthRoutes] Login successful for user ${userId} from IP ${req.ip}`);
       
       // Redirect to the homepage after successful login
       return res.redirect('/');
     } else {
-      logger.error(
-        LogCategory.SECURITY,
-        'Session not available for dev auth login',
-        { source: 'DevAuthRoutes', userId, ip: req.ip }
-      );
-      
+      console.error(`[DevAuthRoutes] Session not available for login (user ${userId}, IP ${req.ip})`);
       return res.status(500).json({ error: 'Session not available' });
     }
   });
@@ -242,9 +223,5 @@ export default function registerDevAuthRoutes(app: express.Express, storage: ISt
     return res.redirect(`/api/dev-auth/login?token=${token}`);
   });
   
-  logger.info(
-    LogCategory.SYSTEM,
-    'Dev auth routes registered',
-    { source: 'DevAuthRoutes', enabled: isDevelopment }
-  );
+  console.info(`[DevAuthRoutes] Dev auth routes registered (enabled: ${isDevelopment})`);
 }

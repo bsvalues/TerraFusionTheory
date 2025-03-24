@@ -8,8 +8,7 @@
  */
 
 import crypto from 'crypto';
-import { OptimizedLogger } from './optimized-logging';
-import { LogCategory, LogLevel } from '@shared/schema';
+import { LogCategory } from '@shared/schema';
 
 // Interface for token data
 interface DevTokenData {
@@ -26,7 +25,6 @@ interface DevTokenData {
 export class DevAuthService {
   private static instance: DevAuthService;
   private tokens: Map<string, DevTokenData> = new Map();
-  private logger: OptimizedLogger;
   
   // Default token expiration time (in minutes)
   private defaultExpirationMinutes = 60;
@@ -35,15 +33,9 @@ export class DevAuthService {
   private isEnabled = process.env.NODE_ENV !== 'production';
   
   private constructor() {
-    this.logger = OptimizedLogger.getInstance();
-    
     // Log warning if enabled in production (should never happen)
     if (process.env.NODE_ENV === 'production' && this.isEnabled) {
-      this.logger.critical(
-        'DevAuthService is enabled in production environment! This is a security risk.',
-        LogCategory.SECURITY,
-        { source: 'DevAuthService' }
-      );
+      console.error('SECURITY CRITICAL: DevAuthService is enabled in production environment! This is a security risk.');
     }
     
     // Set up a cleanup task to remove expired tokens
@@ -69,11 +61,7 @@ export class DevAuthService {
    */
   public generateToken(userId: number, expirationMinutes: number = this.defaultExpirationMinutes): string | null {
     if (!this.isEnabled) {
-      this.logger.warning(
-        LogCategory.SECURITY,
-        'Attempted to generate dev auth token in non-development environment',
-        { source: 'DevAuthService', userId }
-      );
+      console.warn(`[DevAuthService] Attempted to generate dev auth token in non-development environment for user ${userId}`);
       return null;
     }
     
@@ -94,16 +82,8 @@ export class DevAuthService {
     });
     
     // Log token generation
-    this.logger.info(
-      LogCategory.SECURITY,
-      `Generated one-time dev auth token for user ${userId}`,
-      { 
-        source: 'DevAuthService', 
-        userId,
-        expiresAt,
-        tokenId: token.substring(0, 8) + '...' // Only log a portion of the token for security
-      }
-    );
+    const tokenFragment = token.substring(0, 8) + '...';
+    console.info(`[DevAuthService] Generated one-time auth token for user ${userId}. Expires at ${expiresAt.toISOString()}. Token ID: ${tokenFragment}`);
     
     return token;
   }
@@ -117,11 +97,7 @@ export class DevAuthService {
    */
   public validateToken(token: string, requestInfo?: { ipAddress?: string; userAgent?: string }): number | null {
     if (!this.isEnabled) {
-      this.logger.warning(
-        LogCategory.SECURITY,
-        'Attempted to validate dev auth token in non-development environment',
-        { source: 'DevAuthService' }
-      );
+      console.warn('[DevAuthService] Attempted to validate dev auth token in non-development environment');
       return null;
     }
     
@@ -129,41 +105,19 @@ export class DevAuthService {
     
     // Token doesn't exist
     if (!tokenData) {
-      this.logger.warning(
-        LogCategory.SECURITY,
-        'Invalid dev auth token attempted',
-        { source: 'DevAuthService', tokenFragment: token.substring(0, 8) + '...' }
-      );
+      console.warn(`[DevAuthService] Invalid dev auth token attempted: ${token.substring(0, 8)}...`);
       return null;
     }
     
     // Token has already been used
     if (tokenData.used) {
-      this.logger.warning(
-        LogCategory.SECURITY,
-        'Attempted to reuse one-time dev auth token',
-        { 
-          source: 'DevAuthService',
-          userId: tokenData.userId,
-          tokenFragment: token.substring(0, 8) + '...',
-          originalUseTime: tokenData.usedAt
-        }
-      );
+      console.warn(`[DevAuthService] Attempted to reuse one-time dev auth token for user ${tokenData.userId}`);
       return null;
     }
     
     // Token has expired
     if (tokenData.expiresAt < new Date()) {
-      this.logger.warning(
-        LogCategory.SECURITY,
-        'Attempted to use expired dev auth token',
-        { 
-          source: 'DevAuthService',
-          userId: tokenData.userId,
-          tokenFragment: token.substring(0, 8) + '...',
-          expiredAt: tokenData.expiresAt
-        }
-      );
+      console.warn(`[DevAuthService] Attempted to use expired dev auth token for user ${tokenData.userId}`);
       
       // Clean up expired token
       this.tokens.delete(token);
@@ -184,17 +138,7 @@ export class DevAuthService {
     this.tokens.set(token, tokenData);
     
     // Log successful use
-    this.logger.info(
-      LogCategory.SECURITY,
-      `Successfully authenticated user ${tokenData.userId} using one-time dev auth token`,
-      { 
-        source: 'DevAuthService',
-        userId: tokenData.userId,
-        tokenFragment: token.substring(0, 8) + '...',
-        ipAddress: tokenData.ipAddress,
-        timeToUse: (tokenData.usedAt.getTime() - tokenData.createdAt.getTime()) / 1000
-      }
-    );
+    console.info(`[DevAuthService] Successfully authenticated user ${tokenData.userId} using one-time dev auth token`);
     
     return tokenData.userId;
   }
@@ -259,15 +203,7 @@ export class DevAuthService {
     
     const tokenData = this.tokens.get(token);
     if (tokenData) {
-      this.logger.info(
-        LogCategory.SECURITY,
-        `Manually revoked one-time dev auth token for user ${tokenData.userId}`,
-        { 
-          source: 'DevAuthService',
-          userId: tokenData.userId,
-          tokenFragment: token.substring(0, 8) + '...'
-        }
-      );
+      console.info(`[DevAuthService] Manually revoked one-time dev auth token for user ${tokenData.userId}`);
     }
     
     this.tokens.delete(token);
@@ -295,11 +231,7 @@ export class DevAuthService {
     }
     
     if (revokedCount > 0) {
-      this.logger.info(
-        LogCategory.SECURITY,
-        `Revoked ${revokedCount} dev auth tokens for user ${userId}`,
-        { source: 'DevAuthService', userId, count: revokedCount }
-      );
+      console.info(`[DevAuthService] Revoked ${revokedCount} dev auth tokens for user ${userId}`);
     }
     
     return revokedCount;
@@ -357,11 +289,7 @@ export class DevAuthService {
     }
     
     if (removedCount > 0) {
-      this.logger.debug(
-        LogCategory.SYSTEM,
-        `Cleaned up ${removedCount} expired or used dev auth tokens`,
-        { source: 'DevAuthService', count: removedCount }
-      );
+      console.debug(`[DevAuthService] Cleaned up ${removedCount} expired or used dev auth tokens`);
     }
   }
 }

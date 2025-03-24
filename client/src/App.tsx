@@ -28,6 +28,7 @@ import MarketTrendsPage from './pages/MarketTrendsPage';
 import NaturalHazardPage from './pages/NaturalHazardPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
+import DevAuthLoginPage from './pages/DevAuthLoginPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { 
   TutorialManager, 
