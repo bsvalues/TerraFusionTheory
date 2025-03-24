@@ -313,7 +313,7 @@ export default function ValuationAssistant() {
                               <SelectValue placeholder="Select property type" />
                             </SelectTrigger>
                             <SelectContent>
-                              <SelectItem value="">Not specified</SelectItem>
+                              <SelectItem value="not_specified">Not specified</SelectItem>
                               <SelectItem value="single_family">Single Family</SelectItem>
                               <SelectItem value="multi_family">Multi-Family</SelectItem>
                               <SelectItem value="condo">Condominium</SelectItem>
