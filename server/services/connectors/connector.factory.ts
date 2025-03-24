@@ -151,10 +151,20 @@ export class ConnectorFactory {
   }
   
   /**
-   * Get a connector by name
+   * Method overloads for getConnector
    */
-  public getConnector(name: string): DataConnector | undefined {
-    return this.registry.getConnector(name);
+  public getConnector(name: string): DataConnector | undefined;
+  public getConnector(type: ConnectorType, name: string): DataConnector | undefined;
+  public getConnector(typeOrName: string, name?: string): DataConnector | undefined {
+    if (name) {
+      // This is the type+name version
+      const type = typeOrName as ConnectorType;
+      const connectors = this.registry.getConnectorsByType(type);
+      return connectors.find(connector => connector.getName() === name);
+    } else {
+      // This is the name-only version
+      return this.registry.getConnector(typeOrName);
+    }
   }
   
   /**
@@ -169,6 +179,21 @@ export class ConnectorFactory {
    */
   public getConnectorsByType(type: string): DataConnector[] {
     return this.registry.getConnectorsByType(type);
+  }
+  
+  /**
+   * Get all connector types
+   */
+  public getConnectorTypes(): ConnectorType[] {
+    return ['cama', 'gis', 'market', 'pdf', 'document', 'tax', 'permit', 'weather', 'census'];
+  }
+  
+  /**
+   * Get names of all connectors of a specific type
+   */
+  public getConnectorNames(type: ConnectorType): string[] {
+    const connectors = this.registry.getConnectorsByType(type);
+    return connectors.map(connector => connector.getName());
   }
   
   /**

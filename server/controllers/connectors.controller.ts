@@ -6,7 +6,7 @@
  */
 
 import { Request, Response } from 'express';
-import { ConnectorFactory } from '../services/connectors/connector.factory';
+import { ConnectorFactory, ConnectorType } from '../services/connectors/connector.factory';
 import { AppError, NotFoundError, ValidationError, ExternalServiceError } from '../errors';
 
 const connectorFactory = ConnectorFactory.getInstance();
@@ -22,7 +22,7 @@ export async function getCurrentWeather(req: Request, res: Response) {
       throw new ValidationError('Location parameter is required');
     }
     
-    const weatherConnector = connectorFactory.getConnector('weather', 'weather-data');
+    const weatherConnector = connectorFactory.getConnector('weather-data');
     
     if (!weatherConnector) {
       throw new NotFoundError('Weather connector not found');
@@ -63,7 +63,7 @@ export async function getClimateData(req: Request, res: Response) {
       throw new ValidationError('Location parameter is required');
     }
     
-    const weatherConnector = connectorFactory.getConnector('weather', 'weather-data');
+    const weatherConnector = connectorFactory.getConnector('weather-data');
     
     if (!weatherConnector) {
       throw new NotFoundError('Weather connector not found');
@@ -104,7 +104,7 @@ export async function getFloodRiskData(req: Request, res: Response) {
       throw new ValidationError('Latitude and longitude parameters are required');
     }
     
-    const weatherConnector = connectorFactory.getConnector('weather', 'weather-data');
+    const weatherConnector = connectorFactory.getConnector('weather-data');
     
     if (!weatherConnector) {
       throw new NotFoundError('Weather connector not found');
@@ -146,7 +146,7 @@ export async function getDemographicData(req: Request, res: Response) {
       throw new ValidationError('State parameter is required');
     }
     
-    const censusConnector = connectorFactory.getConnector('census', 'census-data');
+    const censusConnector = connectorFactory.getConnector('census-data');
     
     if (!censusConnector) {
       throw new NotFoundError('Census connector not found');
@@ -192,7 +192,7 @@ export async function getAvailableConnectors(req: Request, res: Response) {
   try {
     const connectorTypes = connectorFactory.getConnectorTypes();
     
-    const result = connectorTypes.reduce((acc: any, type) => {
+    const result = connectorTypes.reduce((acc: any, type: ConnectorType) => {
       acc[type] = connectorFactory.getConnectorNames(type);
       return acc;
     }, {});
@@ -200,6 +200,36 @@ export async function getAvailableConnectors(req: Request, res: Response) {
     res.json(result);
   } catch (error) {
     console.error('Error getting available connectors:', error);
+    
+    if (error instanceof AppError) {
+      res.status(error.statusCode).json({
+        error: error.message,
+        code: error.code
+      });
+    } else {
+      const appError = new ExternalServiceError('Failed to fetch connector information');
+      res.status(appError.statusCode).json({
+        error: appError.message,
+        code: appError.code
+      });
+    }
+  }
+}
+
+/**
+ * Get all connectors
+ */
+export async function getAllConnectors(req: Request, res: Response) {
+  try {
+    const connectors = connectorFactory.getAllConnectors();
+    const result = connectors.map(connector => ({
+      name: connector.getName(),
+      type: connector.getType()
+    }));
+    
+    res.json(result);
+  } catch (error) {
+    console.error('Error getting all connectors:', error);
     
     if (error instanceof AppError) {
       res.status(error.statusCode).json({
