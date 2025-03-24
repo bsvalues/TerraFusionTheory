@@ -19,6 +19,7 @@ import PropertyEnrichmentDemo from './pages/PropertyEnrichmentDemo';
 import PropertyValuationDemo from './pages/PropertyValuationDemo';
 import NeighborhoodComparisonPage from './pages/NeighborhoodComparisonPage';
 import SchoolAndEconomicAnalysisPage from './pages/SchoolAndEconomicAnalysisPage';
+import PropertyDetailPage from './pages/PropertyDetailPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -66,6 +67,7 @@ const App = () => {
             <Route path="/property-valuation-demo" component={PropertyValuationDemo} />
             <Route path="/neighborhood-comparison" component={NeighborhoodComparisonPage} />
             <Route path="/school-economic-analysis" component={SchoolAndEconomicAnalysisPage} />
+            <Route path="/property/:propertyId" component={PropertyDetailPage} />
             <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
             <Route path="/help" component={HelpCenterPage} />
             <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
