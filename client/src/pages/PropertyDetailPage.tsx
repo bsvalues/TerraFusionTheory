@@ -220,7 +220,7 @@ const PropertyDetailPage: React.FC = () => {
                 
                 <div className="flex flex-col items-center">
                   <div className="flex items-center text-muted-foreground mb-1">
-                    <SquareFoot className="h-4 w-4 mr-1" />
+                    <Square className="h-4 w-4 mr-1" />
                     <span className="text-sm">Square Feet</span>
                   </div>
                   <span className="font-bold text-lg">{property.squareFeet.toLocaleString()}</span>
@@ -437,29 +437,33 @@ const PropertyDetailPage: React.FC = () => {
                           <div className="space-y-2">
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">District Rating</span>
-                              <span className="font-medium">{property.schoolDistrict.rating}/10</span>
+                              <span className="font-medium">{property.schoolDistrict.averageRating}/10</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Total Students</span>
-                              <span className="font-medium">{property.schoolDistrict.totalStudents.toLocaleString()}</span>
+                              <span className="font-medium">{property.schoolDistrict.studentPopulation.toLocaleString()}</span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Student/Teacher Ratio</span>
-                              <span className="font-medium">{property.schoolDistrict.studentTeacherRatio}:1</span>
+                              <span className="text-muted-foreground">Student Demographics</span>
+                              <span className="font-medium">
+                                {property.schoolDistrict.demographicData?.economicallyDisadvantaged || 0}% LD
+                              </span>
                             </div>
                           </div>
                           <div className="space-y-2">
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">Graduation Rate</span>
-                              <span className="font-medium">{property.schoolDistrict.graduationRate}%</span>
+                              <span className="text-muted-foreground">Performance Trend</span>
+                              <span className="font-medium">
+                                {property.schoolDistrict.performanceTrend || 'Stable'}
+                              </span>
                             </div>
                             <div className="flex justify-between">
-                              <span className="text-muted-foreground">College-Bound</span>
-                              <span className="font-medium">{property.schoolDistrict.collegeEnrollmentRate}%</span>
+                              <span className="text-muted-foreground">Math Score</span>
+                              <span className="font-medium">{property.schoolDistrict.averageTestScores.math}%</span>
                             </div>
                             <div className="flex justify-between">
                               <span className="text-muted-foreground">Per-Pupil Spending</span>
-                              <span className="font-medium">${property.schoolDistrict.perPupilSpending.toLocaleString()}</span>
+                              <span className="font-medium">${property.schoolDistrict.budgetPerStudent?.toLocaleString() || 'N/A'}</span>
                             </div>
                           </div>
                         </div>
@@ -480,7 +484,7 @@ const PropertyDetailPage: React.FC = () => {
                                   <div className="font-medium">{school.name}</div>
                                   <div className="text-sm text-muted-foreground">
                                     {school.type.charAt(0).toUpperCase() + school.type.slice(1)} School
-                                    {school.grades && ` • Grades ${school.grades}`}
+                                    {school.gradeRange && ` • Grades ${school.gradeRange}`}
                                   </div>
                                 </div>
                                 <Badge>
