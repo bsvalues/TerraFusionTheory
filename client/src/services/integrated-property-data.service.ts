@@ -570,8 +570,8 @@ class IntegratedPropertyDataService {
         insuranceImpact: {
           estimatedPremiumIncrease: premiumIncrease,
           coverageRecommendations: [
-            floodRisk !== RiskLevel.LOW ? 'Flood insurance policy' : 'Standard homeowner policy',
-            earthquakeRisk !== RiskLevel.LOW ? 'Earthquake insurance rider' : 'Standard foundation coverage'
+            this.getRiskLevelValue(floodRisk) > this.getRiskLevelValue(RiskLevel.LOW) ? 'Flood insurance policy' : 'Standard homeowner policy',
+            this.getRiskLevelValue(earthquakeRisk) > this.getRiskLevelValue(RiskLevel.LOW) ? 'Earthquake insurance rider' : 'Standard foundation coverage'
           ]
         }
       };
