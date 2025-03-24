@@ -17,6 +17,7 @@ export interface IStorage {
   // User methods
   getUser(id: number): Promise<User | undefined>;
   getUserByUsername(username: string): Promise<User | undefined>;
+  getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
   
   // Project methods
@@ -126,6 +127,16 @@ export class MemStorage implements IStorage {
     this.currentLogId = 1;
     this.currentBadgeId = 1;
     this.currentUserBadgeId = 1;
+    
+    // Add a sample admin user
+    const adminUser: User = {
+      id: this.currentUserId,
+      username: 'admin',
+      password: 'admin123', // In a real app, this would be hashed
+      email: 'admin@example.com'
+    };
+    this.users.set(this.currentUserId, adminUser);
+    this.currentUserId++;
     
     // Initialize with sample project
     const sampleProject: Project = {
@@ -386,6 +397,10 @@ export class MemStorage implements IStorage {
     return Array.from(this.users.values()).find(
       (user) => user.username === username,
     );
+  }
+  
+  async getAllUsers(): Promise<User[]> {
+    return Array.from(this.users.values());
   }
 
   async createUser(insertUser: InsertUser): Promise<User> {

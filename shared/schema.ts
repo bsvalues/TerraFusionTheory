@@ -45,6 +45,7 @@ export const users = pgTable("users", {
   id: serial("id").primaryKey(),
   username: text("username").notNull().unique(),
   password: text("password").notNull(),
+  email: text("email"),
 });
 
 export const projects = pgTable("projects", {
@@ -123,6 +124,7 @@ export const userBadges = pgTable("user_badges", {
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
+  email: true,
 });
 
 export const insertProjectSchema = createInsertSchema(projects).pick({

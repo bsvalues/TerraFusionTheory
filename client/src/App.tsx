@@ -29,6 +29,8 @@ import NaturalHazardPage from './pages/NaturalHazardPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import DevAuthLoginPage from './pages/DevAuthLoginPage';
+import DevAuthAdminPage from './pages/DevAuthAdminPage';
+import UserAdminPage from './pages/UserAdminPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { 
   TutorialManager, 
@@ -86,6 +88,8 @@ const App = () => {
               <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
               <Route path="/help" component={HelpCenterPage} />
               <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
+              <Route path="/dev-auth" component={DevAuthLoginPage} />
+              <Route path="/dev-auth/admin" component={DevAuthAdminPage} />
               <Route component={NotFoundPage} />
             </Switch>
             

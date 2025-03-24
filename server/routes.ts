@@ -13,6 +13,7 @@ import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "
 import { alertManager, AlertSeverity } from "./services/alert";
 import { realEstateAnalyticsService } from "./services/real-estate-analytics.service";
 import registerDevAuthRoutes from "./routes/dev-auth.routes";
+import registerUserRoutes from "./routes/users.routes";
 
 // Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';
@@ -56,6 +57,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register development auth routes
   registerDevAuthRoutes(app, storage);
+  
+  // Register user routes
+  registerUserRoutes(app, storage);
   
   // API routes - prefix all routes with /api
   
