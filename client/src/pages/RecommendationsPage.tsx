@@ -40,9 +40,9 @@ export function RecommendationsPage() {
     <div className="container mx-auto py-8">
       <div className="flex flex-col md:flex-row justify-between items-start mb-8 gap-4">
         <div>
-          <h1 className="text-3xl font-bold">Smart Property Recommendations</h1>
+          <h1 className="text-3xl font-bold">Property Valuation Analysis</h1>
           <p className="text-muted-foreground mt-1">
-            Personalized property suggestions based on your preferences and market insights
+            Comprehensive property valuations using mass appraisal and individual appraisal methodologies
           </p>
         </div>
         
@@ -69,10 +69,10 @@ export function RecommendationsPage() {
       <div className="mb-8">
         <Alert>
           <Info className="h-4 w-4" />
-          <AlertTitle>Smart Recommendation System</AlertTitle>
+          <AlertTitle>Property Valuation System</AlertTitle>
           <AlertDescription>
-            Our AI-powered recommendation engine analyzes market trends, property features, and your browsing patterns
-            to suggest properties that match your preferences and investment goals.
+            Our advanced valuation engine integrates multiple approaches including sales comparison, cost approach,
+            and mass appraisal methods to deliver accurate property valuations for both fee appraisers and assessors.
           </AlertDescription>
         </Alert>
       </div>
@@ -82,9 +82,9 @@ export function RecommendationsPage() {
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mb-4">
             <TabsList>
               <TabsTrigger value="all">All Properties</TabsTrigger>
-              <TabsTrigger value="investment">Investment Opportunities</TabsTrigger>
-              <TabsTrigger value="family">Family Homes</TabsTrigger>
-              <TabsTrigger value="trending">Trending Now</TabsTrigger>
+              <TabsTrigger value="investment">Mass Appraisal</TabsTrigger>
+              <TabsTrigger value="family">Fee Appraisal</TabsTrigger>
+              <TabsTrigger value="trending">Assessment Review</TabsTrigger>
             </TabsList>
             
             <div className="flex flex-wrap gap-2">
@@ -123,7 +123,7 @@ export function RecommendationsPage() {
           <TabsContent value="investment">
             <PropertyRecommendationCarousel 
               limit={propertyLimit}
-              filterByTags={['Investment', 'Rental Potential', 'Undervalued', ...selectedTags]}
+              filterByTags={['Assessed', 'Market Aligned', 'Above Average', ...selectedTags]}
               onViewDetails={handleViewDetails}
               onFavorite={handleFavorite}
             />
@@ -132,7 +132,7 @@ export function RecommendationsPage() {
           <TabsContent value="family">
             <PropertyRecommendationCarousel 
               limit={propertyLimit}
-              filterByTags={['Family-Friendly', 'Top Schools', ...selectedTags]}
+              filterByTags={['Single Family', 'High Quality', 'Recent Construction', ...selectedTags]}
               onViewDetails={handleViewDetails}
               onFavorite={handleFavorite}
             />
@@ -141,7 +141,7 @@ export function RecommendationsPage() {
           <TabsContent value="trending">
             <PropertyRecommendationCarousel 
               limit={propertyLimit}
-              filterByTags={['Modern', 'Growing Area', ...selectedTags]}
+              filterByTags={['Under-assessed', 'Needs Assessment', 'Functionally Obsolete', ...selectedTags]}
               onViewDetails={handleViewDetails}
               onFavorite={handleFavorite}
             />

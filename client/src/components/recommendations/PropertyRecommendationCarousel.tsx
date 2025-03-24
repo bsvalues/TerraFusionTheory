@@ -8,7 +8,7 @@ import { useQuery } from '@tanstack/react-query';
 
 // Types for the property recommendation
 export interface PropertyInsight {
-  type: 'investment' | 'market' | 'neighborhood' | 'school' | 'risk' | 'value';
+  type: 'valuation' | 'comparable' | 'market' | 'assessment' | 'appraisal' | 'mass-appraisal';
   title: string;
   description: string;
   icon?: React.ReactNode;
@@ -96,16 +96,18 @@ export function PropertyRecommendationCarousel({
   // Get icon based on insight type
   const getInsightIcon = (type: PropertyInsight['type']) => {
     switch (type) {
-      case 'investment':
+      case 'valuation':
         return <TrendingUp className="h-4 w-4" />;
+      case 'comparable':
+        return <MapPin className="h-4 w-4" />;
       case 'market':
         return <HandCoins className="h-4 w-4" />;
-      case 'neighborhood':
-        return <MapPin className="h-4 w-4" />;
-      case 'school':
-        return <School className="h-4 w-4" />;
-      case 'risk':
+      case 'assessment':
         return <ShieldCheck className="h-4 w-4" />;
+      case 'appraisal':
+        return <TrendingUp className="h-4 w-4" />;
+      case 'mass-appraisal':
+        return <Lightbulb className="h-4 w-4" />;
       default:
         return <Lightbulb className="h-4 w-4" />;
     }

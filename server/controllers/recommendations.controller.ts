@@ -33,26 +33,26 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
         imageUrl: "https://images.unsplash.com/photo-1518780664697-55e3ad937233?q=80&w=500&auto=format&fit=crop",
         insights: [
           {
-            type: "investment",
-            title: "Strong Investment Potential",
-            description: "This property has appreciated 12% in the last year, outperforming the neighborhood average of 8%.",
-            score: 85
+            type: "valuation",
+            title: "Cost Approach Analysis",
+            description: "Replacement cost of $175/sqft plus land value of $85,000 suggests a total value of $400,000, indicating potential over-assessment.",
+            score: 82
           },
           {
-            type: "neighborhood",
-            title: "Growing Neighborhood",
-            description: "This area has seen a 15% increase in new businesses in the last 2 years.",
-            score: 90
+            type: "comparable",
+            title: "Comparable Sales Method",
+            description: "Based on 5 similar properties sold in the last 6 months within 0.5 miles, the adjusted comparable value is $445,000.",
+            score: 95
           },
           {
-            type: "school",
-            title: "Excellent Schools Nearby",
-            description: "The property is in the zone for schools rated 8/10 or higher on GreatSchools.",
-            score: 80
+            type: "assessment",
+            title: "Assessment Ratio",
+            description: "Current assessment ratio is 0.92, within the acceptable range of 0.90-1.10 for equitable property taxation.",
+            score: 88
           }
         ],
         matchScore: 92,
-        tags: ["Investment", "Growing Area", "Family-Friendly"],
+        tags: ["Assessed", "Single Family", "Average Quality"],
         latitude: 46.2529,
         longitude: -119.9021
       },
@@ -66,26 +66,26 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
         imageUrl: "https://images.unsplash.com/photo-1568605114967-8130f3a36994?q=80&w=500&auto=format&fit=crop",
         insights: [
           {
-            type: "value",
-            title: "Undervalued Property",
-            description: "This home is priced 8% below similar properties in this area.",
-            score: 95
+            type: "mass-appraisal",
+            title: "Automated Valuation Model",
+            description: "The AVM suggests a value range of $375,000-$395,000 based on regression analysis of 72 similar properties.",
+            score: 91
           },
           {
             type: "market",
-            title: "Hot Market Segment",
-            description: "4+ bedroom homes are selling 25% faster than the overall market in this area.",
-            score: 88
+            title: "Market Approach Analysis",
+            description: "Time-adjusted market approach indicates a value of $382,000, very close to current assessment.",
+            score: 94
           },
           {
-            type: "risk",
-            title: "Low Hazard Risk",
-            description: "This property has minimal exposure to floods, fires, and other natural hazards.",
-            score: 92
+            type: "assessment",
+            title: "PRD Value",
+            description: "The Price Related Differential (PRD) of 1.03 suggests slight regressivity in assessment for this price range.",
+            score: 85
           }
         ],
         matchScore: 88,
-        tags: ["Undervalued", "Large Family Home", "Low Risk"],
+        tags: ["Accurately Assessed", "Market Aligned", "Above Average"],
         latitude: 46.2550,
         longitude: -119.9100
       },
@@ -99,26 +99,26 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
         imageUrl: "https://images.unsplash.com/photo-1576941089067-2de3c901e126?q=80&w=500&auto=format&fit=crop",
         insights: [
           {
-            type: "market",
-            title: "Rapidly Appreciating Area",
-            description: "Properties in this zip code have seen 10% year-over-year appreciation.",
+            type: "appraisal",
+            title: "Income Approach",
+            description: "Using the GRM method with comparable rental properties, the income approach yields a value of $340,000.",
+            score: 87
+          },
+          {
+            type: "mass-appraisal",
+            title: "CAMA Model Results",
+            description: "The Computer Assisted Mass Appraisal model suggests a value of $332,500 based on county-wide parameters.",
             score: 90
           },
           {
-            type: "neighborhood",
-            title: "Excellent Walkability",
-            description: "This home has a walkability score of 85/100, with shops and restaurants nearby.",
-            score: 85
-          },
-          {
-            type: "investment",
-            title: "Strong Rental Potential",
-            description: "Similar properties in this area rent for $2,200/month, providing a 8.1% annual yield.",
-            score: 92
+            type: "comparable",
+            title: "Sales Comparison Approach",
+            description: "Adjustments for square footage, age, and condition result in a comparable value of $328,000.",
+            score: 95
           }
         ],
         matchScore: 85,
-        tags: ["Starter Home", "Rental Potential", "Walkable"],
+        tags: ["Income Producing", "Rental Property", "Average Quality"],
         latitude: 46.2510,
         longitude: -119.9050
       },
@@ -132,26 +132,26 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
         imageUrl: "https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=500&auto=format&fit=crop",
         insights: [
           {
-            type: "school",
-            title: "Top-Rated School District",
-            description: "This property is in the highest-rated school district in the county.",
-            score: 98
+            type: "valuation",
+            title: "Replacement Cost Analysis",
+            description: "High-quality construction at $215/sqft plus land value of $120,000 indicates replacement cost of $722,000.",
+            score: 94
           },
           {
-            type: "risk",
-            title: "Modern Construction",
-            description: "Built in 2019, this home features modern construction techniques and materials.",
-            score: 95
+            type: "assessment",
+            title: "Assessment Review",
+            description: "Current assessment appears to be 18% below market value, suggesting potential for appeal by county assessor.",
+            score: 65
           },
           {
-            type: "value",
-            title: "Premium Features",
-            description: "This home includes $75,000 in premium upgrades compared to similar properties.",
+            type: "mass-appraisal",
+            title: "IAAO Standards",
+            description: "The COD (Coefficient of Dispersion) for this neighborhood is 12.8, within IAAO standards for residential properties.",
             score: 85
           }
         ],
         matchScore: 80,
-        tags: ["Luxury", "Modern", "Top Schools"],
+        tags: ["Under-assessed", "High Quality", "Recent Construction"],
         latitude: 46.2600,
         longitude: -119.9000
       },
@@ -165,26 +165,26 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
         imageUrl: "https://images.unsplash.com/photo-1575517111839-3a3843ee7f5d?q=80&w=500&auto=format&fit=crop",
         insights: [
           {
-            type: "value",
-            title: "Renovation Opportunity",
-            description: "With strategic updates, this property could increase in value by 20-25%.",
-            score: 90
-          },
-          {
-            type: "market",
-            title: "Fast-Selling Category",
-            description: "Single-level homes in this price range sell within 10 days on average.",
+            type: "comparable",
+            title: "Comparable Adjustments",
+            description: "After adjustments for condition (-15%), lot size (+5%), and bathroom count (-8%), the adjusted comparable value is $275,000.",
             score: 88
           },
           {
-            type: "neighborhood",
-            title: "Improving Schools",
-            description: "Local schools have improved their ratings by 2 points in the last 3 years.",
+            type: "appraisal",
+            title: "Functional Obsolescence",
+            description: "Estimated 8% functional obsolescence due to dated floor plan and electrical system reduces value by $23,600.",
+            score: 72
+          },
+          {
+            type: "assessment",
+            title: "Assessment Timeline",
+            description: "Last mass appraisal was 3 years ago. Current assessment may not reflect recent local market changes.",
             score: 82
           }
         ],
         matchScore: 78,
-        tags: ["Fixer Upper", "Investment", "First-Time Buyer"],
+        tags: ["Needs Assessment", "Functionally Obsolete", "Older Home"],
         latitude: 46.2520,
         longitude: -119.9120
       }
@@ -218,18 +218,18 @@ export async function getPropertyTags(req: Request, res: Response) {
   try {
     // In a real app, this would come from analyzing property data
     const tags = [
-      "Investment",
-      "Luxury",
-      "First-Time Buyer",
-      "Rental Potential",
-      "Family-Friendly",
-      "Walkable",
-      "Top Schools",
-      "Modern",
-      "Fixer Upper",
-      "Growing Area",
-      "Undervalued",
-      "Low Risk"
+      "Assessed",
+      "Market Aligned",
+      "Under-assessed",
+      "Needs Assessment",
+      "Income Producing",
+      "Single Family",
+      "Average Quality",
+      "Above Average",
+      "High Quality",
+      "Recent Construction",
+      "Older Home",
+      "Functionally Obsolete"
     ];
     
     return res.status(200).json(tags);
@@ -302,34 +302,34 @@ export async function getPropertyInsights(req: Request, res: Response) {
     // In a real app, this would fetch insights from an AI-powered analysis engine
     const insights = [
       {
-        type: "investment",
-        title: "Strong Investment Potential",
-        description: "This property has appreciated 12% in the last year, outperforming the neighborhood average of 8%.",
-        score: 85
-      },
-      {
-        type: "neighborhood",
-        title: "Growing Neighborhood",
-        description: "This area has seen a 15% increase in new businesses in the last 2 years.",
-        score: 90
-      },
-      {
-        type: "school",
-        title: "Excellent Schools Nearby",
-        description: "The property is in the zone for schools rated 8/10 or higher on GreatSchools.",
-        score: 80
-      },
-      {
-        type: "market",
-        title: "Hot Market Segment",
-        description: "Properties in this category are selling 20% faster than the overall market.",
+        type: "valuation",
+        title: "Cost Approach Analysis",
+        description: "Replacement cost new of $180/sqft with land value of $95,000 suggests a total value of $430,000 via cost approach.",
         score: 88
       },
       {
-        type: "risk",
-        title: "Low Natural Hazard Risk",
-        description: "This property has minimal exposure to floods, fires, and other natural hazards.",
+        type: "comparable",
+        title: "Sales Comparison Approach",
+        description: "Five comparable properties within 0.6 miles sold in the last 90 days indicate an adjusted value of $442,500.",
         score: 92
+      },
+      {
+        type: "mass-appraisal",
+        title: "CAMA Model Assessment",
+        description: "Computer-assisted mass appraisal model suggests value of $438,000 based on regression analysis.",
+        score: 90
+      },
+      {
+        type: "appraisal",
+        title: "Final Reconciliation",
+        description: "Weighted reconciliation of all three approaches indicates a final market value of $440,000.",
+        score: 95
+      },
+      {
+        type: "assessment",
+        title: "Assessment Analysis",
+        description: "Current assessment ratio is 0.94, within IAAO standards for assessment uniformity.",
+        score: 88
       }
     ];
     
