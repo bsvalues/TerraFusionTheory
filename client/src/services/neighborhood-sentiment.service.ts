@@ -1,1155 +1,340 @@
 /**
  * Neighborhood Sentiment Analysis Service
  * 
- * This service provides functions to analyze and retrieve sentiment data
- * for neighborhoods based on various data sources including property listings,
- * social media, news articles, and user reviews.
- * 
- * It also provides historical trend data and predictive analytics for future
- * sentiment trends based on historical patterns and market indicators.
+ * This service analyzes sentiment data from social media, news articles, and other sources
+ * to provide insights about different neighborhoods.
  */
 
-import { apiRequest } from '@/lib/queryClient';
-
-// Sentiment score types
-export type SentimentLevel = 'very_negative' | 'negative' | 'neutral' | 'positive' | 'very_positive';
-
-// Sentiment topics that can be analyzed
-export type SentimentTopic = 
-  | 'safety' 
-  | 'schools' 
-  | 'amenities' 
-  | 'affordability' 
-  | 'community' 
-  | 'transportation'
-  | 'development'
-  | 'market_trend'
-  | 'lifestyle'
-  | 'environment'
-  | string; // Allow for custom topics
-
-// Sentiment score (0-100)
-export interface SentimentScore {
-  score: number; // 0-100
-  level: SentimentLevel;
-  confidence: number; // 0-1
+export enum SentimentLevel {
+  VERY_NEGATIVE = 'very-negative',
+  NEGATIVE = 'negative',
+  NEUTRAL = 'neutral',
+  POSITIVE = 'positive',
+  VERY_POSITIVE = 'very-positive'
 }
 
-// Source of sentiment data
-export type SentimentSource = 
-  | 'property_listings'
-  | 'social_media'
-  | 'news'
-  | 'reviews'
-  | 'market_data'
-  | 'agent_insights'
-  | 'resident_surveys';
-
-// Individual sentiment mention
-export interface SentimentMention {
-  id: string;
-  text: string;
-  score: number; // -1 to 1 where -1 is very negative, 1 is very positive
-  source: SentimentSource;
-  date: string;
-  url?: string;
-  author?: string;
-  topics: SentimentTopic[];
+export interface TopicSentiment {
+  topic: string;
+  sentiment: SentimentLevel;
+  score: number; // -1 to 1 with -1 being very negative, 1 being very positive
+  sources: number; // Number of sources that mentioned this topic
+  trending: boolean; // Whether this topic is trending up in mentions
 }
 
-// Neighborhood sentiment data
 export interface NeighborhoodSentiment {
-  neighborhoodId: string;
-  neighborhoodName: string;
-  city: string;
-  state: string;
-  overallScore: SentimentScore;
-  topicScores: Record<SentimentTopic, SentimentScore>;
-  trend: {
-    direction: 'improving' | 'stable' | 'declining';
-    changeRate: number; // percent change in the last period
+  id: string;
+  name: string;
+  overallSentiment: SentimentLevel;
+  overallScore: number; // -1 to 1
+  topicSentiments: TopicSentiment[];
+  sources: {
+    socialMedia: number;
+    news: number;
+    blogs: number;
+    forums: number;
+    reviews: number;
   };
-  mentions: SentimentMention[];
   lastUpdated: string;
-  summaryText: string;
-  geolocation?: {
-    latitude: number;
-    longitude: number;
-    boundaryPoints?: Array<[number, number]>; // Polygon boundary points
-  };
 }
 
-// Query parameters for sentiment analysis
-export interface SentimentQueryParams {
-  neighborhoodName?: string;
-  city?: string;
-  state?: string;
-  zipCode?: string;
-  topics?: SentimentTopic[];
-  sources?: SentimentSource[];
-  startDate?: string;
-  endDate?: string;
-  limit?: number;
-}
-
-// Historical sentiment data point
-export interface SentimentHistoricalDataPoint {
-  date: string;
+export interface SentimentTrend {
+  period: string; // Month in format MMM YYYY
   score: number;
-  topic: SentimentTopic | 'overall';
-  neighborhoodName: string;
-  city: string;
-  min?: number;
-  max?: number;
-  isPrediction?: boolean;
 }
 
-// Query parameters for trend data
-export interface SentimentTrendQueryParams {
-  neighborhoodName: string;
-  city?: string;
-  state?: string;
-  topic?: SentimentTopic | 'overall';
-  timeframe?: '3m' | '6m' | '1y' | '2y' | '5y';
-  predictionMonths?: number;
-}
-
-// Mock neighborhoods for testing
-const RICHLAND_NEIGHBORHOODS = [
-  'Columbia Point',
-  'Meadow Springs',
-  'Horn Rapids', 
-  'Badger Mountain South', 
-  'Central Richland', 
-  'North Richland',
-  'South Richland'
-];
-
-const GRANDVIEW_NEIGHBORHOODS = [
-  'Downtown Grandview',
-  'Grandview Heights',
-  'East Grandview',
-  'West Valley',
-  'Mountainview'
-];
-
-// Sentiment analysis service
 class NeighborhoodSentimentService {
+  private static instance: NeighborhoodSentimentService;
+  private apiUrl: string = '/api/neighborhoods/sentiment';
+
+  private constructor() {}
+
+  public static getInstance(): NeighborhoodSentimentService {
+    if (!NeighborhoodSentimentService.instance) {
+      NeighborhoodSentimentService.instance = new NeighborhoodSentimentService();
+    }
+    return NeighborhoodSentimentService.instance;
+  }
 
   /**
-   * Get sentiment data for a specific neighborhood
+   * Get sentiment analysis for a specific neighborhood
    */
-  async getNeighborhoodSentiment(params: SentimentQueryParams): Promise<NeighborhoodSentiment> {
+  public async getNeighborhoodSentiment(neighborhoodId: string): Promise<NeighborhoodSentiment> {
     try {
-      // In a real application, this would make an API call to get sentiment data
-      // For demo purposes, we'll generate realistic mock data
-      
-      // Use the neighborhood name from params or choose a random one
-      const neighborhoodName = params.neighborhoodName || this.getRandomNeighborhood(params.city);
-      const city = params.city || (neighborhoodName.includes('Richland') ? 'Richland' : 'Grandview');
-      const state = params.state || 'WA';
-      
-      // For demo purposes, use hard-coded data for specific neighborhoods in Richland
-      if (neighborhoodName === 'Columbia Point' && city === 'Richland') {
-        return this.getColumbiaPointSentiment();
-      } else if (neighborhoodName === 'Meadow Springs' && city === 'Richland') {
-        return this.getMeadowSpringsSentiment();
-      }
-      
-      // For others, generate data
-      return this.generateSentimentData(neighborhoodName, city, state);
+      // In a production environment, this would be a real API call
+      // For now, using a timeout to simulate network request
+      // const response = await fetch(`${this.apiUrl}/${neighborhoodId}`);
+      // if (!response.ok) throw new Error('Failed to fetch neighborhood sentiment');
+      // return await response.json();
+
+      // Simulate API response with generated data
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(this.generateNeighborhoodSentiment(neighborhoodId));
+        }, 800);
+      });
     } catch (error) {
-      console.error('Error fetching neighborhood sentiment data:', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Get sentiments for multiple neighborhoods in a city
-   */
-  async getCitySentiments(city: string, state: string = 'WA'): Promise<NeighborhoodSentiment[]> {
-    try {
-      const neighborhoods = this.getNeighborhoodsForCity(city);
-      
-      // Get sentiment data for each neighborhood
-      const sentiments = await Promise.all(
-        neighborhoods.map(neighborhood => this.getNeighborhoodSentiment({
-          neighborhoodName: neighborhood,
-          city,
-          state
-        }))
-      );
-      
-      return sentiments;
-    } catch (error) {
-      console.error('Error fetching city sentiment data:', error);
+      console.error('Error fetching neighborhood sentiment:', error);
       throw error;
     }
   }
 
   /**
-   * Compare sentiment between two neighborhoods
+   * Get sentiment trends for a neighborhood over time
    */
-  async compareSentiment(
-    neighborhood1: string, 
-    neighborhood2: string, 
-    city: string,
-    topics?: SentimentTopic[]
-  ): Promise<{
-    neighborhood1: NeighborhoodSentiment,
-    neighborhood2: NeighborhoodSentiment,
-    comparison: Record<SentimentTopic, {
-      difference: number,
-      winner: string
-    }>
-  }> {
+  public async getSentimentTrends(neighborhoodId: string, months: number = 12): Promise<SentimentTrend[]> {
     try {
-      const sentiment1 = await this.getNeighborhoodSentiment({
-        neighborhoodName: neighborhood1,
-        city,
-        topics
+      // Simulate API response with generated data
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(this.generateSentimentTrends(neighborhoodId, months));
+        }, 600);
       });
-      
-      const sentiment2 = await this.getNeighborhoodSentiment({
-        neighborhoodName: neighborhood2,
-        city,
-        topics
-      });
-      
-      // Compare scores for each topic
-      const comparison: Record<SentimentTopic, {
-        difference: number,
-        winner: string
-      }> = {} as any;
-      
-      const allTopics = topics || Object.keys(sentiment1.topicScores) as SentimentTopic[];
-      
-      allTopics.forEach(topic => {
-        const score1 = sentiment1.topicScores[topic]?.score || 0;
-        const score2 = sentiment2.topicScores[topic]?.score || 0;
-        const difference = score1 - score2;
-        const winner = difference > 0 ? neighborhood1 : difference < 0 ? neighborhood2 : 'tie';
-        
-        comparison[topic] = {
-          difference: Math.abs(difference),
-          winner
-        };
-      });
-      
-      return {
-        neighborhood1: sentiment1,
-        neighborhood2: sentiment2,
-        comparison
-      };
     } catch (error) {
-      console.error('Error comparing neighborhood sentiment:', error);
+      console.error('Error fetching sentiment trends:', error);
       throw error;
     }
-  }
-  
-  /**
-   * Get neighborhoods for a given city
-   */
-  getNeighborhoodsForCity(city: string): string[] {
-    if (city.toLowerCase().includes('richland')) {
-      return RICHLAND_NEIGHBORHOODS;
-    } else if (city.toLowerCase().includes('grandview')) {
-      return GRANDVIEW_NEIGHBORHOODS;
-    } else {
-      // Default to richland
-      return RICHLAND_NEIGHBORHOODS;
-    }
-  }
-  
-  /**
-   * Get historical sentiment trend data for a neighborhood
-   */
-  async getNeighborhoodSentimentTrend(params: SentimentTrendQueryParams): Promise<SentimentHistoricalDataPoint[]> {
-    try {
-      const {
-        neighborhoodName,
-        city = 'Richland',
-        state = 'WA',
-        topic = 'overall',
-        timeframe = '1y',
-        predictionMonths = 12
-      } = params;
-      
-      // Get historical data
-      const historicalData = this.generateHistoricalTrendData(
-        neighborhoodName,
-        city,
-        topic,
-        timeframe
-      );
-      
-      // Only return historical data, not predictions
-      return historicalData;
-    } catch (error) {
-      console.error('Error fetching sentiment trend data:', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Get predicted sentiment trend data for a neighborhood
-   */
-  async predictNeighborhoodSentimentTrend(
-    params: SentimentTrendQueryParams
-  ): Promise<{
-    historical: SentimentHistoricalDataPoint[];
-    predictions: SentimentHistoricalDataPoint[];
-    confidence: number;
-  }> {
-    try {
-      const {
-        neighborhoodName,
-        city = 'Richland',
-        state = 'WA',
-        topic = 'overall',
-        timeframe = '1y',
-        predictionMonths = 12
-      } = params;
-      
-      // Get historical data
-      const historicalData = this.generateHistoricalTrendData(
-        neighborhoodName,
-        city,
-        topic,
-        timeframe
-      );
-      
-      // Generate predictions based on historical data
-      const predictions = this.generatePredictionData(
-        historicalData,
-        topic,
-        neighborhoodName,
-        city,
-        predictionMonths
-      );
-      
-      return {
-        historical: historicalData,
-        predictions,
-        confidence: 0.85 // Confidence in prediction (0-1)
-      };
-    } catch (error) {
-      console.error('Error generating sentiment predictions:', error);
-      throw error;
-    }
-  }
-  
-  /**
-   * Generate historical trend data based on selected parameters
-   */
-  private generateHistoricalTrendData(
-    neighborhood: string,
-    city: string,
-    topic: SentimentTopic | 'overall',
-    timeframe: string
-  ): SentimentHistoricalDataPoint[] {
-    // Determine number of months based on timeframe
-    const months = this.getMonthsForTimeframe(timeframe);
-    const data: SentimentHistoricalDataPoint[] = [];
-    
-    // Get current sentiment to use as the most recent data point
-    const currentSentiment = this.getCurrentSentiment(neighborhood, city, topic);
-    
-    // Determine trend direction from current sentiment
-    const trendDirection = this.getTrendDirection(neighborhood, city);
-    const trendMultiplier = trendDirection === 'improving' ? 1 
-      : trendDirection === 'declining' ? -1 
-      : 0;
-    
-    // Generate data points for each month
-    const endDate = new Date();
-    
-    for (let i = months; i >= 0; i--) {
-      const date = new Date(endDate);
-      date.setMonth(date.getMonth() - i);
-      
-      // Add some variability to the trend
-      const randomVariation = (Math.random() - 0.5) * 5;
-      const trendEffect = (i / months) * trendMultiplier * 10; // Trend effect increases over time
-      
-      // Calculate score based on current sentiment, trend, and random variation
-      let score = currentSentiment - trendEffect + randomVariation;
-      
-      // Ensure score stays within 0-100 range
-      score = Math.max(0, Math.min(100, score));
-      
-      // Add seasonal variations
-      const seasonalEffect = Math.sin((date.getMonth() / 12) * Math.PI * 2) * 3;
-      score += seasonalEffect;
-      
-      // Format date for display
-      const formattedDate = date.toISOString().split('T')[0];
-      
-      data.push({
-        date: formattedDate,
-        score: Math.round(score),
-        topic,
-        neighborhoodName: neighborhood,
-        city,
-        isPrediction: false
-      });
-    }
-    
-    return data;
-  }
-  
-  /**
-   * Generate prediction data based on historical trend
-   */
-  private generatePredictionData(
-    historicalData: SentimentHistoricalDataPoint[],
-    topic: SentimentTopic | 'overall',
-    neighborhood: string,
-    city: string,
-    predictionMonths: number
-  ): SentimentHistoricalDataPoint[] {
-    if (historicalData.length === 0) return [];
-    
-    const predictions: SentimentHistoricalDataPoint[] = [];
-    
-    // Get the last historical data point
-    const lastDataPoint = historicalData[historicalData.length - 1];
-    const lastDate = new Date(lastDataPoint.date);
-    const lastScore = lastDataPoint.score;
-    
-    // Simple linear regression to determine trend
-    const xValues: number[] = [];
-    const yValues: number[] = [];
-    
-    // Use the last 6 data points or all available data
-    const dataForRegression = historicalData.slice(-Math.min(6, historicalData.length));
-    
-    dataForRegression.forEach((point, index) => {
-      xValues.push(index);
-      yValues.push(point.score);
-    });
-    
-    // Calculate slope and intercept
-    const n = xValues.length;
-    const sumX = xValues.reduce((a, b) => a + b, 0);
-    const sumY = yValues.reduce((a, b) => a + b, 0);
-    const sumXY = xValues.reduce((total, x, i) => total + x * yValues[i], 0);
-    const sumXX = xValues.reduce((total, x) => total + x * x, 0);
-    
-    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
-    const intercept = (sumY - slope * sumX) / n;
-    
-    // Calculate standard error for confidence intervals
-    const predictedY = xValues.map(x => slope * x + intercept);
-    const squaredErrors = predictedY.map((predicted, i) => Math.pow(predicted - yValues[i], 2));
-    const mse = squaredErrors.reduce((a, b) => a + b, 0) / n;
-    const standardError = Math.sqrt(mse);
-    
-    // Generate prediction data
-    for (let i = 1; i <= predictionMonths; i++) {
-      const predictionDate = new Date(lastDate);
-      predictionDate.setMonth(predictionDate.getMonth() + i);
-      
-      // Predicted score using the regression model
-      const x = dataForRegression.length - 1 + i;
-      const predictedScore = slope * x + intercept;
-      
-      // Add some randomness and dampen the prediction over time for realism
-      const randomFactor = (Math.random() - 0.5) * 2;
-      const timeUncertainty = i * 0.5; // Uncertainty increases with time
-      const seasonalEffect = Math.sin((predictionDate.getMonth() / 12) * Math.PI * 2) * 2;
-      
-      let score = predictedScore + randomFactor * timeUncertainty + seasonalEffect;
-      
-      // Ensure score stays within 0-100 range
-      score = Math.max(0, Math.min(100, score));
-      
-      // Calculate confidence intervals
-      const confidenceWidth = standardError * 1.96 * Math.sqrt(1 + (i / n));
-      const adjustedConfidenceWidth = confidenceWidth * (1 + (i * 0.2)); // Increase with time
-      
-      // Format date for display
-      const formattedDate = predictionDate.toISOString().split('T')[0];
-      
-      predictions.push({
-        date: formattedDate,
-        score: Math.round(score),
-        topic,
-        neighborhoodName: neighborhood,
-        city,
-        min: Math.max(0, Math.round(score - adjustedConfidenceWidth)),
-        max: Math.min(100, Math.round(score + adjustedConfidenceWidth)),
-        isPrediction: true
-      });
-    }
-    
-    return predictions;
-  }
-  
-  /**
-   * Get current sentiment score for a neighborhood and topic
-   */
-  private getCurrentSentiment(
-    neighborhood: string,
-    city: string,
-    topic: SentimentTopic | 'overall'
-  ): number {
-    // In a real implementation, this would fetch the current score from storage
-    const sentimentData = this.generateSentimentData(neighborhood, city, 'WA');
-    
-    if (topic === 'overall') {
-      return sentimentData.overallScore.score;
-    } else {
-      return sentimentData.topicScores[topic]?.score || 70;
-    }
-  }
-  
-  /**
-   * Get trend direction for a neighborhood
-   */
-  private getTrendDirection(
-    neighborhood: string,
-    city: string
-  ): 'improving' | 'stable' | 'declining' {
-    // In a real implementation, this would fetch the trend from storage
-    const sentimentData = this.generateSentimentData(neighborhood, city, 'WA');
-    return sentimentData.trend.direction;
-  }
-  
-  /**
-   * Helper to determine the number of months to show based on timeframe
-   */
-  private getMonthsForTimeframe(timeframe: string): number {
-    switch (timeframe) {
-      case '3m': return 3;
-      case '6m': return 6;
-      case '1y': return 12;
-      case '2y': return 24;
-      case '5y': return 60;
-      default: return 12;
-    }
-  }
-  
-  /**
-   * Get historical sentiment data for a neighborhood with a specific topic
-   * This is a simplified version of getNeighborhoodSentimentTrend for the trend graph
-   */
-  getHistoricalSentimentData(
-    city: string, 
-    neighborhoodName: string, 
-    topic: SentimentTopic = 'overall',
-    months: number = 12
-  ): Array<{
-    date: string;
-    score: number;
-    isPrediction: boolean;
-    events?: string[];
-  }> {
-    // Convert from 0-100 scale to 0-10 scale for the trend graph
-    const historicalData = this.generateHistoricalTrendData(
-      neighborhoodName,
-      city,
-      topic,
-      months === 24 ? '2y' : months === 6 ? '6m' : '1y'
-    );
-    
-    // Add some notable events for some data points
-    const events = [
-      'New park development announced',
-      'School renovations completed',
-      'Shopping center opened',
-      'Transit improvements',
-      'Property tax assessment change',
-      'New community center opened',
-      'Neighborhood association formed',
-      'Road construction project started',
-      'New housing development broke ground',
-      'Zoning changes approved'
-    ];
-    
-    // Add events to some random data points (about 20% of points)
-    const dataWithEvents = historicalData.map(point => {
-      const scaledScore = point.score / 10; // Convert to 0-10 scale
-      
-      // Add events to some random points (about 20% of points)
-      const hasEvents = Math.random() < 0.2;
-      
-      return {
-        date: point.date,
-        score: parseFloat(scaledScore.toFixed(1)),
-        isPrediction: false,
-        events: hasEvents ? [events[Math.floor(Math.random() * events.length)]] : undefined
-      };
-    });
-    
-    return dataWithEvents;
-  }
-  
-  /**
-   * Get predicted sentiment data for a neighborhood with a specific topic
-   */
-  getPredictedSentimentData(
-    city: string, 
-    neighborhoodName: string, 
-    topic: SentimentTopic = 'overall',
-    months: number = 6
-  ): Array<{
-    date: string;
-    score: number;
-    isPrediction: boolean;
-    upperBound?: number;
-    lowerBound?: number;
-  }> {
-    // First get the historical data to use as a base
-    const historicalData = this.generateHistoricalTrendData(
-      neighborhoodName,
-      city,
-      topic,
-      '1y'
-    );
-    
-    // Then generate predictions based on the historical data
-    const predictions = this.generatePredictionData(
-      historicalData,
-      topic,
-      neighborhoodName,
-      city,
-      months
-    );
-    
-    // Convert from 0-100 scale to 0-10 scale for the trend graph
-    const scaledPredictions = predictions.map(point => {
-      const scaledScore = point.score / 10;
-      const scaledMin = (point.min || 0) / 10;
-      const scaledMax = (point.max || 0) / 10;
-      
-      return {
-        date: point.date,
-        score: parseFloat(scaledScore.toFixed(1)),
-        lowerBound: parseFloat(scaledMin.toFixed(1)),
-        upperBound: parseFloat(scaledMax.toFixed(1)),
-        isPrediction: true
-      };
-    });
-    
-    return scaledPredictions;
   }
 
   /**
-   * Get a random neighborhood for a city
+   * Get top positive and negative topics for a neighborhood
    */
-  private getRandomNeighborhood(city?: string): string {
-    const neighborhoods = this.getNeighborhoodsForCity(city || 'Richland');
-    const index = Math.floor(Math.random() * neighborhoods.length);
-    return neighborhoods[index];
-  }
-  
-  /**
-   * Generate sentiment level based on score
-   */
-  private getSentimentLevel(score: number): SentimentLevel {
-    if (score >= 80) return 'very_positive';
-    if (score >= 60) return 'positive';
-    if (score >= 40) return 'neutral';
-    if (score >= 20) return 'negative';
-    return 'very_negative';
-  }
-  
-  /**
-   * Generate realistic mock sentiment data for a neighborhood
-   */
-  /**
-   * Get geolocation for a neighborhood based on city
-   */
-  private getNeighborhoodGeolocation(neighborhood: string, city: string): { latitude: number; longitude: number } {
-    // Base coordinates for Richland and Grandview
-    const cityCoordinates: Record<string, { base: { lat: number; lng: number }; radius: number }> = {
-      'Richland': { base: { lat: 46.2804, lng: -119.2752 }, radius: 0.05 },
-      'Grandview': { base: { lat: 46.2562, lng: -119.9010 }, radius: 0.04 }
-    };
-    
-    // Specific coordinates for known neighborhoods
-    const knownLocations: Record<string, { lat: number; lng: number }> = {
-      'Columbia Point': { lat: 46.2603, lng: -119.2583 },
-      'Meadow Springs': { lat: 46.2713, lng: -119.3037 },
-      'Horn Rapids': { lat: 46.3398, lng: -119.3184 },
-      'Badger Mountain South': { lat: 46.2276, lng: -119.2913 },
-      'Central Richland': { lat: 46.2832, lng: -119.2852 },
-      'North Richland': { lat: 46.3403, lng: -119.2796 },
-      'South Richland': { lat: 46.2505, lng: -119.2970 },
-      'Downtown Grandview': { lat: 46.2513, lng: -119.9012 },
-      'Grandview Heights': { lat: 46.2603, lng: -119.9089 },
-      'East Grandview': { lat: 46.2532, lng: -119.8872 },
-      'West Valley': { lat: 46.2495, lng: -119.9183 },
-      'Mountainview': { lat: 46.2674, lng: -119.9057 }
-    };
-    
-    // If we have specific coordinates for this neighborhood, use them
-    if (knownLocations[neighborhood]) {
-      return {
-        latitude: knownLocations[neighborhood].lat,
-        longitude: knownLocations[neighborhood].lng
-      };
+  public async getTopTopics(neighborhoodId: string, limit: number = 5): Promise<{
+    positive: TopicSentiment[];
+    negative: TopicSentiment[];
+  }> {
+    try {
+      // Simulate API response
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          const allSentiments = this.generateNeighborhoodSentiment(neighborhoodId).topicSentiments;
+          
+          // Sort by score and get top positive and negative
+          const positive = [...allSentiments]
+            .filter(s => s.score > 0)
+            .sort((a, b) => b.score - a.score)
+            .slice(0, limit);
+            
+          const negative = [...allSentiments]
+            .filter(s => s.score < 0)
+            .sort((a, b) => a.score - b.score)
+            .slice(0, limit);
+            
+          resolve({ positive, negative });
+        }, 500);
+      });
+    } catch (error) {
+      console.error('Error fetching top topics:', error);
+      throw error;
     }
-    
-    // Otherwise, generate pseudo-random coordinates based on the city
-    const defaultCity = 'Richland';
-    const cityKey = Object.keys(cityCoordinates).includes(city) ? city : defaultCity;
-    const cityInfo = cityCoordinates[cityKey];
-    
-    const angle = this.getHashedAngle(neighborhood);
-    const distance = cityInfo.radius * Math.random() * 0.8;
-    
-    const lat = cityInfo.base.lat + distance * Math.cos(angle);
-    const lng = cityInfo.base.lng + distance * Math.sin(angle);
-    
-    return {
-      latitude: lat,
-      longitude: lng
-    };
   }
-  
+
   /**
-   * Generate a consistent angle based on neighborhood name (for reproducible coordinates)
+   * Generate sample neighborhood sentiment data
    */
-  private getHashedAngle(str: string): number {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      hash = ((hash << 5) - hash) + str.charCodeAt(i);
-      hash = hash & hash;
-    }
-    return (Math.abs(hash) % 360) * Math.PI / 180;
-  }
-  
-  /**
-   * Generate realistic mock sentiment data for a neighborhood
-   */
-  private generateSentimentData(
-    neighborhood: string, 
-    city: string, 
-    state: string
-  ): NeighborhoodSentiment {
-    // Generate a base score that is somewhat random but tends to be positive
-    const baseScore = Math.floor(Math.random() * 30) + 50; // 50-80 range
-    
-    // Pre-defined topic scores for realistic distributions
-    const topicScores: Record<SentimentTopic, SentimentScore> = {
-      safety: this.generateTopicScore(baseScore + (Math.random() * 10 - 5)),
-      schools: this.generateTopicScore(baseScore + (Math.random() * 15 - 5)),
-      amenities: this.generateTopicScore(baseScore + (Math.random() * 10)),
-      affordability: this.generateTopicScore(baseScore - (Math.random() * 20)), // Affordability tends to be lower
-      community: this.generateTopicScore(baseScore + (Math.random() * 15 - 5)),
-      transportation: this.generateTopicScore(baseScore - (Math.random() * 10)),
-      development: this.generateTopicScore(baseScore + (Math.random() * 20 - 10)),
-      market_trend: this.generateTopicScore(baseScore + (Math.random() * 15)),
-      lifestyle: this.generateTopicScore(baseScore + (Math.random() * 10)),
-      environment: this.generateTopicScore(baseScore + (Math.random() * 10 - 5))
-    };
-    
-    // Calculate overall score as weighted average of topic scores
-    const overallScore = Object.values(topicScores).reduce(
-      (sum, score) => sum + score.score, 
-      0
-    ) / Object.keys(topicScores).length;
-    
-    // Generate mock mentions
-    const mentions = this.generateSentimentMentions(
-      neighborhood, 
-      city, 
-      Object.keys(topicScores) as SentimentTopic[]
-    );
-    
-    // Get geolocation for this neighborhood
-    const geolocation = this.getNeighborhoodGeolocation(neighborhood, city);
-    
-    return {
-      neighborhoodId: this.generateId(neighborhood),
-      neighborhoodName: neighborhood,
-      city,
-      state,
-      overallScore: {
-        score: Math.round(overallScore),
-        level: this.getSentimentLevel(overallScore),
-        confidence: 0.85 + (Math.random() * 0.1) // High confidence for demo
+  private generateNeighborhoodSentiment(neighborhoodId: string): NeighborhoodSentiment {
+    // Define different sentiment profiles based on neighborhood ID
+    const profiles: Record<string, {
+      baseSentiment: number,
+      topics: Array<{topic: string, baseSentiment: number, trending?: boolean}>
+    }> = {
+      'grandview-downtown': {
+        baseSentiment: 0.65,
+        topics: [
+          { topic: 'Restaurants', baseSentiment: 0.8 },
+          { topic: 'Nightlife', baseSentiment: 0.7, trending: true },
+          { topic: 'Shopping', baseSentiment: 0.6 },
+          { topic: 'Parking', baseSentiment: -0.4 },
+          { topic: 'Traffic', baseSentiment: -0.5 },
+          { topic: 'Public Transit', baseSentiment: 0.2 },
+          { topic: 'Safety', baseSentiment: 0.3 },
+          { topic: 'Cleanliness', baseSentiment: 0.1 },
+          { topic: 'Cost of Living', baseSentiment: -0.2 },
+          { topic: 'Community Events', baseSentiment: 0.75, trending: true }
+        ]
       },
-      topicScores,
-      trend: {
-        direction: Math.random() > 0.3 ? 'improving' : Math.random() > 0.5 ? 'stable' : 'declining',
-        changeRate: Math.round(Math.random() * 10) // 0-10% change
+      'grandview-north': {
+        baseSentiment: 0.7,
+        topics: [
+          { topic: 'Schools', baseSentiment: 0.9, trending: true },
+          { topic: 'Parks', baseSentiment: 0.85 },
+          { topic: 'Family Friendly', baseSentiment: 0.8 },
+          { topic: 'Safety', baseSentiment: 0.7 },
+          { topic: 'Community', baseSentiment: 0.75 },
+          { topic: 'Property Values', baseSentiment: 0.6, trending: true },
+          { topic: 'Traffic', baseSentiment: 0.2 },
+          { topic: 'Shopping', baseSentiment: 0.3 },
+          { topic: 'Restaurants', baseSentiment: 0.4 },
+          { topic: 'Cost of Living', baseSentiment: -0.3 }
+        ]
       },
-      mentions,
-      lastUpdated: new Date().toISOString(),
-      summaryText: this.generateSummaryText(neighborhood, city, topicScores, overallScore),
-      // Add geolocation data
-      geolocation
+      'grandview-south': {
+        baseSentiment: 0.45,
+        topics: [
+          { topic: 'Affordability', baseSentiment: 0.7, trending: true },
+          { topic: 'Up and Coming', baseSentiment: 0.6, trending: true },
+          { topic: 'Investment Potential', baseSentiment: 0.65 },
+          { topic: 'New Construction', baseSentiment: 0.5 },
+          { topic: 'Safety', baseSentiment: -0.2 },
+          { topic: 'Schools', baseSentiment: -0.1 },
+          { topic: 'Shopping', baseSentiment: -0.3 },
+          { topic: 'Restaurants', baseSentiment: 0.1 },
+          { topic: 'Public Transit', baseSentiment: -0.4 },
+          { topic: 'Community', baseSentiment: 0.3 }
+        ]
+      },
+      'yakima-west': {
+        baseSentiment: 0.55,
+        topics: [
+          { topic: 'Scenic Views', baseSentiment: 0.9 },
+          { topic: 'Outdoor Activities', baseSentiment: 0.85, trending: true },
+          { topic: 'Property Values', baseSentiment: 0.7 },
+          { topic: 'Community', baseSentiment: 0.6 },
+          { topic: 'Schools', baseSentiment: 0.5 },
+          { topic: 'Restaurants', baseSentiment: 0.3 },
+          { topic: 'Shopping', baseSentiment: 0.2 },
+          { topic: 'Traffic', baseSentiment: -0.1 },
+          { topic: 'Cost of Living', baseSentiment: -0.2 },
+          { topic: 'Public Transit', baseSentiment: -0.5 }
+        ]
+      },
+      'sunnyside-central': {
+        baseSentiment: 0.4,
+        topics: [
+          { topic: 'Affordability', baseSentiment: 0.8 },
+          { topic: 'Community Events', baseSentiment: 0.6, trending: true },
+          { topic: 'Family Friendly', baseSentiment: 0.5 },
+          { topic: 'Local Businesses', baseSentiment: 0.4 },
+          { topic: 'Schools', baseSentiment: 0.3 },
+          { topic: 'Safety', baseSentiment: -0.1 },
+          { topic: 'Shopping', baseSentiment: -0.2 },
+          { topic: 'Restaurants', baseSentiment: 0.0 },
+          { topic: 'Property Values', baseSentiment: 0.3 },
+          { topic: 'Public Transit', baseSentiment: -0.4 }
+        ]
+      }
     };
-  }
-  
-  /**
-   * Generate a topic score based on a base value
-   */
-  private generateTopicScore(baseValue: number): SentimentScore {
-    // Ensure score is within 0-100 range
-    const score = Math.max(0, Math.min(100, Math.round(baseValue)));
     
-    return {
-      score,
-      level: this.getSentimentLevel(score),
-      confidence: 0.7 + (Math.random() * 0.2) // 0.7-0.9 confidence
-    };
-  }
-  
-  /**
-   * Generate mock sentiment mentions
-   */
-  private generateSentimentMentions(
-    neighborhood: string, 
-    city: string,
-    topics: SentimentTopic[]
-  ): SentimentMention[] {
-    const mentions: SentimentMention[] = [];
-    const count = Math.floor(Math.random() * 8) + 3; // 3-10 mentions
+    // Default to grandview-downtown if ID not found
+    const profile = profiles[neighborhoodId] || profiles['grandview-downtown'];
     
-    const sources: SentimentSource[] = [
-      'property_listings', 'social_media', 'news', 'reviews', 
-      'market_data', 'agent_insights', 'resident_surveys'
-    ];
+    // Calculate overall sentiment
+    const overallScore = profile.baseSentiment + (Math.random() * 0.2 - 0.1); // Add some randomness
     
-    const positiveTexts = [
-      `${neighborhood} is a fantastic place to live with great community feel.`,
-      `Love the parks and walking trails in ${neighborhood}.`,
-      `Schools in ${neighborhood} are highly rated and family-friendly.`,
-      `${neighborhood} has seen significant property value increases in the last year.`,
-      `The new shopping center in ${neighborhood} has been a great addition to the area.`,
-      `${neighborhood} has a very low crime rate compared to other areas.`,
-      `There's a great sense of community in ${neighborhood}.`
-    ];
+    // Determine sentiment level based on score
+    let overallSentiment: SentimentLevel;
+    if (overallScore >= 0.7) overallSentiment = SentimentLevel.VERY_POSITIVE;
+    else if (overallScore >= 0.3) overallSentiment = SentimentLevel.POSITIVE;
+    else if (overallScore >= -0.3) overallSentiment = SentimentLevel.NEUTRAL;
+    else if (overallScore >= -0.7) overallSentiment = SentimentLevel.NEGATIVE;
+    else overallSentiment = SentimentLevel.VERY_NEGATIVE;
     
-    const neutralTexts = [
-      `${neighborhood} is a typical suburban area with the usual amenities.`,
-      `Traffic can be busy during rush hour in ${neighborhood}.`,
-      `Property taxes in ${neighborhood} are comparable to other areas in ${city}.`,
-      `The housing market in ${neighborhood} has remained stable.`,
-      `${neighborhood} has a mix of older and newer homes.`
-    ];
-    
-    const negativeTexts = [
-      `Housing prices in ${neighborhood} may be too high for first-time homebuyers.`,
-      `Public transportation options in ${neighborhood} are limited.`,
-      `Some residents have concerns about the pace of development in ${neighborhood}.`,
-      `${neighborhood} could use more restaurant and entertainment options.`,
-      `Traffic congestion during peak hours can be an issue in ${neighborhood}.`
-    ];
-    
-    for (let i = 0; i < count; i++) {
-      // Determine sentiment direction with a bias toward positive
-      const sentiment = Math.random() > 0.6 ? 'positive' : Math.random() > 0.5 ? 'neutral' : 'negative';
+    // Create topic sentiments
+    const topicSentiments: TopicSentiment[] = profile.topics.map(topic => {
+      // Add some randomness to the sentiment
+      const score = Math.max(-1, Math.min(1, topic.baseSentiment + (Math.random() * 0.2 - 0.1)));
       
-      // Select text based on sentiment
-      let text = '';
-      if (sentiment === 'positive') {
-        text = positiveTexts[Math.floor(Math.random() * positiveTexts.length)];
-      } else if (sentiment === 'neutral') {
-        text = neutralTexts[Math.floor(Math.random() * neutralTexts.length)];
-      } else {
-        text = negativeTexts[Math.floor(Math.random() * negativeTexts.length)];
-      }
+      // Determine sentiment level
+      let sentiment: SentimentLevel;
+      if (score >= 0.7) sentiment = SentimentLevel.VERY_POSITIVE;
+      else if (score >= 0.3) sentiment = SentimentLevel.POSITIVE;
+      else if (score >= -0.3) sentiment = SentimentLevel.NEUTRAL;
+      else if (score >= -0.7) sentiment = SentimentLevel.NEGATIVE;
+      else sentiment = SentimentLevel.VERY_NEGATIVE;
       
-      // Generate score based on sentiment
-      let score = 0;
-      if (sentiment === 'positive') {
-        score = 0.5 + (Math.random() * 0.5); // 0.5 to 1.0
-      } else if (sentiment === 'neutral') {
-        score = -0.2 + (Math.random() * 0.4); // -0.2 to 0.2
-      } else {
-        score = -1.0 + (Math.random() * 0.5); // -1.0 to -0.5
-      }
-      
-      // Select 1-3 topics for this mention
-      const mentionTopics: SentimentTopic[] = [];
-      const topicCount = Math.floor(Math.random() * 3) + 1;
-      for (let j = 0; j < topicCount; j++) {
-        const topic = topics[Math.floor(Math.random() * topics.length)];
-        if (!mentionTopics.includes(topic)) {
-          mentionTopics.push(topic);
-        }
-      }
-      
-      // Select a source
-      const source = sources[Math.floor(Math.random() * sources.length)];
-      
-      // Generate date within last 6 months
-      const date = new Date();
-      date.setMonth(date.getMonth() - Math.floor(Math.random() * 6));
-      
-      mentions.push({
-        id: `mention-${this.generateId(neighborhood)}-${i}`,
-        text,
+      return {
+        topic: topic.topic,
+        sentiment,
         score,
-        source,
-        date: date.toISOString(),
-        topics: mentionTopics,
-        author: source === 'resident_surveys' || source === 'reviews' ? this.generateAuthorName() : undefined
+        sources: Math.floor(Math.random() * 30) + 10, // 10-40 sources
+        trending: !!topic.trending
+      };
+    });
+    
+    // Create sources distribution
+    const totalSources = topicSentiments.reduce((sum, topic) => sum + topic.sources, 0);
+    const socialMediaPercent = 0.4 + (Math.random() * 0.2 - 0.1); // 30-50%
+    const newsPercent = 0.2 + (Math.random() * 0.1 - 0.05); // 15-25%
+    const blogsPercent = 0.15 + (Math.random() * 0.1 - 0.05); // 10-20%
+    const forumsPercent = 0.1 + (Math.random() * 0.1 - 0.05); // 5-15%
+    const reviewsPercent = 1 - socialMediaPercent - newsPercent - blogsPercent - forumsPercent;
+    
+    return {
+      id: neighborhoodId,
+      name: neighborhoodId.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' '),
+      overallSentiment,
+      overallScore,
+      topicSentiments,
+      sources: {
+        socialMedia: Math.round(totalSources * socialMediaPercent),
+        news: Math.round(totalSources * newsPercent),
+        blogs: Math.round(totalSources * blogsPercent),
+        forums: Math.round(totalSources * forumsPercent),
+        reviews: Math.round(totalSources * reviewsPercent)
+      },
+      lastUpdated: new Date().toISOString()
+    };
+  }
+
+  /**
+   * Generate sample sentiment trends data
+   */
+  private generateSentimentTrends(neighborhoodId: string, months: number): SentimentTrend[] {
+    const trends: SentimentTrend[] = [];
+    
+    // Base trend parameters vary by neighborhood
+    let baseSentiment: number;
+    let trendDirection: number;
+    
+    switch(neighborhoodId) {
+      case 'grandview-downtown':
+        baseSentiment = 0.4;
+        trendDirection = 0.02; // Improving over time
+        break;
+      case 'grandview-north':
+        baseSentiment = 0.6;
+        trendDirection = 0.01; // Slight improvement
+        break;
+      case 'grandview-south':
+        baseSentiment = 0.3;
+        trendDirection = 0.025; // Faster improvement (up and coming)
+        break;
+      case 'yakima-west':
+        baseSentiment = 0.5;
+        trendDirection = 0.005; // Very slight improvement
+        break;
+      case 'sunnyside-central':
+        baseSentiment = 0.35;
+        trendDirection = 0.015; // Moderate improvement
+        break;
+      default:
+        baseSentiment = 0.5;
+        trendDirection = 0.01;
+    }
+    
+    // Generate monthly data points going back from current month
+    for (let i = 0; i < months; i++) {
+      // Create date object for the month (working backwards from current month)
+      const date = new Date();
+      date.setMonth(date.getMonth() - (months - i - 1));
+      const periodLabel = date.toLocaleDateString('en-US', { month: 'short', year: 'numeric' });
+      
+      // Calculate sentiment with trend and seasonal factors
+      const trendFactor = baseSentiment + (trendDirection * i); // General trend direction
+      const seasonalFactor = Math.sin((i % 12) / 12 * Math.PI * 2) * 0.05; // Seasonal variations
+      const randomFactor = (Math.random() * 0.1) - 0.05; // Random noise
+      
+      // Combine factors and ensure within -1 to 1 range
+      const score = Math.max(-1, Math.min(1, trendFactor + seasonalFactor + randomFactor));
+      
+      trends.push({
+        period: periodLabel,
+        score
       });
     }
     
-    return mentions;
-  }
-  
-  /**
-   * Generate a summary text based on sentiment data
-   */
-  private generateSummaryText(
-    neighborhood: string, 
-    city: string,
-    topicScores: Record<SentimentTopic, SentimentScore>,
-    overallScore: number
-  ): string {
-    // Get top 3 highest scoring topics
-    const sortedTopics = Object.entries(topicScores)
-      .sort((a, b) => b[1].score - a[1].score)
-      .map(([topic]) => topic);
-    
-    const topTopics = sortedTopics.slice(0, 3);
-    
-    // Get lowest scoring topic
-    const lowestTopic = Object.entries(topicScores)
-      .sort((a, b) => a[1].score - b[1].score)[0][0];
-    
-    let summary = `${neighborhood} in ${city}, WA `;
-    
-    if (overallScore >= 75) {
-      summary += `is a highly regarded area with exceptionally positive sentiment. `;
-    } else if (overallScore >= 60) {
-      summary += `is generally well-regarded by residents and prospective homebuyers. `;
-    } else if (overallScore >= 45) {
-      summary += `receives mixed reviews with some positive aspects. `;
-    } else {
-      summary += `faces some challenges according to sentiment analysis. `;
-    }
-    
-    summary += `The neighborhood scores particularly well for ${this.formatTopicName(topTopics[0] as SentimentTopic)}, ${this.formatTopicName(topTopics[1] as SentimentTopic)}, and ${this.formatTopicName(topTopics[2] as SentimentTopic)}. `;
-    
-    summary += `However, ${this.formatTopicName(lowestTopic as SentimentTopic)} appears to be an area with room for improvement. `;
-    
-    return summary;
-  }
-  
-  /**
-   * Format a topic name for display
-   */
-  private formatTopicName(topic: SentimentTopic): string {
-    switch (topic) {
-      case 'safety': return 'safety';
-      case 'schools': return 'schools';
-      case 'amenities': return 'local amenities';
-      case 'affordability': return 'affordability';
-      case 'community': return 'community feel';
-      case 'transportation': return 'transportation';
-      case 'development': return 'development';
-      case 'market_trend': return 'market trends';
-      case 'lifestyle': return 'lifestyle options';
-      case 'environment': return 'environmental quality';
-      default: {
-        // For any other topics, convert underscores to spaces
-        const topicStr = String(topic);
-        return topicStr.includes('_') ? topicStr.split('_').join(' ') : topicStr;
-      }
-    }
-  }
-  
-  /**
-   * Generate a random author name for mentions
-   */
-  private generateAuthorName(): string {
-    const firstNames = ['John', 'Sarah', 'Mike', 'Emma', 'David', 'Lisa', 'Robert', 'Jennifer'];
-    const lastInitials = ['S.', 'T.', 'M.', 'R.', 'L.', 'C.', 'W.', 'B.'];
-    
-    const firstName = firstNames[Math.floor(Math.random() * firstNames.length)];
-    const lastInitial = lastInitials[Math.floor(Math.random() * lastInitials.length)];
-    
-    return `${firstName} ${lastInitial}`;
-  }
-  
-  /**
-   * Generate a deterministic ID from a string
-   */
-  private generateId(str: string): string {
-    let hash = 0;
-    for (let i = 0; i < str.length; i++) {
-      const char = str.charCodeAt(i);
-      hash = ((hash << 5) - hash) + char;
-      hash = hash & hash;
-    }
-    return Math.abs(hash).toString(16);
-  }
-  
-  /**
-   * Get pre-defined sentiment data for Columbia Point neighborhood
-   */
-  private getColumbiaPointSentiment(): NeighborhoodSentiment {
-    return {
-      neighborhoodId: "columbiapoint",
-      neighborhoodName: "Columbia Point",
-      city: "Richland",
-      state: "WA",
-      overallScore: {
-        score: 85,
-        level: "very_positive",
-        confidence: 0.9
-      },
-      topicScores: {
-        safety: { score: 88, level: "very_positive", confidence: 0.92 },
-        schools: { score: 82, level: "very_positive", confidence: 0.89 },
-        amenities: { score: 90, level: "very_positive", confidence: 0.94 },
-        affordability: { score: 68, level: "positive", confidence: 0.87 },
-        community: { score: 85, level: "very_positive", confidence: 0.9 },
-        transportation: { score: 75, level: "positive", confidence: 0.85 },
-        development: { score: 87, level: "very_positive", confidence: 0.88 },
-        market_trend: { score: 92, level: "very_positive", confidence: 0.93 },
-        lifestyle: { score: 89, level: "very_positive", confidence: 0.91 },
-        environment: { score: 92, level: "very_positive", confidence: 0.94 }
-      },
-      trend: {
-        direction: "improving",
-        changeRate: 5
-      },
-      mentions: [
-        {
-          id: "cp-1",
-          text: "Columbia Point is one of the premier neighborhoods in Richland with excellent access to the Columbia River and golf course.",
-          score: 0.92,
-          source: "agent_insights",
-          date: "2025-02-18T00:00:00.000Z",
-          topics: ["amenities", "lifestyle", "environment"]
-        },
-        {
-          id: "cp-2",
-          text: "The Columbia Point area has seen consistent property value increases over the past year, significantly outperforming other Richland neighborhoods.",
-          score: 0.85,
-          source: "market_data",
-          date: "2025-03-10T00:00:00.000Z",
-          topics: ["market_trend", "development"]
-        },
-        {
-          id: "cp-3",
-          text: "While Columbia Point offers luxury living and amazing river views, the higher price point can be a barrier for many buyers.",
-          score: -0.2,
-          source: "reviews",
-          date: "2025-01-25T00:00:00.000Z",
-          topics: ["affordability"],
-          author: "Sarah T."
-        },
-        {
-          id: "cp-4",
-          text: "The walking trails along the river at Columbia Point provide residents with exceptional outdoor recreation opportunities right from their doorstep.",
-          score: 0.9,
-          source: "resident_surveys",
-          date: "2025-02-28T00:00:00.000Z",
-          topics: ["lifestyle", "environment", "amenities"],
-          author: "David M."
-        },
-        {
-          id: "cp-5",
-          text: "Columbia Point is an extremely safe neighborhood with well-lit streets and an active community watch program.",
-          score: 0.88,
-          source: "resident_surveys",
-          date: "2025-03-15T00:00:00.000Z",
-          topics: ["safety", "community"],
-          author: "Jennifer W."
-        }
-      ],
-      lastUpdated: "2025-03-24T00:00:00.000Z",
-      summaryText: "Columbia Point in Richland, WA is a highly sought-after neighborhood known for its upscale properties, exceptional river views, and access to premium amenities including a golf course and marina. The area receives very positive sentiment across most metrics, particularly for its natural environment, lifestyle options, and strong market trends. While affordability remains a challenge due to premium pricing, the neighborhood continues to see property value appreciation and development interest.",
-      geolocation: {
-        latitude: 46.2603,
-        longitude: -119.2583
-      }
-    };
-  }
-  
-  /**
-   * Get pre-defined sentiment data for Meadow Springs neighborhood
-   */
-  private getMeadowSpringsSentiment(): NeighborhoodSentiment {
-    return {
-      neighborhoodId: "meadowsprings",
-      neighborhoodName: "Meadow Springs",
-      city: "Richland",
-      state: "WA",
-      overallScore: {
-        score: 82,
-        level: "very_positive",
-        confidence: 0.88
-      },
-      topicScores: {
-        safety: { score: 86, level: "very_positive", confidence: 0.9 },
-        schools: { score: 84, level: "very_positive", confidence: 0.89 },
-        amenities: { score: 88, level: "very_positive", confidence: 0.91 },
-        affordability: { score: 72, level: "positive", confidence: 0.85 },
-        community: { score: 83, level: "very_positive", confidence: 0.88 },
-        transportation: { score: 77, level: "positive", confidence: 0.84 },
-        development: { score: 81, level: "very_positive", confidence: 0.87 },
-        market_trend: { score: 85, level: "very_positive", confidence: 0.89 },
-        lifestyle: { score: 86, level: "very_positive", confidence: 0.9 },
-        environment: { score: 84, level: "very_positive", confidence: 0.88 }
-      },
-      trend: {
-        direction: "improving",
-        changeRate: 4
-      },
-      mentions: [
-        {
-          id: "ms-1",
-          text: "Meadow Springs is known for its beautiful golf course community and well-maintained properties.",
-          score: 0.88,
-          source: "agent_insights",
-          date: "2025-02-20T00:00:00.000Z",
-          topics: ["environment", "lifestyle"]
-        },
-        {
-          id: "ms-2",
-          text: "The Country Club and golf course in Meadow Springs provide excellent recreational opportunities for residents.",
-          score: 0.85,
-          source: "reviews",
-          date: "2025-03-05T00:00:00.000Z",
-          topics: ["amenities", "lifestyle"],
-          author: "Robert C."
-        },
-        {
-          id: "ms-3",
-          text: "Home prices in Meadow Springs are higher than some other Richland neighborhoods, but still offer good value considering the amenities.",
-          score: 0.1,
-          source: "market_data",
-          date: "2025-02-10T00:00:00.000Z",
-          topics: ["affordability", "market_trend"]
-        },
-        {
-          id: "ms-4",
-          text: "Families love Meadow Springs for its excellent schools and safe, family-friendly environment.",
-          score: 0.9,
-          source: "resident_surveys",
-          date: "2025-03-12T00:00:00.000Z",
-          topics: ["schools", "safety", "community"],
-          author: "Emma L."
-        },
-        {
-          id: "ms-5",
-          text: "New development in Meadow Springs has been tastefully integrated with the existing community character.",
-          score: 0.82,
-          source: "news",
-          date: "2025-01-15T00:00:00.000Z",
-          topics: ["development", "community"]
-        }
-      ],
-      lastUpdated: "2025-03-24T00:00:00.000Z",
-      summaryText: "Meadow Springs in Richland, WA is a well-established neighborhood centered around a beautiful country club and golf course. It receives very positive sentiment for its excellent amenities, strong sense of community, and family-friendly environment. The neighborhood's schools are highly rated, and safety is considered excellent. While prices are somewhat higher than the city average, residents find good value in the lifestyle offerings and consistent property appreciation.",
-      geolocation: {
-        latitude: 46.2713,
-        longitude: -119.3037
-      }
-    };
+    return trends;
   }
 }
 
-export default new NeighborhoodSentimentService();
+export const neighborhoodSentimentService = NeighborhoodSentimentService.getInstance();
+export default neighborhoodSentimentService;

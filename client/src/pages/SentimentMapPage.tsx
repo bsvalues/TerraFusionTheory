@@ -1,166 +1,200 @@
 /**
  * Sentiment Map Page
  * 
- * This page displays an interactive heat map showing neighborhood sentiment
- * data with color-coded circles for different sentiment levels.
+ * This page displays a geographical map visualization of neighborhood sentiment,
+ * showing sentiment levels across different areas with color-coded overlays.
  */
 
-import { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import React, { useState } from 'react';
+import { Helmet } from 'react-helmet';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardDescription 
+} from '@/components/ui/card';
+import { 
+  Select, 
+  SelectContent, 
+  SelectItem, 
+  SelectTrigger, 
+  SelectValue 
+} from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { Info, Map as MapIcon, BarChart3, MessageSquare } from 'lucide-react';
-import SentimentHeatMap from '@/components/mapping/SentimentHeatMap';
-import NeighborhoodSentimentWidget from '@/components/sentiment/NeighborhoodSentimentWidget';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { InfoCircle, Map } from 'lucide-react';
+import { SentimentLevel } from '@/services/neighborhood-sentiment.service';
 
-const SentimentMapPage = () => {
-  const [selectedNeighborhood, setSelectedNeighborhood] = useState<string | undefined>();
-  const [selectedCity, setSelectedCity] = useState<string>('Richland');
-  
-  const handleNeighborhoodSelect = (neighborhood: string) => {
-    setSelectedNeighborhood(neighborhood);
-  };
-  
+// Placeholder component for the sentiment map
+// In a real application, this would use a mapping library like Leaflet or Mapbox
+const SentimentMapPlaceholder: React.FC = () => {
   return (
-    <div className="container mx-auto py-6 space-y-6">
-      <div className="flex flex-col md:flex-row items-start justify-between gap-4">
+    <div className="bg-muted/30 rounded-lg overflow-hidden aspect-[16/9] flex flex-col items-center justify-center p-6">
+      <Map className="h-16 w-16 mb-4 text-primary/50" />
+      <h3 className="text-lg font-medium">Sentiment Map Visualization</h3>
+      <p className="text-sm text-muted-foreground text-center max-w-md mt-2">
+        This area would display an interactive map with color-coded sentiment overlays for different neighborhoods. 
+        Neighborhoods would be shaded with colors representing sentiment levels from very negative (red) to very positive (green).
+      </p>
+    </div>
+  );
+};
+
+const SentimentMapPage: React.FC = () => {
+  const [selectedMetric, setSelectedMetric] = useState<string>('overall');
+  const [selectedTimeframe, setSelectedTimeframe] = useState<string>('current');
+
+  return (
+    <div className="container mx-auto py-6 px-4">
+      <Helmet>
+        <title>Sentiment Map | IntelligentEstate</title>
+      </Helmet>
+      
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Neighborhood Sentiment Map</h1>
-          <p className="text-muted-foreground">
-            Interactive visualization of sentiment analysis across neighborhoods
+          <h1 className="text-3xl font-bold tracking-tight flex items-center">
+            <Map className="mr-2 h-8 w-8" />
+            Neighborhood Sentiment Map
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Visualize public sentiment across neighborhoods with geographic context
           </p>
         </div>
         
-        <div className="flex items-center gap-2">
-          <Button variant="outline" size="sm">
-            <Info className="mr-2 h-4 w-4" />
-            About This Map
-          </Button>
-          <Button variant="outline" size="sm">
-            <BarChart3 className="mr-2 h-4 w-4" />
-            View Analysis
-          </Button>
+        <div className="mt-4 md:mt-0 flex flex-wrap gap-2">
+          <Select
+            value={selectedMetric}
+            onValueChange={setSelectedMetric}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Metric" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="overall">Overall Sentiment</SelectItem>
+              <SelectItem value="safety">Safety Sentiment</SelectItem>
+              <SelectItem value="schools">Schools Sentiment</SelectItem>
+              <SelectItem value="amenities">Amenities Sentiment</SelectItem>
+              <SelectItem value="community">Community Sentiment</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Select
+            value={selectedTimeframe}
+            onValueChange={setSelectedTimeframe}
+          >
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Select Timeframe" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="current">Current (Last 30 days)</SelectItem>
+              <SelectItem value="3months">Past 3 Months</SelectItem>
+              <SelectItem value="6months">Past 6 Months</SelectItem>
+              <SelectItem value="1year">Past Year</SelectItem>
+              <SelectItem value="trend">Trend (Change)</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         <div className="lg:col-span-2">
-          <SentimentHeatMap 
-            city={selectedCity}
-            state="WA"
-            height={600}
-            onSelectNeighborhood={handleNeighborhoodSelect}
-          />
+          <Card>
+            <CardHeader>
+              <CardTitle>Sentiment Heatmap</CardTitle>
+              <CardDescription>
+                Color-coded visualization of sentiment levels across neighborhoods
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <SentimentMapPlaceholder />
+            </CardContent>
+          </Card>
         </div>
         
-        <div className="flex flex-col gap-6">
-          {selectedNeighborhood ? (
-            <NeighborhoodSentimentWidget 
-              neighborhoodName={selectedNeighborhood} 
-              city={selectedCity}
-              state="WA"
-            />
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle className="flex items-center">
-                  <MapIcon className="mr-2 h-5 w-5 text-primary" />
-                  Sentiment Map Guide
-                </CardTitle>
-                <CardDescription>
-                  How to use the interactive sentiment map
-                </CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <h4 className="font-medium">Understanding the Map</h4>
+        <div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Sentiment Legend</CardTitle>
+              <CardDescription>Map color interpretation guide</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Very Positive</span>
+                  <div className="h-5 w-5 rounded bg-green-500"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Positive</span>
+                  <div className="h-5 w-5 rounded bg-green-300"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Neutral</span>
+                  <div className="h-5 w-5 rounded bg-gray-300"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Negative</span>
+                  <div className="h-5 w-5 rounded bg-red-300"></div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium">Very Negative</span>
+                  <div className="h-5 w-5 rounded bg-red-500"></div>
+                </div>
+                
+                <div className="pt-4 border-t">
+                  <h4 className="text-sm font-medium mb-2">Metrics Explained</h4>
                   <p className="text-sm text-muted-foreground">
-                    Each circle represents a neighborhood. The color indicates the sentiment level 
-                    (green for excellent, blue for good, yellow for average, orange for below average, red for poor).
-                    The size of the circle corresponds to the score - larger circles indicate higher scores.
+                    Sentiment scores are derived from analysis of mentions in social media, news articles, blogs, forums, and reviews.
                   </p>
                 </div>
                 
-                <Separator />
-                
-                <div className="space-y-2">
-                  <h4 className="font-medium">Interaction Tips</h4>
-                  <ul className="text-sm text-muted-foreground space-y-2">
-                    <li className="flex items-start gap-2">
-                      <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full text-[10px] font-bold flex items-center justify-center mt-0.5">1</span>
-                      <span>Click on any neighborhood circle to view detailed sentiment data.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full text-[10px] font-bold flex items-center justify-center mt-0.5">2</span>
-                      <span>Use the topic selector to view sentiment data for specific aspects like safety, schools, etc.</span>
-                    </li>
-                    <li className="flex items-start gap-2">
-                      <span className="bg-primary text-primary-foreground h-5 w-5 rounded-full text-[10px] font-bold flex items-center justify-center mt-0.5">3</span>
-                      <span>Zoom and pan the map to explore different areas.</span>
-                    </li>
-                  </ul>
-                </div>
-                
-                <div className="pt-4">
-                  <Button onClick={() => setSelectedNeighborhood('Columbia Point')} className="w-full">
-                    <MessageSquare className="mr-2 h-4 w-4" />
-                    View Sample Data
-                  </Button>
-                </div>
-              </CardContent>
-            </Card>
-          )}
-          
-          <Card>
-            <CardHeader className="pb-3">
-              <CardTitle className="text-lg">Sentiment Analysis Insights</CardTitle>
-              <CardDescription>
-                Trends and patterns from neighborhood data
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <h4 className="text-sm font-medium mb-2">Highest Rated Areas</h4>
-                <div className="space-y-2">
-                  <div className="text-sm flex justify-between">
-                    <span>Columbia Point</span>
-                    <span className="font-medium text-green-600">85/100</span>
-                  </div>
-                  <div className="text-sm flex justify-between">
-                    <span>Meadow Springs</span>
-                    <span className="font-medium text-green-600">82/100</span>
-                  </div>
-                  <div className="text-sm flex justify-between">
-                    <span>South Richland</span>
-                    <span className="font-medium text-blue-600">78/100</span>
-                  </div>
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Trend Indicators</h4>
+                  <p className="text-sm text-muted-foreground">
+                    When viewing trend data, areas with improving sentiment will show with blue outlines, while declining sentiment will show with orange outlines.
+                  </p>
                 </div>
               </div>
-              
-              <Separator />
-              
-              <div>
-                <h4 className="text-sm font-medium mb-2">Trending Topics</h4>
-                <div className="space-y-2">
-                  <div className="text-sm flex justify-between items-center">
-                    <span>Safety</span>
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                      +12% Improvement
-                    </span>
-                  </div>
-                  <div className="text-sm flex justify-between items-center">
-                    <span>Development</span>
-                    <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">
-                      +8% Improvement
-                    </span>
-                  </div>
-                  <div className="text-sm flex justify-between items-center">
-                    <span>Affordability</span>
-                    <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">
-                      -4% Decline
-                    </span>
-                  </div>
+            </CardContent>
+          </Card>
+          
+          <Card className="mt-6">
+            <CardHeader>
+              <CardTitle>Top Neighborhoods</CardTitle>
+              <CardDescription>Highest and lowest sentiment areas</CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-6">
+                <div>
+                  <h4 className="text-sm font-medium text-green-600 mb-2">TOP POSITIVE SENTIMENT</h4>
+                  <ol className="space-y-2">
+                    <li className="flex justify-between items-center">
+                      <span className="text-sm">Grandview North</span>
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Very Positive</span>
+                    </li>
+                    <li className="flex justify-between items-center">
+                      <span className="text-sm">Yakima West</span>
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Positive</span>
+                    </li>
+                    <li className="flex justify-between items-center">
+                      <span className="text-sm">Grandview Downtown</span>
+                      <span className="text-xs bg-green-100 text-green-800 px-2 py-0.5 rounded-full">Positive</span>
+                    </li>
+                  </ol>
+                </div>
+                
+                <div>
+                  <h4 className="text-sm font-medium text-red-600 mb-2">IMPROVEMENT NEEDED</h4>
+                  <ol className="space-y-2">
+                    <li className="flex justify-between items-center">
+                      <span className="text-sm">Sunnyside South</span>
+                      <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Negative</span>
+                    </li>
+                    <li className="flex justify-between items-center">
+                      <span className="text-sm">Grandview Industrial</span>
+                      <span className="text-xs bg-red-100 text-red-800 px-2 py-0.5 rounded-full">Negative</span>
+                    </li>
+                  </ol>
                 </div>
               </div>
             </CardContent>
