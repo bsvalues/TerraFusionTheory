@@ -33,6 +33,7 @@ interface NeighborhoodSentimentWidgetProps {
   zipCode?: string;
   className?: string;
   compact?: boolean;
+  selectedTopic?: string;
 }
 
 // Component implementation
@@ -42,7 +43,8 @@ const NeighborhoodSentimentWidget: React.FC<NeighborhoodSentimentWidgetProps> = 
   state = 'WA',
   zipCode,
   className,
-  compact = false
+  compact = false,
+  selectedTopic
 }) => {
   // State variables
   const [isLoading, setIsLoading] = useState(true);

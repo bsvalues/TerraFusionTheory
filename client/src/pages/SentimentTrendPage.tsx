@@ -513,6 +513,14 @@ export default function SentimentTrendPage() {
                   city={city}
                   height={450}
                   topic={selectedTopic}
+                  timeRangePast={timeRangePast}
+                  timeRangeFuture={timeRangeFuture}
+                  showConfidenceIntervals={showConfidenceIntervals}
+                  showEvents={showEvents}
+                  showAnnotations={showAnnotations}
+                  chartType={chartType}
+                  displayMode={displayMode}
+                  propertyType={propertyType}
                 />
               )}
             </TabsContent>
@@ -558,6 +566,14 @@ export default function SentimentTrendPage() {
                                 height={200}
                                 topic={selectedTopic}
                                 showTitle={false}
+                                timeRangePast={timeRangePast}
+                                timeRangeFuture={timeRangeFuture}
+                                showConfidenceIntervals={showConfidenceIntervals}
+                                showEvents={showEvents}
+                                showAnnotations={false}
+                                chartType={chartType}
+                                displayMode={displayMode}
+                                propertyType={propertyType}
                               />
                             </div>
                             
@@ -571,6 +587,14 @@ export default function SentimentTrendPage() {
                                   height={200}
                                   topic={selectedTopic}
                                   showTitle={false}
+                                  timeRangePast={timeRangePast}
+                                  timeRangeFuture={timeRangeFuture}
+                                  showConfidenceIntervals={showConfidenceIntervals}
+                                  showEvents={showEvents}
+                                  showAnnotations={false}
+                                  chartType={chartType}
+                                  displayMode={displayMode}
+                                  propertyType={propertyType}
                                 />
                               </div>
                             ))}

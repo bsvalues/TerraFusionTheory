@@ -450,6 +450,26 @@ export default function SentimentTrendGraph({
                 />
               )}
               
+              {/* Bar chart for historical data */}
+              {chartType === 'bar' && historicalData.map((entry, index) => (
+                <Line
+                  key={`historical-${index}`}
+                  type="monotone"
+                  dataKey="score"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={0}
+                  dot={{
+                    r: 5,
+                    fill: 'hsl(var(--primary))',
+                    strokeWidth: 0
+                  }}
+                  activeDot={{ r: 7 }}
+                  name="Historical"
+                  connectNulls={false}
+                  data={[entry]}
+                />
+              ))}
+              
               {/* Prediction data visualization based on chart type */}
               {predictionData.length > 0 && chartType === 'line' && (
                 <Line 
@@ -482,6 +502,28 @@ export default function SentimentTrendGraph({
                   data={predictionData}
                 />
               )}
+              
+              {/* Bar chart for prediction data */}
+              {chartType === 'bar' && predictionData.length > 0 && predictionData.map((entry, index) => (
+                <Line
+                  key={`prediction-${index}`}
+                  type="monotone"
+                  dataKey="score"
+                  stroke="hsl(var(--primary))"
+                  strokeWidth={0}
+                  strokeDasharray="5 5"
+                  dot={{
+                    r: 5,
+                    fill: 'hsl(var(--primary))',
+                    strokeWidth: 0,
+                    strokeDasharray: "3 3"
+                  }}
+                  activeDot={{ r: 7 }}
+                  name="Prediction"
+                  connectNulls={false}
+                  data={[entry]}
+                />
+              ))}
             </ComposedChart>
           </ResponsiveContainer>
         </div>
