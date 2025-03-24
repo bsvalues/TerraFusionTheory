@@ -854,14 +854,19 @@ export class MassAppraisalService {
     const stdDev = Math.sqrt(variance);
     
     return valuations.map(valuation => {
-      const flags = [];
+      const flags: Array<{
+        type: "outlier" | "highAdjustment" | "lowConfidence" | "assessmentGap";
+        severity: "high" | "medium" | "low";
+        description: string;
+      }> = [];
       
       // Check if outlier
       const zScore = Math.abs(valuation.value - mean) / stdDev;
       if (zScore > 2.5) {
+        const severity: "high" | "medium" = zScore > 3.5 ? "high" : "medium";
         flags.push({
-          type: 'outlier',
-          severity: zScore > 3.5 ? 'high' : 'medium',
+          type: "outlier",
+          severity,
           description: `Value is ${zScore.toFixed(1)} standard deviations from mean`
         });
       }
@@ -870,9 +875,10 @@ export class MassAppraisalService {
       if (valuation.assessedValue) {
         const gap = Math.abs(valuation.value - valuation.assessedValue) / valuation.assessedValue;
         if (gap > 0.15) {
+          const severity: "high" | "medium" = gap > 0.25 ? "high" : "medium";
           flags.push({
-            type: 'assessmentGap',
-            severity: gap > 0.25 ? 'high' : 'medium',
+            type: "assessmentGap",
+            severity,
             description: `Assessment differs by ${(gap * 100).toFixed(1)}% from estimated value`
           });
         }
