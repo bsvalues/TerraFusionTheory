@@ -18,7 +18,8 @@ import {
   LucideHelpCircle,
   LucideMonitor,
   Calculator as LucideCalculator,
-  Palette as LucidePalette
+  Palette as LucidePalette,
+  CircuitBoard as LucideCircuitBoard
 } from 'lucide-react';
 import MapContainer from '@/components/mapping/MapContainer';
 import MarketDashboard from '@/components/dashboard/MarketDashboard';
@@ -102,6 +103,14 @@ const RealEstateAnalyticsPage = () => {
               <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
                 <LucidePalette className="h-5 w-5 mr-1 text-purple-500" />
                 <span className="hidden md:inline">Color Schemes</span>
+              </button>
+            </Link>
+            
+            {/* MCP Tool Link */}
+            <Link href="/mcp-tool">
+              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
+                <LucideCircuitBoard className="h-5 w-5 mr-1 text-cyan-500" />
+                <span className="hidden md:inline">MCP Tool</span>
               </button>
             </Link>
             

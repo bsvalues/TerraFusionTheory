@@ -1,270 +1,270 @@
 /**
  * Agent Service
  * 
- * This service handles communication with the AI agents API endpoints.
- * It provides functions for interacting with property and technical specialists,
- * as well as collaborative queries and memory search.
+ * This service provides functions to interact with the agent system and MCP.
  */
 
-// Agent interfaces
-export interface Agent {
-  id: string;
-  name: string;
-  description: string;
-  capabilities: string[];
-  trainingData?: string[];
-}
+import { apiRequest } from '@/lib/queryClient';
 
-export interface AgentResponse {
-  success: boolean;
-  response: string;
-  message?: string;
-}
-
-export interface AgentListResponse {
-  success: boolean;
-  agents: Agent[];
-  message?: string;
-}
-
-export interface AgentDetailResponse {
-  success: boolean;
-  agent: Agent;
-  message?: string;
-}
-
-export interface MemorySearchResult {
-  id: string;
-  text: string;
-  score: number;
-}
-
-export interface MemorySearchResponse {
-  success: boolean;
-  results: MemorySearchResult[];
-  message?: string;
-}
-
-// Type for context parameters
+// Query context for agent requests
 export interface QueryContext {
   currentSpecialist?: string;
   source?: string;
+  enableCollaboration?: boolean;
   [key: string]: any;
 }
 
+// Agent Types and Interfaces
+
+export interface Agent {
+  id: string;
+  name: string;
+  type: string;
+  description: string;
+  version: string;
+  capabilities: string[];
+  tools: string[];
+  icon?: string;
+  status: 'idle' | 'busy' | 'error';
+  memory: {
+    totalEntries: number;
+    lastAccessed?: string;
+  };
+  lastActive?: string;
+}
+
+export interface AgentQuestion {
+  question: string;
+  context?: Record<string, any>;
+}
+
+export interface AgentResponse {
+  id: string;
+  response: string;
+  metadata: {
+    responseTime: number;
+    toolsUsed?: string[];
+    confidence?: number;
+    sources?: string[];
+    timestamp: string;
+  };
+}
+
+export interface AgentTask {
+  id: string;
+  agentId: string;
+  type: string;
+  status: 'pending' | 'in_progress' | 'completed' | 'failed';
+  data: Record<string, any>;
+  result?: Record<string, any>;
+  error?: {
+    message: string;
+    code: string;
+    details?: any;
+  };
+  createdAt: string;
+  updatedAt: string;
+  completedAt?: string;
+}
+
+export interface AgentMemoryEntry {
+  id: string;
+  content: string;
+  metadata: {
+    type: string;
+    source: string;
+    timestamp: string;
+    tags?: string[];
+  };
+  embedding?: number[]; // Vector embedding if available
+}
+
+export interface MCPRequest {
+  prompt: string;
+  options?: {
+    model?: string;
+    temperature?: number;
+    maxTokens?: number;
+    tools?: string[];
+    contextItems?: {
+      id: string;
+      content: string;
+      type?: string;
+    }[];
+  };
+}
+
+export interface MCPResponse {
+  result: string;
+  usage: {
+    promptTokens: number;
+    completionTokens: number;
+    totalTokens: number;
+  };
+  metadata: {
+    model: string;
+    toolsUsed?: string[];
+    processingTime: number;
+    timestamp: string;
+  };
+}
+
+// Agent API Functions
+
 /**
- * Fetch a list of all available AI agents
+ * Get all available agents
  */
-export async function listAgents(): Promise<Agent[]> {
-  try {
-    const response = await fetch('/api/agents');
-    
-    if (!response.ok) {
-      throw new Error(`Failed to get agents list: ${response.statusText}`);
-    }
-    
-    const data: AgentListResponse = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to get agents list');
-    }
-    
-    return data.agents;
-  } catch (error) {
-    console.error('Error listing agents:', error);
-    throw error;
-  }
+export async function getAgents(): Promise<Agent[]> {
+  return apiRequest('/api/agents');
 }
 
 /**
- * Get details about the real estate agent
+ * Get a specific agent by ID
  */
-export async function getRealEstateAgent(): Promise<Agent> {
-  try {
-    const response = await fetch('/api/agents/real-estate');
-    
-    if (!response.ok) {
-      throw new Error(`Failed to get real estate agent: ${response.statusText}`);
-    }
-    
-    const data: AgentDetailResponse = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to get real estate agent details');
-    }
-    
-    return data.agent;
-  } catch (error) {
-    console.error('Error getting real estate agent:', error);
-    throw error;
-  }
+export async function getAgentById(id: string): Promise<Agent> {
+  return apiRequest(`/api/agents/${id}`);
 }
 
 /**
- * Get details about the developer agent
+ * Ask a question to the valuation agent
  */
-export async function getDeveloperAgent(): Promise<Agent> {
-  try {
-    const response = await fetch('/api/agents/developer');
-    
-    if (!response.ok) {
-      throw new Error(`Failed to get developer agent: ${response.statusText}`);
-    }
-    
-    const data: AgentDetailResponse = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to get developer agent details');
-    }
-    
-    return data.agent;
-  } catch (error) {
-    console.error('Error getting developer agent:', error);
-    throw error;
-  }
+export async function askValuationAgent(
+  question: string,
+  context?: Record<string, any>
+): Promise<AgentResponse> {
+  return apiRequest('/api/agents/valuation/ask', {
+    method: 'POST',
+    data: { question, context }
+  });
 }
 
 /**
- * Ask a question to the real estate agent
+ * Ask a question to the developer agent (returns full AgentResponse)
  */
-export async function askRealEstateAgent(question: string, context?: QueryContext): Promise<string> {
-  try {
-    const response = await fetch('/api/agents/real-estate/ask', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        question,
-        context: context || { source: 'user_chat' }
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to get answer from real estate agent: ${response.statusText}`);
-    }
-    
-    const data: AgentResponse = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to get answer from real estate agent');
-    }
-    
-    return data.response;
-  } catch (error) {
-    console.error('Error asking real estate agent:', error);
-    throw error;
-  }
+export async function askDeveloperAgent(
+  question: string,
+  context?: Record<string, any> | QueryContext
+): Promise<AgentResponse> {
+  return apiRequest('/api/agents/developer/ask', {
+    method: 'POST',
+    data: { question, context }
+  });
 }
 
 /**
- * Ask a question to the developer agent
+ * Initiate collaboration between agents on a complex question
  */
-export async function askDeveloperAgent(question: string, context?: QueryContext): Promise<string> {
-  try {
-    const response = await fetch('/api/agents/developer/ask', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        question,
-        context: context || { source: 'user_chat' }
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to get answer from developer agent: ${response.statusText}`);
-    }
-    
-    const data: AgentResponse = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to get answer from developer agent');
-    }
-    
-    return data.response;
-  } catch (error) {
-    console.error('Error asking developer agent:', error);
-    throw error;
-  }
+export async function initiateAgentCollaboration(
+  question: string,
+  context?: Record<string, any>
+): Promise<AgentResponse> {
+  return apiRequest('/api/agents/collaborate', {
+    method: 'POST',
+    data: { question, context }
+  });
 }
 
 /**
- * Ask a collaborative question to both agents
+ * Search vector memory for relevant information
  */
-export async function askCollaborative(question: string, context?: QueryContext): Promise<string> {
-  try {
-    const response = await fetch('/api/agents/collaborate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        question,
-        context: context || { source: 'user_chat', enableCollaboration: true }
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to get collaborative answer: ${response.statusText}`);
-    }
-    
-    const data: AgentResponse = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to get collaborative answer');
-    }
-    
-    return data.response;
-  } catch (error) {
-    console.error('Error asking collaborative question:', error);
-    throw error;
-  }
+export async function searchAgentMemory(
+  query: string,
+  agentId?: string,
+  limit: number = 5
+): Promise<AgentMemoryEntry[]> {
+  return apiRequest('/api/agents/memory/search', {
+    method: 'POST',
+    data: { query, agentId, limit }
+  });
 }
 
 /**
- * Search agent memory for relevant information
+ * Execute an operation with the MCP tool
  */
-export async function searchAgentMemory(query: string, limit: number = 5): Promise<MemorySearchResult[]> {
-  try {
-    const response = await fetch('/api/agents/memory/search', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ 
-        query,
-        limit
-      }),
-    });
-    
-    if (!response.ok) {
-      throw new Error(`Failed to search agent memory: ${response.statusText}`);
-    }
-    
-    const data: MemorySearchResponse = await response.json();
-    
-    if (!data.success) {
-      throw new Error(data.message || 'Failed to search agent memory');
-    }
-    
-    return data.results;
-  } catch (error) {
-    console.error('Error searching agent memory:', error);
-    throw error;
-  }
+export async function executeMCP(
+  prompt: string,
+  options?: MCPRequest['options']
+): Promise<MCPResponse> {
+  // Use the new MCP endpoint
+  return apiRequest('/api/mcp/execute', {
+    method: 'POST',
+    data: { prompt, options }
+  });
 }
 
-// Default export for the entire service
+/**
+ * Assign a task to an agent
+ */
+export async function assignAgentTask(
+  agentId: string,
+  taskType: string,
+  data: Record<string, any>
+): Promise<AgentTask> {
+  return apiRequest(`/api/agents/${agentId}/tasks`, {
+    method: 'POST',
+    data: { type: taskType, data }
+  });
+}
+
+/**
+ * Get all tasks for an agent
+ */
+export async function getAgentTasks(agentId: string): Promise<AgentTask[]> {
+  return apiRequest(`/api/agents/${agentId}/tasks`);
+}
+
+/**
+ * Get a specific task
+ */
+export async function getAgentTask(
+  agentId: string,
+  taskId: string
+): Promise<AgentTask> {
+  return apiRequest(`/api/agents/${agentId}/tasks/${taskId}`);
+}
+
+/**
+ * Ask the real estate agent a question (returns string response only)
+ */
+export async function askRealEstateAgent(
+  question: string,
+  context?: QueryContext
+): Promise<string> {
+  const response: any = await apiRequest('/api/agents/real-estate/ask', {
+    method: 'POST',
+    data: { question, context }
+  });
+  return response.response;
+}
+
+/**
+ * Ask a question using collaborative mode with both agents (returns string response only)
+ */
+export async function askCollaborative(
+  question: string,
+  context?: QueryContext
+): Promise<string> {
+  const response: any = await apiRequest('/api/agents/collaborate', {
+    method: 'POST',
+    data: { question, context }
+  });
+  return response.response;
+}
+
+// Bundle all functions into a default export for backward compatibility
 const agentService = {
-  listAgents,
-  getRealEstateAgent,
-  getDeveloperAgent,
+  getAgents,
+  getAgentById,
+  askValuationAgent,
+  initiateAgentCollaboration,
+  searchAgentMemory,
+  executeMCP,
+  assignAgentTask,
+  getAgentTasks,
+  getAgentTask,
   askRealEstateAgent,
   askDeveloperAgent,
-  askCollaborative,
-  searchAgentMemory
+  askCollaborative
 };
 
 export default agentService;

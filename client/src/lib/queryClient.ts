@@ -7,14 +7,24 @@ import { QueryClient } from '@tanstack/react-query';
 // Default fetch function for API requests
 export const apiRequest = async <T>(
   url: string,
-  config?: RequestInit
+  config?: RequestInit & { data?: any }
 ): Promise<T> => {
-  const response = await fetch(url, {
+  // Extract data and convert it to JSON body if provided
+  const { data, ...restConfig } = config || {};
+  
+  const requestConfig: RequestInit = {
     headers: {
       'Content-Type': 'application/json',
     },
-    ...config,
-  });
+    ...restConfig,
+  };
+  
+  // Add body if data is provided
+  if (data !== undefined) {
+    requestConfig.body = JSON.stringify(data);
+  }
+  
+  const response = await fetch(url, requestConfig);
 
   if (!response.ok) {
     const errorData = await response.json().catch(() => ({}));

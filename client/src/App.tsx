@@ -30,6 +30,7 @@ import MassAppraisalPage from './pages/MassAppraisalPage';
 import MarketHeatMapPage from './pages/MarketHeatMapPage';
 import ValuationAssistantPage from './pages/ValuationAssistantPage';
 import AdaptiveColorSchemePage from './pages/AdaptiveColorSchemePage';
+import MCPToolPage from './pages/MCPToolPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import DevAuthLoginPage from './pages/DevAuthLoginPage';
@@ -94,6 +95,7 @@ const App = () => {
               <Route path="/market-heat-map" component={MarketHeatMapPage} />
               <Route path="/valuation-assistant" component={ValuationAssistantPage} />
               <Route path="/adaptive-color-scheme" component={AdaptiveColorSchemePage} />
+              <Route path="/mcp-tool" component={MCPToolPage} />
               <Route path="/recommendations" component={RecommendationsPage} />
               <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
               <Route path="/help" component={HelpCenterPage} />

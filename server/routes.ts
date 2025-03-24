@@ -9,6 +9,7 @@ import * as analyticsController from "./controllers/analytics.controller";
 import * as agentController from "./controllers/agent.controller";
 import * as propertyValuationController from "./controllers/property-valuation.controller";
 import * as massAppraisalController from "./controllers/mass-appraisal.controller";
+import * as mcpController from "./controllers/mcp.controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
@@ -346,6 +347,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/v2/ai/debug", aiController.debugCode);
   app.post("/api/v2/ai/documentation", aiController.generateDocumentation);
   app.get("/api/v2/ai/providers", aiController.getProviders);
+  
+  // MCP (Model Control Protocol) routes
+  app.post("/api/mcp/execute", asyncHandler(mcpController.executeMCP));
   
   // Update the project messages route to use the new AI controller
   app.post("/api/v2/projects/:id/messages", async (req, res, next) => {
