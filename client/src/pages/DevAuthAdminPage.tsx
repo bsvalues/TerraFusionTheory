@@ -24,9 +24,12 @@ const tokenFormSchema = z.object({
 });
 
 // Type for form data with string values as required by form components
-type TokenFormValues = {
-  userId: string;
-  expirationMinutes: string;
+type TokenFormValues = z.infer<typeof tokenFormSchema>;
+
+// Type for the form submission values
+type TokenSubmitValues = {
+  userId: number;
+  expirationMinutes: number;
 };
 
 // Token type
@@ -118,7 +121,7 @@ const DevAuthAdminPage: React.FC = () => {
   };
 
   // Handle form submission
-  const onSubmit = async (values: z.infer<typeof tokenFormSchema>) => {
+  const onSubmit = async (values: TokenFormValues) => {
     setIsLoading(true);
     setGeneratedToken(null);
     
