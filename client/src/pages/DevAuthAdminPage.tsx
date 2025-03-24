@@ -23,6 +23,12 @@ const tokenFormSchema = z.object({
   ),
 });
 
+// Type for form data with string values as required by form components
+type TokenFormValues = {
+  userId: string;
+  expirationMinutes: string;
+};
+
 // Token type
 interface Token {
   userId: number;
@@ -51,11 +57,11 @@ const DevAuthAdminPage: React.FC = () => {
   const [activeUserId, setActiveUserId] = useState<number | null>(null);
 
   // Initialize form
-  const form = useForm<z.infer<typeof tokenFormSchema>>({
+  const form = useForm<TokenFormValues>({
     resolver: zodResolver(tokenFormSchema),
     defaultValues: {
-      userId: '1', // Default to first user
-      expirationMinutes: '60', // Default to 60 minutes
+      userId: "1", // Default to first user as string (will be transformed by schema)
+      expirationMinutes: "60", // Default to 60 minutes as string (will be transformed by schema)
     },
   });
 
@@ -297,7 +303,7 @@ const DevAuthAdminPage: React.FC = () => {
                           <Select
                             disabled={isLoading}
                             onValueChange={field.onChange}
-                            defaultValue={field.value}
+                            defaultValue={field.value.toString()}
                           >
                             <FormControl>
                               <SelectTrigger>

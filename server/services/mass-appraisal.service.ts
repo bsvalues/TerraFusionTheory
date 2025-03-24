@@ -754,11 +754,11 @@ export class MassAppraisalService {
     }
     
     return {
-      costApproachValue: cost,
+      costApproachValue: cost === null ? undefined : cost,
       costApproachWeight: costWeight > 0 ? costWeight : undefined,
-      salesComparisonValue: sales,
+      salesComparisonValue: sales === null ? undefined : sales,
       salesComparisonWeight: salesWeight > 0 ? salesWeight : undefined,
-      incomeApproachValue: income,
+      incomeApproachValue: income === null ? undefined : income,
       incomeApproachWeight: incomeWeight > 0 ? incomeWeight : undefined,
       finalValue,
       reliabilityScore: Math.round(confidence * 100),
