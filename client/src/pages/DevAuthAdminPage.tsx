@@ -63,8 +63,8 @@ const DevAuthAdminPage: React.FC = () => {
   const form = useForm<TokenFormValues>({
     resolver: zodResolver(tokenFormSchema),
     defaultValues: {
-      userId: "1", // Default to first user as string (will be transformed by schema)
-      expirationMinutes: "60", // Default to 60 minutes as string (will be transformed by schema)
+      userId: 1, // Default to first user
+      expirationMinutes: 60, // Default to 60 minutes
     },
   });
 
@@ -305,7 +305,7 @@ const DevAuthAdminPage: React.FC = () => {
                           <FormLabel>User ID</FormLabel>
                           <Select
                             disabled={isLoading}
-                            onValueChange={field.onChange}
+                            onValueChange={(value) => field.onChange(parseInt(value, 10))}
                             defaultValue={field.value.toString()}
                           >
                             <FormControl>
@@ -339,7 +339,8 @@ const DevAuthAdminPage: React.FC = () => {
                             <Input
                               type="number"
                               placeholder="60"
-                              {...field}
+                              value={field.value}
+                              onChange={(e) => field.onChange(parseInt(e.target.value, 10) || 60)}
                               disabled={isLoading}
                             />
                           </FormControl>

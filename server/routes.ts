@@ -4,7 +4,7 @@ import { storage } from "./storage";
 import * as openaiController from "./controllers/openai.controller";
 import * as aiController from "./controllers/ai.controller";
 import * as connectorsController from "./controllers/connectors.controller";
-import * as marketController from "./controllers/market.controller";
+import { marketController } from "./controllers/market.controller";
 import * as analyticsController from "./controllers/analytics.controller";
 import * as agentController from "./controllers/agent.controller";
 import * as propertyValuationController from "./controllers/property-valuation.controller";
