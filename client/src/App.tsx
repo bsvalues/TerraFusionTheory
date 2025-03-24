@@ -22,6 +22,7 @@ import NeighborhoodComparisonPage from './pages/NeighborhoodComparisonPage';
 import SchoolAndEconomicAnalysisPage from './pages/SchoolAndEconomicAnalysisPage';
 import PropertyDetailPage from './pages/PropertyDetailPage';
 import PropertyComparisonPage from './pages/PropertyComparisonPage';
+import MarketTrendsPage from './pages/MarketTrendsPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -74,6 +75,7 @@ const App = () => {
               <Route path="/school-economic-analysis" component={SchoolAndEconomicAnalysisPage} />
               <Route path="/property/:propertyId" component={PropertyDetailPage} />
               <Route path="/property-comparison" component={PropertyComparisonPage} />
+              <Route path="/market-trends" component={MarketTrendsPage} />
               <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
               <Route path="/help" component={HelpCenterPage} />
               <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
