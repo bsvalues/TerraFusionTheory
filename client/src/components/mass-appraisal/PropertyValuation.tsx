@@ -120,7 +120,13 @@ const PropertyValuation = ({ models }: PropertyValuationProps) => {
         neighborhood: data.neighborhood,
       };
       
-      return apiRequest(url, { method: 'POST', data: { property } });
+      return apiRequest(url, { 
+        method: 'POST', 
+        body: JSON.stringify({ property }),
+        headers: {
+          'Content-Type': 'application/json'
+        } 
+      });
     },
     onSuccess: (data) => {
       setValuationResult(data);

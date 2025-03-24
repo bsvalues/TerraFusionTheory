@@ -100,7 +100,7 @@ const DepreciationCalculator = () => {
       
       return apiRequest('/api/mass-appraisal/depreciation', { 
         method: 'POST',
-        data: {
+        body: JSON.stringify({
           property,
           effectiveAge: data.effectiveAge,
           qualityClass: data.qualityClass,
@@ -108,7 +108,10 @@ const DepreciationCalculator = () => {
           condition: data.condition,
           functionalUtility: data.functionalUtility,
           externalFactors: data.externalFactors
-        } 
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
     },
     onSuccess: (data) => {

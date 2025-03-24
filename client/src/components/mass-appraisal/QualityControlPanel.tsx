@@ -138,7 +138,7 @@ const QualityControlPanel = () => {
       
       return apiRequest('/api/mass-appraisal/quality-control', { 
         method: 'POST',
-        data: {
+        body: JSON.stringify({
           // Mockup property data for testing
           properties: [
             { id: '1', address: '123 Main St', assessedValue: 400000, marketValue: 425000 },
@@ -152,7 +152,10 @@ const QualityControlPanel = () => {
             qualityMetrics: data.qualityMetrics,
             outlierThreshold: data.outlierThreshold
           }
-        } 
+        }),
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
     },
     onSuccess: (data) => {
