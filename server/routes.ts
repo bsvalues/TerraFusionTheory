@@ -16,6 +16,7 @@ import { realEstateAnalyticsService } from "./services/real-estate-analytics.ser
 import registerDevAuthRoutes from "./routes/dev-auth.routes";
 import registerUserRoutes from "./routes/users.routes";
 import registerRecommendationsRoutes from "./routes/recommendations.routes";
+import { registerValuationAgentRoutes } from "./routes/valuation-agent.routes";
 
 // Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';
@@ -65,6 +66,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register recommendation routes
   registerRecommendationsRoutes(app, storage);
+  
+  // Register valuation agent routes
+  registerValuationAgentRoutes(app);
   
   // API routes - prefix all routes with /api
   

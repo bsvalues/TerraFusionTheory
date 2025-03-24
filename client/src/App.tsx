@@ -28,6 +28,7 @@ import MarketTrendsPage from './pages/MarketTrendsPage';
 import NaturalHazardPage from './pages/NaturalHazardPage';
 import MassAppraisalPage from './pages/MassAppraisalPage';
 import MarketHeatMapPage from './pages/MarketHeatMapPage';
+import ValuationAssistantPage from './pages/ValuationAssistantPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import DevAuthLoginPage from './pages/DevAuthLoginPage';
@@ -90,6 +91,7 @@ const App = () => {
               <Route path="/natural-hazards" component={NaturalHazardPage} />
               <Route path="/mass-appraisal" component={MassAppraisalPage} />
               <Route path="/market-heat-map" component={MarketHeatMapPage} />
+              <Route path="/valuation-assistant" component={ValuationAssistantPage} />
               <Route path="/recommendations" component={RecommendationsPage} />
               <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
               <Route path="/help" component={HelpCenterPage} />
