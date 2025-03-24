@@ -186,7 +186,7 @@ const RatioStudyPanel = () => {
       });
     },
     onSuccess: (data) => {
-      setStudyResult(data);
+      setStudyResult(data as RatioStudyResult);
       setActiveTab('results');
       toast({
         title: "Ratio Study Complete",

@@ -159,7 +159,7 @@ const QualityControlPanel = () => {
       });
     },
     onSuccess: (data) => {
-      setQualityResult(data);
+      setQualityResult(data as QualityControlResult);
       setActiveTab('results');
       toast({
         title: "Quality Control Analysis Complete",
