@@ -10,6 +10,7 @@ import { Route, Switch } from 'wouter';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from '@/components/ui/toaster';
 import { queryClient } from '@/lib/queryClient';
+import { ComparisonProvider } from './context/ComparisonContext';
 import RealEstateAnalyticsPage from './pages/RealEstateAnalyticsPage';
 import PropertyValuationPage from './pages/PropertyValuationPage';
 import NeighborhoodSentimentPage from './pages/NeighborhoodSentimentPage';
@@ -31,6 +32,7 @@ import {
   AIAssistant 
 } from './components/onboarding';
 import { AISpecialistChat } from './components/ai';
+import ComparisonButton from './components/property/ComparisonButton';
 
 // Main App component
 const App = () => {
@@ -56,41 +58,43 @@ const App = () => {
 
   return (
     <QueryClientProvider client={queryClient}>
-      <TutorialManager>
-        <div className="min-h-screen bg-background font-sans antialiased">
-          <Switch>
-            <Route path="/" component={RealEstateAnalyticsPage} />
-            <Route path="/valuation" component={PropertyValuationPage} />
-            <Route path="/neighborhood-sentiment" component={NeighborhoodSentimentPage} />
-            <Route path="/sentiment-map" component={SentimentMapPage} />
-            <Route path="/sentiment-trends" component={SentimentTrendPage} />
-            <Route path="/property-enrichment" component={PropertyEnrichmentDemo} />
-            <Route path="/property-valuation-demo" component={PropertyValuationDemo} />
-            <Route path="/neighborhood-comparison" component={NeighborhoodComparisonPage} />
-            <Route path="/school-economic-analysis" component={SchoolAndEconomicAnalysisPage} />
-            <Route path="/property/:propertyId" component={PropertyDetailPage} />
-            <Route path="/property-comparison" component={PropertyComparisonPage} />
-            <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
-            <Route path="/help" component={HelpCenterPage} />
-            <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
-            <Route component={NotFoundPage} />
-          </Switch>
-          
-          <TutorialButton position="bottom-right" />
-          <AIAssistant />
-          
-          {/* Add the new AI Specialist Chat with fix positioned button in the header */}
-          <div className="fixed top-4 right-4 z-40">
-            <AISpecialistChat />
+      <ComparisonProvider>
+        <TutorialManager>
+          <div className="min-h-screen bg-background font-sans antialiased">
+            <Switch>
+              <Route path="/" component={RealEstateAnalyticsPage} />
+              <Route path="/valuation" component={PropertyValuationPage} />
+              <Route path="/neighborhood-sentiment" component={NeighborhoodSentimentPage} />
+              <Route path="/sentiment-map" component={SentimentMapPage} />
+              <Route path="/sentiment-trends" component={SentimentTrendPage} />
+              <Route path="/property-enrichment" component={PropertyEnrichmentDemo} />
+              <Route path="/property-valuation-demo" component={PropertyValuationDemo} />
+              <Route path="/neighborhood-comparison" component={NeighborhoodComparisonPage} />
+              <Route path="/school-economic-analysis" component={SchoolAndEconomicAnalysisPage} />
+              <Route path="/property/:propertyId" component={PropertyDetailPage} />
+              <Route path="/property-comparison" component={PropertyComparisonPage} />
+              <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
+              <Route path="/help" component={HelpCenterPage} />
+              <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
+              <Route component={NotFoundPage} />
+            </Switch>
+            
+            <TutorialButton position="bottom-right" />
+            <AIAssistant />
+            
+            {/* Add the new AI Specialist Chat with fix positioned button in the header */}
+            <div className="fixed top-4 right-4 z-40">
+              <AISpecialistChat />
+            </div>
+            
+            {showWelcome && (
+              <WelcomeScreen onClose={handleCloseWelcome} />
+            )}
+            
+            <Toaster />
           </div>
-          
-          {showWelcome && (
-            <WelcomeScreen onClose={handleCloseWelcome} />
-          )}
-          
-          <Toaster />
-        </div>
-      </TutorialManager>
+        </TutorialManager>
+      </ComparisonProvider>
     </QueryClientProvider>
   );
 };
