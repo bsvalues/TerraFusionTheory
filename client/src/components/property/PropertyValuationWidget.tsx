@@ -519,43 +519,45 @@ export function PropertyValuationWidget({
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs mb-3">
                         <div className="flex flex-col">
                           <span className="text-muted-foreground">Beds</span>
-                          <span>{comp.bedrooms}</span>
+                          <span>{comp.bedrooms ?? 'N/A'}</span>
                         </div>
                         <div className="flex flex-col">
                           <span className="text-muted-foreground">Baths</span>
-                          <span>{comp.bathrooms}</span>
+                          <span>{comp.bathrooms ?? 'N/A'}</span>
                         </div>
                         <div className="flex flex-col">
                           <span className="text-muted-foreground">Sq Ft</span>
-                          <span>{comp.squareFeet.toLocaleString()}</span>
+                          <span>{comp.squareFeet?.toLocaleString() || 'N/A'}</span>
                         </div>
                         <div className="flex flex-col">
                           <span className="text-muted-foreground">Year</span>
-                          <span>{comp.yearBuilt}</span>
+                          <span>{comp.yearBuilt ?? 'N/A'}</span>
                         </div>
                       </div>
                       
-                      <div className="mt-3">
-                        <h5 className="text-sm font-medium mb-2">Adjustment Factors</h5>
-                        <div className="space-y-2">
-                          {comp.adjustmentFactors.map((factor, i) => (
-                            <div key={i} className="flex items-center justify-between text-xs">
-                              <span>{factor.reason}</span>
-                              <div className="flex items-center">
-                                {factor.direction === 'up' ? (
-                                  <ArrowUpCircle className="h-3 w-3 text-green-500 mr-1" />
-                                ) : (
-                                  <ArrowDownCircle className="h-3 w-3 text-red-500 mr-1" />
-                                )}
-                                <span>
-                                  {factor.direction === 'up' ? '+' : '-'}
-                                  {formatPrice(Math.abs(factor.amount))}
-                                </span>
+                      {comp.adjustmentFactors && comp.adjustmentFactors.length > 0 && (
+                        <div className="mt-3">
+                          <h5 className="text-sm font-medium mb-2">Adjustment Factors</h5>
+                          <div className="space-y-2">
+                            {comp.adjustmentFactors.map((factor, i) => (
+                              <div key={i} className="flex items-center justify-between text-xs">
+                                <span>{factor.reason}</span>
+                                <div className="flex items-center">
+                                  {factor.direction === 'up' ? (
+                                    <ArrowUpCircle className="h-3 w-3 text-green-500 mr-1" />
+                                  ) : (
+                                    <ArrowDownCircle className="h-3 w-3 text-red-500 mr-1" />
+                                  )}
+                                  <span>
+                                    {factor.direction === 'up' ? '+' : '-'}
+                                    {formatPrice(Math.abs(factor.amount))}
+                                  </span>
+                                </div>
                               </div>
-                            </div>
-                          ))}
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      )}
                     </div>
                   ))}
                 </div>
