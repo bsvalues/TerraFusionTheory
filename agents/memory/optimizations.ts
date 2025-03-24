@@ -5,7 +5,7 @@
  * with a focus on vector memory and cache management.
  */
 
-import { VectorMemory } from './vector';
+import { vectorMemory } from './vector';
 
 /**
  * Optimize vector memory by cleaning up old or unused entries
@@ -13,7 +13,7 @@ import { VectorMemory } from './vector';
  */
 export async function optimizeVectorMemory() {
   try {
-    const vectorMemory = VectorMemory.getInstance();
+    // vectorMemory is already imported from './vector'
     
     // Get initial stats
     const initialStats = await vectorMemory.getStats();
