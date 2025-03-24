@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/select';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { InfoCircle, Map } from 'lucide-react';
+import { Info, Map } from 'lucide-react';
 import { SentimentLevel } from '@/services/neighborhood-sentiment.service';
 
 // Placeholder component for the sentiment map
