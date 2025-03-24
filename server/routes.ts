@@ -394,6 +394,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/analytics/documents/:fileName", asyncHandler(analyticsController.getPropertyDocument));
   app.post("/api/analytics/refresh", asyncHandler(analyticsController.refreshAllData));
   
+  // Mass Appraisal API routes - Advanced CAMA functionality
+  app.get("/api/mass-appraisal/models", asyncHandler(massAppraisalController.getAllModels));
+  app.get("/api/mass-appraisal/models/:id", asyncHandler(massAppraisalController.getModelById));
+  app.post("/api/mass-appraisal/models", asyncHandler(massAppraisalController.createModel));
+  app.delete("/api/mass-appraisal/models/:id", asyncHandler(massAppraisalController.deleteModel));
+  app.post("/api/mass-appraisal/models/:id/calibrate", asyncHandler(massAppraisalController.calibrateModel));
+  app.post("/api/mass-appraisal/models/:id/value", asyncHandler(massAppraisalController.valueProperty));
+  app.post("/api/mass-appraisal/depreciation", asyncHandler(massAppraisalController.calculateDepreciation));
+  app.post("/api/mass-appraisal/reconcile", asyncHandler(massAppraisalController.reconcileValues));
+  app.post("/api/mass-appraisal/quality-control", asyncHandler(massAppraisalController.performQualityControl));
+  app.post("/api/mass-appraisal/ratio-study", asyncHandler(massAppraisalController.performRatioStudy));
+  app.get("/api/mass-appraisal/samples", asyncHandler(massAppraisalController.getSampleModels));
+  
   // AI Agent API routes
   app.get("/api/agents", asyncHandler(agentController.listAllAgents));
   app.get("/api/agents/real-estate", asyncHandler(agentController.getRealEstateAgent));
