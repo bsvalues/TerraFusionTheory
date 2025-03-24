@@ -224,12 +224,41 @@ export function PropertyValuationWidget({
     </div>
   );
 
+  const getConfidenceLevel = (confidence: number): {
+    label: string;
+    color: string;
+    description: string;
+  } => {
+    if (confidence >= 90) return { 
+      label: 'Very High', 
+      color: 'bg-green-500',
+      description: 'Prediction based on comprehensive data with multiple confirmed comparable properties'
+    };
+    if (confidence >= 75) return { 
+      label: 'High', 
+      color: 'bg-green-400',
+      description: 'Strong prediction with good comparable data and supporting external factors'
+    };
+    if (confidence >= 60) return { 
+      label: 'Moderate', 
+      color: 'bg-yellow-400',
+      description: 'Reasonable confidence with adequate supporting data and some comparable properties'
+    };
+    if (confidence >= 40) return { 
+      label: 'Fair', 
+      color: 'bg-orange-400',
+      description: 'Limited confidence due to fewer comparable properties or conflicting factors'
+    };
+    return { 
+      label: 'Low', 
+      color: 'bg-red-500',
+      description: 'Minimal confidence due to lack of comparable properties or unusual property characteristics'
+    };
+  };
+  
   const getConfidenceBadge = (confidence: number) => {
-    if (confidence >= 90) return <Badge className="bg-green-500">Very High</Badge>;
-    if (confidence >= 75) return <Badge className="bg-green-400">High</Badge>;
-    if (confidence >= 60) return <Badge className="bg-yellow-400">Moderate</Badge>;
-    if (confidence >= 40) return <Badge className="bg-orange-400">Fair</Badge>;
-    return <Badge className="bg-red-500">Low</Badge>;
+    const confidenceLevel = getConfidenceLevel(confidence);
+    return <Badge className={confidenceLevel.color}>{confidenceLevel.label}</Badge>;
   };
 
   const formatPrice = (price: number) => {
@@ -346,8 +375,23 @@ export function PropertyValuationWidget({
                       {formatPrice(valuation.adjustedPrice)}
                     </div>
                     <div className="flex items-center justify-end mt-1">
-                      <span className="text-xs mr-2">Confidence:</span>
-                      {getConfidenceBadge(valuation.confidence)}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="flex items-center cursor-help">
+                              <span className="text-xs mr-2">Confidence:</span>
+                              {getConfidenceBadge(valuation.confidence)}
+                              <InfoIcon className="ml-1 h-3 w-3 text-muted-foreground" />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent side="bottom" className="w-60 p-3">
+                            <p className="font-semibold text-sm">Confidence Score: {valuation.confidence}%</p>
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {getConfidenceLevel(valuation.confidence).description}
+                            </p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
                     </div>
                   </div>
                 </div>
