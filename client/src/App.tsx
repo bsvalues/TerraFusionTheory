@@ -12,6 +12,7 @@ import { Toaster } from '@/components/ui/toaster';
 import { queryClient } from '@/lib/queryClient';
 import RealEstateAnalyticsPage from './pages/RealEstateAnalyticsPage';
 import PropertyValuationPage from './pages/PropertyValuationPage';
+import NeighborhoodSentimentPage from './pages/NeighborhoodSentimentPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -52,6 +53,7 @@ const App = () => {
           <Switch>
             <Route path="/" component={RealEstateAnalyticsPage} />
             <Route path="/valuation" component={PropertyValuationPage} />
+            <Route path="/neighborhood-sentiment" component={NeighborhoodSentimentPage} />
             <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
             <Route path="/help" component={HelpCenterPage} />
             <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
