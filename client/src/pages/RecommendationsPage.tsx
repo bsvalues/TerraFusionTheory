@@ -152,9 +152,9 @@ export function RecommendationsPage() {
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
         <Card>
           <CardHeader>
-            <CardTitle>Market Insights</CardTitle>
+            <CardTitle>Valuation Metrics</CardTitle>
             <CardDescription>
-              Real-time market trends affecting property values
+              Key assessment and appraisal factors affecting valuations
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -164,9 +164,9 @@ export function RecommendationsPage() {
                   <AlertCircle className="h-4 w-4" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm">Rising interest rates</h4>
+                  <h4 className="font-medium text-sm">Assessment-to-Market Ratio</h4>
                   <p className="text-sm text-muted-foreground">
-                    Interest rates have increased by 0.5% in the last month, affecting mortgage affordability.
+                    Current assessment-to-market ratio in Grandview is 0.94, within the IAAO standard range of 0.90-1.10.
                   </p>
                 </div>
               </div>
@@ -176,9 +176,9 @@ export function RecommendationsPage() {
                   <AlertCircle className="h-4 w-4" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm">Inventory levels up</h4>
+                  <h4 className="font-medium text-sm">COD Analysis</h4>
                   <p className="text-sm text-muted-foreground">
-                    Available properties in Grandview have increased by 12% compared to the previous quarter.
+                    Coefficient of Dispersion for residential properties in Grandview is 13.2, indicating acceptable assessment uniformity.
                   </p>
                 </div>
               </div>
@@ -188,9 +188,9 @@ export function RecommendationsPage() {
                   <AlertCircle className="h-4 w-4" />
                 </div>
                 <div>
-                  <h4 className="font-medium text-sm">Neighborhood development</h4>
+                  <h4 className="font-medium text-sm">Construction Cost Index</h4>
                   <p className="text-sm text-muted-foreground">
-                    New commercial development planned for North Grandview, potentially increasing property values.
+                    Building cost index has increased 6.8% year-over-year, impacting cost approach valuations significantly.
                   </p>
                 </div>
               </div>
@@ -200,17 +200,17 @@ export function RecommendationsPage() {
         
         <Card>
           <CardHeader>
-            <CardTitle>Your Preferences</CardTitle>
+            <CardTitle>Valuation Approaches</CardTitle>
             <CardDescription>
-              Property features influencing your recommendations
+              Weighted significance of different appraisal methodologies
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">School Quality</span>
-                  <span className="text-sm text-muted-foreground">High Priority</span>
+                  <span className="text-sm font-medium">Sales Comparison Approach</span>
+                  <span className="text-sm text-muted-foreground">High Weighting</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full">
                   <div className="h-2 bg-primary rounded-full" style={{ width: '85%' }}></div>
@@ -219,8 +219,8 @@ export function RecommendationsPage() {
               
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">Investment Potential</span>
-                  <span className="text-sm text-muted-foreground">Medium Priority</span>
+                  <span className="text-sm font-medium">Cost Approach</span>
+                  <span className="text-sm text-muted-foreground">Medium Weighting</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full">
                   <div className="h-2 bg-primary rounded-full" style={{ width: '60%' }}></div>
@@ -229,8 +229,8 @@ export function RecommendationsPage() {
               
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">Modern Features</span>
-                  <span className="text-sm text-muted-foreground">Low Priority</span>
+                  <span className="text-sm font-medium">Income Approach</span>
+                  <span className="text-sm text-muted-foreground">Low Weighting</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full">
                   <div className="h-2 bg-primary rounded-full" style={{ width: '35%' }}></div>
@@ -239,11 +239,11 @@ export function RecommendationsPage() {
               
               <div>
                 <div className="flex justify-between mb-1">
-                  <span className="text-sm font-medium">Proximity to Amenities</span>
-                  <span className="text-sm text-muted-foreground">High Priority</span>
+                  <span className="text-sm font-medium">CAMA Model Estimation</span>
+                  <span className="text-sm text-muted-foreground">High Weighting</span>
                 </div>
                 <div className="h-2 bg-muted rounded-full">
-                  <div className="h-2 bg-primary rounded-full" style={{ width: '90%' }}></div>
+                  <div className="h-2 bg-primary rounded-full" style={{ width: '80%' }}></div>
                 </div>
               </div>
             </div>
