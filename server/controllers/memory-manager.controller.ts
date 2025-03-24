@@ -77,9 +77,8 @@ async function loadMemoryUtils() {
   try {
     // Try to import the vector memory module
     try {
-      // Use relative path from the controller location to the agents directory
-      const vectorModulePath = path.resolve(__dirname, '../../agents/memory/vector.ts');
-      vectorMemoryUtils = await import(vectorModulePath);
+      // Use direct import path instead of __dirname which isn't available in ESM
+      vectorMemoryUtils = await import('../../agents/memory/vector.ts');
       console.log('[MemoryManager] Successfully loaded vector memory module');
     } catch (err) {
       console.warn('[MemoryManager] Vector memory module not available:', err.message);
@@ -87,9 +86,8 @@ async function loadMemoryUtils() {
 
     // Try to import memory optimization utilities
     try {
-      // Attempt to find memory optimization utils in agents directory
-      const optimizationModulePath = path.resolve(__dirname, '../../agents/memory/optimizations.ts');
-      memoryOptimizationUtils = await import(optimizationModulePath);
+      // Use direct import path for optimization utils
+      memoryOptimizationUtils = await import('../../agents/memory/optimizations.ts');
       console.log('[MemoryManager] Successfully loaded memory optimization tools');
     } catch (err) {
       console.warn('[MemoryManager] Memory optimization tools not available:', err.message);
