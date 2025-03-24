@@ -338,32 +338,32 @@ export async function getPropertyInsights(req: Request, res: Response) {
       {
         type: "valuation",
         title: "Cost Approach Valuation",
-        description: "Marshall & Swift cost manual Section 1301: Class D, Good quality residence. RCN: $180/sqft × 1,800 sqft = $324,000. Accrued depreciation analysis: Physical 14.5% (age-life method), Functional 0%, External 0%. Land value (allocation method): $95,000. Contributory site improvements: $11,000. Total value indication: $430,000.",
-        score: 88
+        description: "Marshall & Swift cost manual Section 1301: Class D, Good quality residence. RCN: $180/sqft × 1,800 sqft = $324,000. Accrued depreciation analysis: Physical 14.5% (age-life method, effective age 10 years, economic life 69 years), Functional 0% (modern floor plan), External 0% (stable neighborhood). Land value from allocation method: $95,000 (23% of total property value). Contributory site improvements: $11,000. Total cost approach value indication after entrepreneurial profit (10%): $430,000.",
+        score: 91
       },
       {
         type: "comparable",
         title: "Sales Comparison Grid Analysis",
-        description: "5 comparable sales analyzed with adjustments for market conditions (+0.5%/month), location (±5-10%), GLA ($55/sf), quality (±5-10%), condition (±5-15%), and site improvements. Net adjustments range: 2.5%-12.4%. Concluded value range: $432,000-$458,000. Reconciled point value estimate: $442,500.",
-        score: 92
+        description: "5 comparable sales (bracketing subject) analyzed with quantitative adjustments: market conditions (+0.5%/month), location (±5-10%), GLA ($55/sf), quality (±5-10%), condition (±5-15%), and site improvements. Qualitative adjustments for view and functional utility. Matched pairs analysis for bedroom and bathroom contribution. Net adjustments range: 2.5%-12.4% (compliant with FNMA guidelines). Unadjusted price range: $425,000-$460,000. Adjusted price range: $432,000-$458,000. Reconciled point value estimate: $442,500.",
+        score: 94
       },
       {
         type: "mass-appraisal",
         title: "CAMA System Value Estimate",
-        description: "Multiplicative model with location factor (1.12), time adjustment (1.085), physical index (1.03), and economic index (0.97). Model diagnostics: R²: 0.86, COV: 7.2%, COD: 8.5%. IAAO compliant reliability. Indicated value: $438,000.",
-        score: 90
+        description: "Multiplicative model with location factor (1.12), time adjustment (1.085), physical index (1.03), and economic index (0.97). Model diagnostics: R²: 0.86, COV: 7.2%, COD: 8.5%. IAAO Standard on Mass Appraisal (2017) compliant. Model calibration follows IAAO Standard on Ratio Studies (2013). Quality rating: Good. Indicated value: $438,000.",
+        score: 92
       },
       {
         type: "appraisal",
         title: "Reconciliation & Final Value Opinion",
-        description: "Correlation and weighted reconciliation of approaches: Sales comparison (reliability: high, weight: 60%, $442,500), Cost approach (reliability: moderate, weight: 25%, $430,000), Income approach (reliability: moderate-low, weight: 15%, $435,000). Final market value opinion as of March 15, 2025: $440,000. Exposure time: 30-45 days. Marketing time: 30-60 days.",
+        description: "Correlation and weighted reconciliation of approaches: Sales comparison (reliability: high, weight: 60%, $442,500), Cost approach (reliability: moderate, weight: 25%, $430,000), Income approach (reliability: moderate-low, weight: 15%, $435,000). Final market value opinion as of March 15, 2025: $440,000. Exposure time: 30-45 days. Marketing time: 30-60 days. USPAP Standards Rule 1-6 compliant. Extraordinary assumptions: None. Hypothetical conditions: None.",
         score: 95
       },
       {
         type: "assessment",
         title: "Assessment Ratio Study",
-        description: "Current assessment: $415,000. Assessment ratio: 0.94 (within IAAO target: 0.90-1.10). Horizontal equity measures: COD: 10.2 (standard: <15.0), COV: 11.8% (standard: <20%). Vertical equity measures: PRD: 1.01 (standard: 0.98-1.03), PRB: -0.012 (standard: -0.05 to 0.05).",
-        score: 88
+        description: "Current assessment: $415,000. Assessment ratio: 0.94 (within IAAO Standard on Ratio Studies target: 0.90-1.10). Horizontal equity measures: COD: 10.2 (IAAO standard for improved residential: <15.0), COV: 11.8% (standard: <20%). Vertical equity measures: PRD: 1.01 (IAAO standard: 0.98-1.03), PRB: -0.012 (IAAO standard: -0.05 to 0.05). Subject property falls within statistically supportable range per IAAO Standards.",
+        score: 90
       }
     ];
     
