@@ -341,7 +341,8 @@ const AdvancedPropertyComparison: React.FC<AdvancedPropertyComparisonProps> = ({
     
     // Map the radar metrics to data points
     return radarMetrics.map(metric => {
-      const entry: any = { metric: metric.label };
+      // Use Record type to avoid TypeScript errors with dynamic property names
+      const entry: Record<string, any> = { metric: metric.label };
       
       properties.forEach((property, index) => {
         let value = getPropertyValue(property, metric.key);
@@ -352,25 +353,26 @@ const AdvancedPropertyComparison: React.FC<AdvancedPropertyComparisonProps> = ({
         }
         
         // Normalize the value to 0-100 range
-        let normalizedValue = value;
+        let normalizedValue = value as number;
         
         if (metric.key === 'pricePerSqFt') {
           // Invert and normalize price (lower is better)
           const maxPrice = Math.max(...properties.map(p => p.pricePerSqFt || 0));
-          normalizedValue = maxPrice === 0 ? 0 : 100 - (value / maxPrice * 100);
+          normalizedValue = maxPrice === 0 ? 0 : 100 - (normalizedValue / maxPrice * 100);
         } else if (metric.key === 'naturalHazardRisk.overall') {
           // Invert risk (lower is better)
-          normalizedValue = 100 - (value * 100);
+          normalizedValue = 100 - (normalizedValue * 100);
         } else if (metric.key.includes('Score') || metric.key.includes('Rating')) {
           // Scores are typically 0-10, normalize to 0-100
-          normalizedValue = value * 10;
+          normalizedValue = normalizedValue * 10;
         }
         
         // Make sure the value is between 0-100
         normalizedValue = Math.max(0, Math.min(100, normalizedValue));
         
-        // Add to entry
-        entry[`Property ${index + 1}`] = normalizedValue;
+        // Add to entry - use a consistent variable for the property key
+        const propertyKey = `Property ${index + 1}`;
+        entry[propertyKey] = normalizedValue;
       });
       
       return entry;
@@ -380,18 +382,20 @@ const AdvancedPropertyComparison: React.FC<AdvancedPropertyComparisonProps> = ({
   // Generate chart data for the bar chart
   const generateBarChartData = (metrics: string[]) => {
     return metrics.map(metric => {
-      const entry: any = { 
+      // Use Record type to avoid TypeScript errors with dynamic property names
+      const entry: Record<string, any> = { 
         name: formatMetricLabel(metric) 
       };
       
       properties.forEach((property, index) => {
         const value = getPropertyValue(property, metric);
+        const propertyKey = `Property ${index + 1}`;
         
         // Handle missing values
         if (value === undefined || value === null) {
-          entry[`Property ${index + 1}`] = 0;
+          entry[propertyKey] = 0;
         } else {
-          entry[`Property ${index + 1}`] = value;
+          entry[propertyKey] = value;
         }
       });
       
@@ -784,11 +788,12 @@ const AdvancedPropertyComparison: React.FC<AdvancedPropertyComparisonProps> = ({
                                             <RechartsBarChart
                                               data={[{
                                                 name: formatMetricLabel(metric),
-                                                ...properties.reduce((acc, property, index) => {
+                                                ...properties.reduce((acc: Record<string, any>, property, index) => {
                                                   const value = getPropertyValue(property, metric);
-                                                  acc[`Property ${index + 1}`] = typeof value === 'number' ? value : 0;
+                                                  const propertyKey = `Property ${index + 1}`;
+                                                  acc[propertyKey] = typeof value === 'number' ? value : 0;
                                                   return acc;
-                                                }, {})
+                                                }, {} as Record<string, any>)
                                               }]}
                                               layout="vertical"
                                               margin={{ top: 5, right: 30, left: 20, bottom: 5 }}
