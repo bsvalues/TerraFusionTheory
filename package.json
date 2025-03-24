@@ -83,6 +83,7 @@
     "jest-environment-jsdom": "^29.7.0",
     "langchain": "^0.3.19",
     "leaflet": "^1.9.4",
+    "leaflet.heat": "^0.2.0",
     "lucide-react": "^0.453.0",
     "memorystore": "^1.6.7",
     "openai": "^4.87.4",

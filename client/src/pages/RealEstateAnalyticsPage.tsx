@@ -60,6 +60,22 @@ const RealEstateAnalyticsPage = () => {
               </button>
             </Link>
             
+            {/* Market Heat Map Link */}
+            <Link href="/market-heat-map">
+              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
+                <LucideBarChart className="h-5 w-5 mr-1 text-red-500" />
+                <span className="hidden md:inline">Heat Map</span>
+              </button>
+            </Link>
+            
+            {/* Mass Appraisal Link */}
+            <Link href="/mass-appraisal">
+              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
+                <LucideCalculator className="h-5 w-5 mr-1 text-blue-500" />
+                <span className="hidden md:inline">Mass Appraisal</span>
+              </button>
+            </Link>
+            
             {/* Property Valuation Demo Link */}
             <Link href="/property-valuation-demo">
               <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium bg-secondary/40">

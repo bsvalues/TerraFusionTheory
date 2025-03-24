@@ -101,6 +101,9 @@ interface ZipCodeSummary {
   bounds: [number, number, number, number]; // [south, west, north, east]
 }
 
+// Import leaflet heat
+import 'leaflet.heat';
+
 // Custom heat renderer that works with leaflet
 function HeatMapLayer({
   data,
@@ -127,38 +130,45 @@ function HeatMapLayer({
     
     if (data.length === 0) return;
     
-    // @ts-ignore - Using leaflet-heat plugin through the L global
-    const heat = L.heatLayer(
-      data.map(point => {
-        // Determine intensity based on the selected metric
-        let value: number;
-        
-        switch (heatBy) {
-          case 'pricePerSqft':
-            value = point.pricePerSqft;
-            break;
-          case 'daysOnMarket':
-            // Reverse for days on market (shorter = hotter)
-            value = 60 - Math.min(point.daysOnMarket, 60);
-            break;
-          case 'priceChange':
-            // For price changes, negative is important too
-            value = point.priceChangePercent ? Math.abs(point.priceChangePercent) * 100 : 0;
-            break;
-          case 'price':
-          default:
-            // Normalize price to better range for heatmap
-            value = point.price / 10000;
-        }
-        
-        return [
-          point.lat,
-          point.lng,
-          value * intensity
-        ];
-      }),
-      { radius, blur }
-    ).addTo(map);
+    const points: Array<[number, number, number]> = data.map(point => {
+      // Determine intensity based on the selected metric
+      let value: number;
+      
+      switch (heatBy) {
+        case 'pricePerSqft':
+          value = point.pricePerSqft;
+          break;
+        case 'daysOnMarket':
+          // Reverse for days on market (shorter = hotter)
+          value = 60 - Math.min(point.daysOnMarket, 60);
+          break;
+        case 'priceChange':
+          // For price changes, negative is important too
+          value = point.priceChangePercent ? Math.abs(point.priceChangePercent) * 100 : 0;
+          break;
+        case 'price':
+        default:
+          // Normalize price to better range for heatmap
+          value = point.price / 10000;
+      }
+      
+      return [
+        point.lat,
+        point.lng,
+        value * intensity
+      ];
+    });
+    
+    const heat = L.heatLayer(points, { 
+      radius, 
+      blur,
+      gradient: {
+        0.4: 'blue',
+        0.6: 'lime',
+        0.8: 'yellow',
+        1.0: 'red'
+      }
+    }).addTo(map);
     
     return () => {
       map.removeLayer(heat);
