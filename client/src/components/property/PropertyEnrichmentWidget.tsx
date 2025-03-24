@@ -296,7 +296,7 @@ const PropertyEnrichmentWidget: React.FC<PropertyEnrichmentWidgetProps> = ({
                           <div 
                             className="w-2 bg-gradient-to-t from-blue-500 to-red-500 rounded-full"
                             style={{ 
-                              height: `${maxHeight - minHeight}%`,
+                              height: `${maxBarHeight - minHeight}%`,
                               bottom: `${minHeight}%`,
                               position: 'absolute'
                             }}
@@ -306,7 +306,7 @@ const PropertyEnrichmentWidget: React.FC<PropertyEnrichmentWidgetProps> = ({
                           <div 
                             className="w-4 h-1 bg-black rounded-full absolute"
                             style={{ 
-                              bottom: `${((month.temperatureAvg - minTemp) / range) * maxHeight}%`
+                              bottom: `${((month.temperatureAvg - minTemp) / range) * chartMaxHeight}%`
                             }}
                           ></div>
                           
