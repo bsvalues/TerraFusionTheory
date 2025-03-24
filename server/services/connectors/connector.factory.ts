@@ -2,6 +2,8 @@ import { CAMAConnector, CAMAConnectorConfig } from './cama.connector';
 import { GISConnector, GISConnectorConfig } from './gis.connector';
 import { MarketDataConnector, MarketDataConnectorConfig } from './market.connector';
 import { PDFConnector, PDFConnectorConfig } from './pdf.connector';
+import { WeatherConnector, WeatherConnectorConfig } from './weather.connector';
+import { CensusConnector, CensusConnectorConfig } from './census.connector';
 import { ConnectorRegistry, DataConnector, ConnectorConfig } from './baseConnector';
 import { LogCategory, LogLevel } from '@shared/schema';
 import { storage } from '../../storage';
@@ -9,7 +11,7 @@ import { storage } from '../../storage';
 /**
  * Connector types supported by the factory
  */
-export type ConnectorType = 'cama' | 'gis' | 'market' | 'pdf' | 'document' | 'tax' | 'permit';
+export type ConnectorType = 'cama' | 'gis' | 'market' | 'pdf' | 'document' | 'tax' | 'permit' | 'weather' | 'census';
 
 /**
  * Factory for creating and registering data connectors
