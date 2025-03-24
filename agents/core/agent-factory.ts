@@ -18,7 +18,8 @@ export enum AgentType {
   ANALYTICS = 'analytics',
   DOCUMENT = 'document',
   GENERAL = 'general',
-  COORDINATOR = 'coordinator'
+  COORDINATOR = 'coordinator',
+  VALUATION = 'valuation'
 }
 
 /**
@@ -42,6 +43,7 @@ class AgentFactory {
     // Dynamically import the agent implementations to avoid circular dependencies
     const { createDeveloperAgent } = await import('../implementations/developer-agent');
     const { createRealEstateAgent } = await import('../implementations/real-estate-agent');
+    const { ValuationAgent } = await import('../implementations/valuation-agent');
     
     // Register agent constructors with their concrete implementations
     
@@ -125,6 +127,25 @@ class AgentFactory {
         processTask: async () => {},
         initialize: async () => {}
       };
+    };
+    
+    // Valuation agent constructor
+    this.agentConstructors[AgentType.VALUATION] = async (id, config) => {
+      // Create the valuation agent
+      const valuationConfig = {
+        ...config,
+        // Ensure valuation-specific capabilities
+        capabilities: [
+          ...(config.capabilities || []), 
+          AgentCapability.REAL_ESTATE_ANALYSIS,
+          AgentCapability.REASONING,
+          AgentCapability.TEXT_UNDERSTANDING,
+          AgentCapability.TOOL_USE
+        ]
+      };
+      
+      // Return a new instance of ValuationAgent
+      return new ValuationAgent(id, valuationConfig);
     };
     
     this.initialized = true;
