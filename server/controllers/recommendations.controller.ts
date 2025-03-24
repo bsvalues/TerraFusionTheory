@@ -35,24 +35,24 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
           {
             type: "valuation",
             title: "Cost Approach Analysis",
-            description: "Replacement cost of $175/sqft plus land value of $85,000 suggests a total value of $400,000, indicating potential over-assessment.",
+            description: "RCN of $175/sqft with 15% depreciation (age-life method), plus land value of $85,000 yields a total value of $400,000. Marshall & Swift cost manual index: 1.06.",
             score: 82
           },
           {
             type: "comparable",
             title: "Comparable Sales Method",
-            description: "Based on 5 similar properties sold in the last 6 months within 0.5 miles, the adjusted comparable value is $445,000.",
+            description: "5 similar properties (adjusted for GLA, quality, condition) with time adjustment of +0.5%/month yield $445,000 reconciled value. COV: 0.05.",
             score: 95
           },
           {
             type: "assessment",
-            title: "Assessment Ratio",
-            description: "Current assessment ratio is 0.92, within the acceptable range of 0.90-1.10 for equitable property taxation.",
+            title: "Assessment Ratio Study",
+            description: "Current assessment ratio: 0.92, PRD: 1.03, COD: 12.4, within IAAO standards (0.90-1.10, <1.10, <15.0). Vertical equity regression p-value: 0.58.",
             score: 88
           }
         ],
         matchScore: 92,
-        tags: ["Assessed", "Single Family", "Average Quality"],
+        tags: ["Equitably Assessed", "Single Family Residential", "Construction Quality 3"],
         latitude: 46.2529,
         longitude: -119.9021
       },
@@ -67,25 +67,25 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
         insights: [
           {
             type: "mass-appraisal",
-            title: "Automated Valuation Model",
-            description: "The AVM suggests a value range of $375,000-$395,000 based on regression analysis of 72 similar properties.",
+            title: "Multiple Regression Analysis",
+            description: "MRA model (adj-R²: 0.87, p-value: <0.001) with 72 market sales predicts $388,400 value. Confidence interval: $375,000-$395,000.",
             score: 91
           },
           {
             type: "market",
             title: "Market Approach Analysis",
-            description: "Time-adjusted market approach indicates a value of $382,000, very close to current assessment.",
+            description: "Time-adjusted market approach with 6 comps (time adj: +0.4%/month) yields $382,000. Comp grid variance: 5.2%. Reconciled value: $385,000.",
             score: 94
           },
           {
             type: "assessment",
-            title: "PRD Value",
-            description: "The Price Related Differential (PRD) of 1.03 suggests slight regressivity in assessment for this price range.",
+            title: "Price-Related Statistics",
+            description: "PRD: 1.03, PRB: -0.021, COD: 9.8. Statistical analysis indicates slight vertical regressivity in neighborhood assessments.",
             score: 85
           }
         ],
         matchScore: 88,
-        tags: ["Accurately Assessed", "Market Aligned", "Above Average"],
+        tags: ["Market Value Aligned", "Single Family Residential", "Construction Quality 2"],
         latitude: 46.2550,
         longitude: -119.9100
       },
@@ -100,25 +100,25 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
         insights: [
           {
             type: "appraisal",
-            title: "Income Approach",
-            description: "Using the GRM method with comparable rental properties, the income approach yields a value of $340,000.",
+            title: "Income Capitalization Approach",
+            description: "GRM: 128 derived from 8 rental comps. Monthly rent: $2,650. Cap rate: 6.2%. Direct capitalization with market rents yields $340,000 value estimate.",
             score: 87
           },
           {
             type: "mass-appraisal",
-            title: "CAMA Model Results",
-            description: "The Computer Assisted Mass Appraisal model suggests a value of $332,500 based on county-wide parameters.",
+            title: "CAMA Model Specification",
+            description: "Additive model with log-transformation on price, 23 neighborhood factors. R²: 0.83, RMSE: 5.4%, AIC: 892. Value prediction: $332,500.",
             score: 90
           },
           {
             type: "comparable",
-            title: "Sales Comparison Approach",
-            description: "Adjustments for square footage, age, and condition result in a comparable value of $328,000.",
+            title: "Sales Comparison Grid Analysis",
+            description: "Paired sales analysis with 4 comparables. Adjustments: GLA (+$60/sf), condition (-5%), bath count (+$8,000 per full). Adjusted value: $328,000.",
             score: 95
           }
         ],
         matchScore: 85,
-        tags: ["Income Producing", "Rental Property", "Average Quality"],
+        tags: ["Income Approach Candidate", "Market Value Aligned", "Construction Quality 3"],
         latitude: 46.2510,
         longitude: -119.9050
       },
@@ -133,20 +133,20 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
         insights: [
           {
             type: "valuation",
-            title: "Replacement Cost Analysis",
-            description: "High-quality construction at $215/sqft plus land value of $120,000 indicates replacement cost of $722,000.",
+            title: "Cost Approach Valuation",
+            description: "Class 3 construction quality using Marshall & Swift with 8% entrepreneurial profit. RCN: $215/sqft × 2,800 sqft = $602,000 + land $120,000 = $722,000.",
             score: 94
           },
           {
             type: "assessment",
-            title: "Assessment Review",
-            description: "Current assessment appears to be 18% below market value, suggesting potential for appeal by county assessor.",
+            title: "Assessment Equity Analysis",
+            description: "Current assessed value ($420,000) is 18% below market evidence ($510,000). Assessment-to-sales ratio (0.82) outside IAAO standard range (0.90-1.10).",
             score: 65
           },
           {
             type: "mass-appraisal",
-            title: "IAAO Standards",
-            description: "The COD (Coefficient of Dispersion) for this neighborhood is 12.8, within IAAO standards for residential properties.",
+            title: "Ratio Study Statistics",
+            description: "Neighborhood ratio statistics: Median ratio: 0.95, COD: 12.8, PRD: 1.02, COV: 14.3%. Meets IAAO residential standard thresholds (<15.0, 0.98-1.03, <20%).",
             score: 85
           }
         ],
@@ -166,20 +166,20 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
         insights: [
           {
             type: "comparable",
-            title: "Comparable Adjustments",
-            description: "After adjustments for condition (-15%), lot size (+5%), and bathroom count (-8%), the adjusted comparable value is $275,000.",
+            title: "Sales Comparison Grid Analysis",
+            description: "Qualitative and quantitative paired sales analysis. Key adjustments: condition (-15% = -$45,000), lot size (+5% = +$14,750), bathrooms (-$12,000). Reconciled value: $275,000.",
             score: 88
           },
           {
             type: "appraisal",
-            title: "Functional Obsolescence",
-            description: "Estimated 8% functional obsolescence due to dated floor plan and electrical system reduces value by $23,600.",
+            title: "Accrued Depreciation Analysis",
+            description: "Physical deterioration (curable: 4%, incurable: 6%) + functional obsolescence (8%, non-conforming layout) + external obsolescence (3%, proximity to commercial). Total: 21%.",
             score: 72
           },
           {
             type: "assessment",
-            title: "Assessment Timeline",
-            description: "Last mass appraisal was 3 years ago. Current assessment may not reflect recent local market changes.",
+            title: "Mass Appraisal Cyclical Review",
+            description: "Property in assessment cycle year 3 of 3-year rotation. Assessed value: $310,000. Current coefficient of price-related bias (PRB): -0.032 suggests vertical inequity.",
             score: 82
           }
         ],
@@ -218,18 +218,21 @@ export async function getPropertyTags(req: Request, res: Response) {
   try {
     // In a real app, this would come from analyzing property data
     const tags = [
-      "Assessed",
-      "Market Aligned",
+      "Equitably Assessed",
+      "Market Value Aligned",
       "Under-assessed",
-      "Needs Assessment",
-      "Income Producing",
-      "Single Family",
-      "Average Quality",
-      "Above Average",
-      "High Quality",
-      "Recent Construction",
-      "Older Home",
-      "Functionally Obsolete"
+      "Needs Reassessment",
+      "Income Approach Candidate",
+      "Single Family Residential",
+      "Construction Quality 3",
+      "Construction Quality 2",
+      "Construction Quality 1",
+      "Minimal Depreciation",
+      "Substantial Depreciation",
+      "Functional Obsolescence",
+      "External Obsolescence",
+      "Highest & Best Use Conforming",
+      "Non-Conforming Use"
     ];
     
     return res.status(200).json(tags);
@@ -303,32 +306,32 @@ export async function getPropertyInsights(req: Request, res: Response) {
     const insights = [
       {
         type: "valuation",
-        title: "Cost Approach Analysis",
-        description: "Replacement cost new of $180/sqft with land value of $95,000 suggests a total value of $430,000 via cost approach.",
+        title: "Cost Approach Valuation",
+        description: "Marshall & Swift cost manual: Class 4, Good quality. RCN: $180/sqft × 1,800 sqft = $324,000. Less depreciation: 14.5% accrued (age-life method). Plus land: $95,000. Total: $430,000.",
         score: 88
       },
       {
         type: "comparable",
-        title: "Sales Comparison Approach",
-        description: "Five comparable properties within 0.6 miles sold in the last 90 days indicate an adjusted value of $442,500.",
+        title: "Sales Comparison Grid Analysis",
+        description: "5 comparable sales analyzed with adjustments for time (+0.5%/month), location (±5-10%), GLA ($55/sf), quality/condition (±5-15%), and amenities. Range: $432,000-$458,000. Reconciled value: $442,500.",
         score: 92
       },
       {
         type: "mass-appraisal",
-        title: "CAMA Model Assessment",
-        description: "Computer-assisted mass appraisal model suggests value of $438,000 based on regression analysis.",
+        title: "Automated Valuation Model",
+        description: "Multiplicative model with location factor (1.12), time adjustment (1.085), and quality/condition index (0.97). Model diagnostics: R²: 0.86, COV: 7.2%. Indicated value: $438,000.",
         score: 90
       },
       {
         type: "appraisal",
-        title: "Final Reconciliation",
-        description: "Weighted reconciliation of all three approaches indicates a final market value of $440,000.",
+        title: "Reconciliation & Final Value Opinion",
+        description: "Weighted reconciliation: Sales comparison (60%, $442,500), Cost approach (25%, $430,000), Income approach ($435,000, 15%). Final market value opinion: $440,000.",
         score: 95
       },
       {
         type: "assessment",
-        title: "Assessment Analysis",
-        description: "Current assessment ratio is 0.94, within IAAO standards for assessment uniformity.",
+        title: "Assessment Equity Study",
+        description: "Current assessment: $415,000. Ratio to indicated market value: 0.94. Neighborhood statistical measures: COD: 10.2, PRD: 1.01, PRB: -0.012. All indicators within IAAO standards.",
         score: 88
       }
     ];
