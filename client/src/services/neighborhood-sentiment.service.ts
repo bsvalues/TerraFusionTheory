@@ -4,6 +4,9 @@
  * This service provides functions to analyze and retrieve sentiment data
  * for neighborhoods based on various data sources including property listings,
  * social media, news articles, and user reviews.
+ * 
+ * It also provides historical trend data and predictive analytics for future
+ * sentiment trends based on historical patterns and market indicators.
  */
 
 import { apiRequest } from '@/lib/queryClient';
@@ -87,6 +90,28 @@ export interface SentimentQueryParams {
   startDate?: string;
   endDate?: string;
   limit?: number;
+}
+
+// Historical sentiment data point
+export interface SentimentHistoricalDataPoint {
+  date: string;
+  score: number;
+  topic: SentimentTopic | 'overall';
+  neighborhoodName: string;
+  city: string;
+  min?: number;
+  max?: number;
+  isPrediction?: boolean;
+}
+
+// Query parameters for trend data
+export interface SentimentTrendQueryParams {
+  neighborhoodName: string;
+  city?: string;
+  state?: string;
+  topic?: SentimentTopic | 'overall';
+  timeframe?: '3m' | '6m' | '1y' | '2y' | '5y';
+  predictionMonths?: number;
 }
 
 // Mock neighborhoods for testing
@@ -233,6 +258,275 @@ class NeighborhoodSentimentService {
     } else {
       // Default to richland
       return RICHLAND_NEIGHBORHOODS;
+    }
+  }
+  
+  /**
+   * Get historical sentiment trend data for a neighborhood
+   */
+  async getNeighborhoodSentimentTrend(params: SentimentTrendQueryParams): Promise<SentimentHistoricalDataPoint[]> {
+    try {
+      const {
+        neighborhoodName,
+        city = 'Richland',
+        state = 'WA',
+        topic = 'overall',
+        timeframe = '1y',
+        predictionMonths = 12
+      } = params;
+      
+      // Get historical data
+      const historicalData = this.generateHistoricalTrendData(
+        neighborhoodName,
+        city,
+        topic,
+        timeframe
+      );
+      
+      // Only return historical data, not predictions
+      return historicalData;
+    } catch (error) {
+      console.error('Error fetching sentiment trend data:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Get predicted sentiment trend data for a neighborhood
+   */
+  async predictNeighborhoodSentimentTrend(
+    params: SentimentTrendQueryParams
+  ): Promise<{
+    historical: SentimentHistoricalDataPoint[];
+    predictions: SentimentHistoricalDataPoint[];
+    confidence: number;
+  }> {
+    try {
+      const {
+        neighborhoodName,
+        city = 'Richland',
+        state = 'WA',
+        topic = 'overall',
+        timeframe = '1y',
+        predictionMonths = 12
+      } = params;
+      
+      // Get historical data
+      const historicalData = this.generateHistoricalTrendData(
+        neighborhoodName,
+        city,
+        topic,
+        timeframe
+      );
+      
+      // Generate predictions based on historical data
+      const predictions = this.generatePredictionData(
+        historicalData,
+        topic,
+        neighborhoodName,
+        city,
+        predictionMonths
+      );
+      
+      return {
+        historical: historicalData,
+        predictions,
+        confidence: 0.85 // Confidence in prediction (0-1)
+      };
+    } catch (error) {
+      console.error('Error generating sentiment predictions:', error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Generate historical trend data based on selected parameters
+   */
+  private generateHistoricalTrendData(
+    neighborhood: string,
+    city: string,
+    topic: SentimentTopic | 'overall',
+    timeframe: string
+  ): SentimentHistoricalDataPoint[] {
+    // Determine number of months based on timeframe
+    const months = this.getMonthsForTimeframe(timeframe);
+    const data: SentimentHistoricalDataPoint[] = [];
+    
+    // Get current sentiment to use as the most recent data point
+    const currentSentiment = this.getCurrentSentiment(neighborhood, city, topic);
+    
+    // Determine trend direction from current sentiment
+    const trendDirection = this.getTrendDirection(neighborhood, city);
+    const trendMultiplier = trendDirection === 'improving' ? 1 
+      : trendDirection === 'declining' ? -1 
+      : 0;
+    
+    // Generate data points for each month
+    const endDate = new Date();
+    
+    for (let i = months; i >= 0; i--) {
+      const date = new Date(endDate);
+      date.setMonth(date.getMonth() - i);
+      
+      // Add some variability to the trend
+      const randomVariation = (Math.random() - 0.5) * 5;
+      const trendEffect = (i / months) * trendMultiplier * 10; // Trend effect increases over time
+      
+      // Calculate score based on current sentiment, trend, and random variation
+      let score = currentSentiment - trendEffect + randomVariation;
+      
+      // Ensure score stays within 0-100 range
+      score = Math.max(0, Math.min(100, score));
+      
+      // Add seasonal variations
+      const seasonalEffect = Math.sin((date.getMonth() / 12) * Math.PI * 2) * 3;
+      score += seasonalEffect;
+      
+      // Format date for display
+      const formattedDate = date.toISOString().split('T')[0];
+      
+      data.push({
+        date: formattedDate,
+        score: Math.round(score),
+        topic,
+        neighborhoodName: neighborhood,
+        city,
+        isPrediction: false
+      });
+    }
+    
+    return data;
+  }
+  
+  /**
+   * Generate prediction data based on historical trend
+   */
+  private generatePredictionData(
+    historicalData: SentimentHistoricalDataPoint[],
+    topic: SentimentTopic | 'overall',
+    neighborhood: string,
+    city: string,
+    predictionMonths: number
+  ): SentimentHistoricalDataPoint[] {
+    if (historicalData.length === 0) return [];
+    
+    const predictions: SentimentHistoricalDataPoint[] = [];
+    
+    // Get the last historical data point
+    const lastDataPoint = historicalData[historicalData.length - 1];
+    const lastDate = new Date(lastDataPoint.date);
+    const lastScore = lastDataPoint.score;
+    
+    // Simple linear regression to determine trend
+    const xValues: number[] = [];
+    const yValues: number[] = [];
+    
+    // Use the last 6 data points or all available data
+    const dataForRegression = historicalData.slice(-Math.min(6, historicalData.length));
+    
+    dataForRegression.forEach((point, index) => {
+      xValues.push(index);
+      yValues.push(point.score);
+    });
+    
+    // Calculate slope and intercept
+    const n = xValues.length;
+    const sumX = xValues.reduce((a, b) => a + b, 0);
+    const sumY = yValues.reduce((a, b) => a + b, 0);
+    const sumXY = xValues.reduce((total, x, i) => total + x * yValues[i], 0);
+    const sumXX = xValues.reduce((total, x) => total + x * x, 0);
+    
+    const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
+    const intercept = (sumY - slope * sumX) / n;
+    
+    // Calculate standard error for confidence intervals
+    const predictedY = xValues.map(x => slope * x + intercept);
+    const squaredErrors = predictedY.map((predicted, i) => Math.pow(predicted - yValues[i], 2));
+    const mse = squaredErrors.reduce((a, b) => a + b, 0) / n;
+    const standardError = Math.sqrt(mse);
+    
+    // Generate prediction data
+    for (let i = 1; i <= predictionMonths; i++) {
+      const predictionDate = new Date(lastDate);
+      predictionDate.setMonth(predictionDate.getMonth() + i);
+      
+      // Predicted score using the regression model
+      const x = dataForRegression.length - 1 + i;
+      const predictedScore = slope * x + intercept;
+      
+      // Add some randomness and dampen the prediction over time for realism
+      const randomFactor = (Math.random() - 0.5) * 2;
+      const timeUncertainty = i * 0.5; // Uncertainty increases with time
+      const seasonalEffect = Math.sin((predictionDate.getMonth() / 12) * Math.PI * 2) * 2;
+      
+      let score = predictedScore + randomFactor * timeUncertainty + seasonalEffect;
+      
+      // Ensure score stays within 0-100 range
+      score = Math.max(0, Math.min(100, score));
+      
+      // Calculate confidence intervals
+      const confidenceWidth = standardError * 1.96 * Math.sqrt(1 + (i / n));
+      const adjustedConfidenceWidth = confidenceWidth * (1 + (i * 0.2)); // Increase with time
+      
+      // Format date for display
+      const formattedDate = predictionDate.toISOString().split('T')[0];
+      
+      predictions.push({
+        date: formattedDate,
+        score: Math.round(score),
+        topic,
+        neighborhoodName: neighborhood,
+        city,
+        min: Math.max(0, Math.round(score - adjustedConfidenceWidth)),
+        max: Math.min(100, Math.round(score + adjustedConfidenceWidth)),
+        isPrediction: true
+      });
+    }
+    
+    return predictions;
+  }
+  
+  /**
+   * Get current sentiment score for a neighborhood and topic
+   */
+  private getCurrentSentiment(
+    neighborhood: string,
+    city: string,
+    topic: SentimentTopic | 'overall'
+  ): number {
+    // In a real implementation, this would fetch the current score from storage
+    const sentimentData = this.generateSentimentData(neighborhood, city, 'WA');
+    
+    if (topic === 'overall') {
+      return sentimentData.overallScore.score;
+    } else {
+      return sentimentData.topicScores[topic]?.score || 70;
+    }
+  }
+  
+  /**
+   * Get trend direction for a neighborhood
+   */
+  private getTrendDirection(
+    neighborhood: string,
+    city: string
+  ): 'improving' | 'stable' | 'declining' {
+    // In a real implementation, this would fetch the trend from storage
+    const sentimentData = this.generateSentimentData(neighborhood, city, 'WA');
+    return sentimentData.trend.direction;
+  }
+  
+  /**
+   * Helper to determine the number of months to show based on timeframe
+   */
+  private getMonthsForTimeframe(timeframe: string): number {
+    switch (timeframe) {
+      case '3m': return 3;
+      case '6m': return 6;
+      case '1y': return 12;
+      case '2y': return 24;
+      case '5y': return 60;
+      default: return 12;
     }
   }
   
