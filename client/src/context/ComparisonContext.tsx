@@ -9,10 +9,16 @@ import React, { createContext, useContext, useState, useCallback, useEffect } fr
 import { useToast } from '@/hooks/use-toast';
 import { useLocation } from 'wouter';
 
-// Simplified property interface for comparison
+// Property interface for comparison
 interface PropertyForComparison {
   id: string;
   address: string;
+  price?: number;
+  bedrooms?: number;
+  bathrooms?: number;
+  squareFeet?: number;
+  yearBuilt?: number;
+  propertyType?: string;
 }
 
 interface ComparisonContextType {
