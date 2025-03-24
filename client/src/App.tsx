@@ -29,6 +29,7 @@ import NaturalHazardPage from './pages/NaturalHazardPage';
 import MassAppraisalPage from './pages/MassAppraisalPage';
 import MarketHeatMapPage from './pages/MarketHeatMapPage';
 import ValuationAssistantPage from './pages/ValuationAssistantPage';
+import AdaptiveColorSchemePage from './pages/AdaptiveColorSchemePage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import DevAuthLoginPage from './pages/DevAuthLoginPage';

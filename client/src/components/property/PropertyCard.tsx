@@ -1,258 +1,160 @@
 /**
  * PropertyCard Component
  * 
- * A card component that displays property information with the option to add to comparison.
+ * A card for displaying property information with adaptive styling based on property type.
  */
-import { useState } from 'react';
-import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+
+import React from 'react';
+import { Link } from 'wouter';
+import { Card, CardContent, CardFooter, CardHeader } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Icons } from '../../components/ui/icons';
-import { useComparison } from '../../context/ComparisonContext';
-import { useLocation } from 'wouter';
+import PropertyTypeBadge from './PropertyTypeBadge';
+import PropertyIcon from './PropertyIcon';
+import { getPropertyColorScheme, getPropertyTypeLabel } from '@/utils/propertyColorSchemes';
 
 interface PropertyCardProps {
   property: {
     id: string;
     address: string;
-    price?: number;
-    bedrooms?: number;
-    bathrooms?: number;
-    squareFeet?: number;
+    price: number;
+    bedrooms: number;
+    bathrooms: number;
+    squareFeet: number;
     propertyType?: string;
     yearBuilt?: number;
-    status?: 'For Sale' | 'Pending' | 'Sold' | 'Off Market';
-    image?: string;
+    photos?: string[];
+    listingDate?: string;
   };
   variant?: 'default' | 'compact' | 'featured';
   className?: string;
 }
 
-export const PropertyCard = ({ 
-  property, 
-  variant = 'default', 
-  className = '' 
-}: PropertyCardProps) => {
-  const [isHovered, setIsHovered] = useState(false);
-  const { addToComparison, removeFromComparison, isSelected } = useComparison();
-  const [_, navigate] = useLocation();
+/**
+ * PropertyCard displays property information with styling based on property type
+ */
+export default function PropertyCard({
+  property,
+  variant = 'default',
+  className = ''
+}: PropertyCardProps) {
+  const { 
+    id, 
+    address, 
+    price, 
+    bedrooms, 
+    bathrooms, 
+    squareFeet, 
+    propertyType = 'not_specified',
+    yearBuilt,
+    photos,
+    listingDate
+  } = property;
+  
+  const colorScheme = getPropertyColorScheme(propertyType);
   
   // Format price with commas
-  const formatPrice = (price?: number) => {
-    if (!price) return 'Price not available';
-    return new Intl.NumberFormat('en-US', {
-      style: 'currency',
-      currency: 'USD',
-      maximumFractionDigits: 0
-    }).format(price);
-  };
+  const formattedPrice = new Intl.NumberFormat('en-US', {
+    style: 'currency',
+    currency: 'USD',
+    maximumFractionDigits: 0
+  }).format(price);
   
-  // Get status badge variant
-  const getStatusVariant = (status?: string) => {
-    switch (status) {
-      case 'For Sale': return 'default';
-      case 'Pending': return 'warning';
-      case 'Sold': return 'destructive';
-      case 'Off Market': return 'secondary';
-      default: return 'default';
-    }
-  };
+  // Format square feet with commas
+  const formattedSqFt = new Intl.NumberFormat('en-US').format(squareFeet);
   
-  // Handle property click
-  const handlePropertyClick = () => {
-    navigate(`/property/${property.id}`);
-  };
-  
-  // Toggle comparison
-  const handleComparisonToggle = (e: React.MouseEvent) => {
-    e.stopPropagation(); // Prevent card click
-    if (isSelected(property.id)) {
-      removeFromComparison(property.id);
-    } else {
-      addToComparison({
-        id: property.id,
-        address: property.address
-      });
-    }
-  };
-  
-  // Property image with fallback
-  const propertyImage = property.image || '/images/property-placeholder.jpg';
-  
-  // Different layouts based on variant
-  if (variant === 'compact') {
-    return (
-      <Card 
-        className={`cursor-pointer hover:shadow-md transition-shadow ${className}`}
-        onClick={handlePropertyClick}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <div className="flex items-start p-4">
-          <div 
-            className="w-20 h-20 rounded-md bg-cover bg-center mr-4 flex-shrink-0" 
-            style={{ backgroundImage: `url(${propertyImage})` }}
-          />
-          <div className="flex-1">
-            <CardTitle className="text-sm">{property.address}</CardTitle>
-            <p className="font-bold text-primary mt-1">{formatPrice(property.price)}</p>
-            <div className="flex items-center text-xs text-muted-foreground mt-1">
-              {property.bedrooms && <span className="mr-2">{property.bedrooms} bd</span>}
-              {property.bathrooms && <span className="mr-2">{property.bathrooms} ba</span>}
-              {property.squareFeet && <span>{property.squareFeet} sqft</span>}
-            </div>
-          </div>
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button 
-                  size="icon" 
-                  variant={isSelected(property.id) ? "secondary" : "ghost"} 
-                  className="h-8 w-8"
-                  onClick={handleComparisonToggle}
-                >
-                  <Icons.comparison className="h-4 w-4" />
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                {isSelected(property.id) ? 'Remove from comparison' : 'Add to comparison'}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </div>
-      </Card>
-    );
-  }
-  
-  if (variant === 'featured') {
-    return (
-      <Card 
-        className={`overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${className}`}
-        onClick={handlePropertyClick}
-        onMouseEnter={() => setIsHovered(true)}
-        onMouseLeave={() => setIsHovered(false)}
-      >
-        <div className="relative">
-          <div 
-            className="h-56 w-full bg-cover bg-center" 
-            style={{ backgroundImage: `url(${propertyImage})` }}
-          />
-          {property.status && (
-            <Badge 
-              variant={getStatusVariant(property.status) as any}
-              className="absolute top-4 right-4"
-            >
-              {property.status}
-            </Badge>
-          )}
-          <div className="absolute bottom-4 right-4">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    size="icon" 
-                    variant={isSelected(property.id) ? "secondary" : "default"} 
-                    className="h-10 w-10 rounded-full"
-                    onClick={handleComparisonToggle}
-                  >
-                    <Icons.comparison className="h-5 w-5" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isSelected(property.id) ? 'Remove from comparison' : 'Add to comparison'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-        </div>
-        <CardContent className="p-4">
-          <CardTitle className="text-xl mb-2 line-clamp-1">{property.address}</CardTitle>
-          <p className="font-bold text-2xl text-primary">{formatPrice(property.price)}</p>
-          <div className="flex items-center text-sm text-muted-foreground mt-2">
-            {property.bedrooms && (
-              <div className="flex items-center mr-4">
-                <Icons.bed className="h-4 w-4 mr-1" />
-                <span>{property.bedrooms}</span>
-              </div>
-            )}
-            {property.bathrooms && (
-              <div className="flex items-center mr-4">
-                <Icons.bath className="h-4 w-4 mr-1" />
-                <span>{property.bathrooms}</span>
-              </div>
-            )}
-            {property.squareFeet && (
-              <div className="flex items-center">
-                <Icons.ruler className="h-4 w-4 mr-1" />
-                <span>{property.squareFeet} sqft</span>
-              </div>
-            )}
-          </div>
-        </CardContent>
-      </Card>
-    );
-  }
-  
-  // Default variant
   return (
     <Card 
-      className={`overflow-hidden cursor-pointer hover:shadow-md transition-shadow ${className}`}
-      onClick={handlePropertyClick}
-      onMouseEnter={() => setIsHovered(true)}
-      onMouseLeave={() => setIsHovered(false)}
+      className={`group overflow-hidden transition-all duration-300 hover:shadow-md ${className}`}
+      style={{
+        borderColor: variant === 'featured' ? colorScheme.primary : undefined,
+        borderWidth: variant === 'featured' ? '2px' : undefined
+      }}
     >
-      <div className="relative">
+      {/* Card Header with Property Image */}
+      <CardHeader className="p-0 relative">
         <div 
-          className="h-44 w-full bg-cover bg-center" 
-          style={{ backgroundImage: `url(${propertyImage})` }}
-        />
-        {property.status && (
-          <Badge 
-            variant={getStatusVariant(property.status) as any}
-            className="absolute top-3 right-3"
+          className="w-full aspect-video bg-gray-200 relative overflow-hidden"
+          style={{
+            background: photos && photos.length > 0 
+              ? `url(${photos[0]}) center/cover no-repeat` 
+              : colorScheme.gradient
+          }}
+        >
+          {/* If no photo, show property icon */}
+          {(!photos || photos.length === 0) && (
+            <div className="absolute inset-0 flex items-center justify-center opacity-20">
+              <PropertyIcon propertyType={propertyType} size="xl" variant="solid" className="text-white" />
+            </div>
+          )}
+          
+          {/* Overlay with property type badge */}
+          <div className="absolute top-2 left-2">
+            <PropertyTypeBadge propertyType={propertyType} />
+          </div>
+          
+          {/* Price badge */}
+          <div 
+            className="absolute bottom-0 right-0 py-1 px-3 text-white font-bold"
+            style={{ backgroundColor: colorScheme.primary }}
           >
-            {property.status}
-          </Badge>
-        )}
-        {isHovered && (
-          <div className="absolute top-3 left-3">
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button 
-                    size="icon" 
-                    variant={isSelected(property.id) ? "secondary" : "default"} 
-                    className="h-8 w-8"
-                    onClick={handleComparisonToggle}
-                  >
-                    <Icons.comparison className="h-4 w-4" />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>
-                  {isSelected(property.id) ? 'Remove from comparison' : 'Add to comparison'}
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
+            {formattedPrice}
+          </div>
+        </div>
+      </CardHeader>
+      
+      {/* Card Content */}
+      <CardContent className={variant === 'compact' ? 'p-3' : 'p-4'}>
+        <h3 className="font-semibold text-lg mb-2 line-clamp-1">{address}</h3>
+        
+        {/* Property details grid */}
+        <div className="grid grid-cols-3 gap-2 mb-3">
+          <div className="text-center">
+            <div className="text-sm text-gray-500">Beds</div>
+            <div className="font-medium">{bedrooms}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-gray-500">Baths</div>
+            <div className="font-medium">{bathrooms}</div>
+          </div>
+          <div className="text-center">
+            <div className="text-sm text-gray-500">Sq Ft</div>
+            <div className="font-medium">{formattedSqFt}</div>
+          </div>
+        </div>
+        
+        {/* Additional details for non-compact variant */}
+        {variant !== 'compact' && yearBuilt && (
+          <div className="mt-2 flex justify-between text-sm text-gray-500">
+            <span>Built {yearBuilt}</span>
+            {listingDate && (
+              <span>Listed {new Date(listingDate).toLocaleDateString()}</span>
+            )}
           </div>
         )}
-      </div>
-      <CardContent className="p-4">
-        <CardTitle className="text-base line-clamp-1">{property.address}</CardTitle>
-        <p className="font-bold text-xl text-primary mt-1">{formatPrice(property.price)}</p>
-        <div className="flex items-center text-sm text-muted-foreground mt-2">
-          {property.bedrooms && <span className="mr-3">{property.bedrooms} bd</span>}
-          {property.bathrooms && <span className="mr-3">{property.bathrooms} ba</span>}
-          {property.squareFeet && <span>{property.squareFeet} sqft</span>}
-        </div>
-        {property.propertyType && (
-          <p className="text-sm text-muted-foreground mt-1">
-            {property.propertyType} {property.yearBuilt ? `· Built ${property.yearBuilt}` : ''}
-          </p>
-        )}
       </CardContent>
+      
+      {/* Card Footer */}
+      <CardFooter className={`flex justify-between ${variant === 'compact' ? 'p-3 pt-0' : 'p-4 pt-0'}`}>
+        <Button
+          variant="outline"
+          size="sm"
+          className="w-1/2"
+        >
+          Compare
+        </Button>
+        <Link href={`/property/${id}`}>
+          <Button
+            size="sm"
+            className="w-full"
+            style={{
+              backgroundColor: colorScheme.primary,
+              color: colorScheme.text
+            }}
+          >
+            View Details
+          </Button>
+        </Link>
+      </CardFooter>
     </Card>
   );
-};
-
-export default PropertyCard;
+}
