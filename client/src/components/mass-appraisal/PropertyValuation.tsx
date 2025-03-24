@@ -1,488 +1,393 @@
 import { useState } from 'react';
-import { z } from 'zod';
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useToast } from '@/hooks/use-toast';
-import { useQuery, useMutation } from '@tanstack/react-query';
-import { apiRequest } from '../../lib/queryClient';
-
-import { 
-  Card, 
-  CardContent, 
-  CardDescription, 
-  CardHeader, 
-  CardTitle 
-} from '@/components/ui/card';
-import { 
-  Form, 
-  FormControl, 
-  FormDescription, 
-  FormField, 
-  FormItem, 
-  FormLabel, 
-  FormMessage 
-} from '@/components/ui/form';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
-import { Separator } from '@/components/ui/separator';
-import { 
-  Select, 
-  SelectContent, 
-  SelectItem, 
-  SelectTrigger, 
-  SelectValue 
-} from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { 
-  AlertCircle,
-  Calculator,
-  Home, 
-  Check,
-  CircleDollarSign,
-  Loader2 
-} from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-
-const formSchema = z.object({
-  address: z.string().min(1, 'Address is required'),
-  squareFeet: z.coerce.number().min(1, 'Square feet must be greater than 0'),
-  bedrooms: z.coerce.number().min(0, 'Bedrooms cannot be negative'),
-  bathrooms: z.coerce.number().min(0, 'Bathrooms cannot be negative'),
-  yearBuilt: z.coerce.number().min(1800, 'Year built should be after 1800').max(new Date().getFullYear(), `Year built cannot be in the future`),
-  lotSize: z.coerce.number().min(0, 'Lot size cannot be negative'),
-  garageSize: z.coerce.number().min(0, 'Garage size cannot be negative').optional(),
-  propertyType: z.string().optional(),
-  neighborhood: z.string().optional(),
-  modelId: z.string().min(1, 'Please select a valuation model'),
-});
-
-type FormValues = z.infer<typeof formSchema>;
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import { useQuery } from '@tanstack/react-query';
+import { Search, Home, MapPin, Calendar, DollarSign, FileText, Calculator } from 'lucide-react';
 
 interface Model {
   id: string;
   name: string;
-  description: string;
-  type: 'additive' | 'multiplicative' | 'hybrid' | 'nonlinear';
-  propertyClass: string;
-  created: string;
+  type: string;
+  propertyType: string;
 }
 
 interface PropertyValuationProps {
-  models: Model[] | undefined;
+  models?: Model[];
 }
 
-interface ValuationResult {
-  propertyId: string;
-  address: string;
-  estimatedValue: number;
-  confidenceScore: number;
-  valueRange: [number, number];
-  valuationDate: string;
-  factors: Record<string, number>;
-  modelId: string;
-}
+const PropertyValuation: React.FC<PropertyValuationProps> = ({ models = [] }) => {
+  const [propertyId, setPropertyId] = useState('');
+  const [address, setAddress] = useState('');
+  const [selectedModelId, setSelectedModelId] = useState('');
+  const [activeTab, setActiveTab] = useState('search');
+  const [isSearching, setIsSearching] = useState(false);
 
-const PropertyValuation = ({ models }: PropertyValuationProps) => {
-  const [valuationResult, setValuationResult] = useState<ValuationResult | null>(null);
-  const { toast } = useToast();
-  
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      address: '',
-      squareFeet: 0,
-      bedrooms: 0,
-      bathrooms: 0,
-      yearBuilt: 2000,
-      lotSize: 0,
-      garageSize: 0,
-      propertyType: 'Residential',
-      neighborhood: '',
-      modelId: '',
-    },
+  // Query for property data when propertyId is set
+  const { data: propertyData, isLoading } = useQuery({
+    queryKey: ['/api/mass-appraisal/property', propertyId],
+    enabled: !!propertyId && propertyId.length > 3,
   });
-  
-  const mutation = useMutation({
-    mutationFn: (data: FormValues) => {
-      // Get model ID from form data and create the URL
-      const url = `/api/mass-appraisal/models/${data.modelId}/value`;
-      
-      // Create the property object from form data
-      const property = {
-        address: data.address,
-        squareFeet: data.squareFeet,
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-        yearBuilt: data.yearBuilt,
-        lotSize: data.lotSize,
-        garageSize: data.garageSize,
-        propertyType: data.propertyType,
-        neighborhood: data.neighborhood,
-      };
-      
-      return apiRequest(url, { 
-        method: 'POST', 
-        body: JSON.stringify({ property }),
-        headers: {
-          'Content-Type': 'application/json'
-        } 
-      });
-    },
-    onSuccess: (data) => {
-      setValuationResult(data as ValuationResult);
-      toast({
-        title: "Property Valuation Complete",
-        description: "The property has been valued successfully.",
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Valuation Failed",
-        description: error?.message || "Failed to value property. Please try again.",
-        variant: "destructive",
-      });
-    },
+
+  // Query for valuation result when property data and model are selected
+  const { data: valuationResult, isLoading: isValuationLoading } = useQuery({
+    queryKey: ['/api/mass-appraisal/valuation', propertyId, selectedModelId],
+    enabled: !!propertyData && !!selectedModelId,
   });
-  
-  const onSubmit = (data: FormValues) => {
-    mutation.mutate(data);
+
+  const handlePropertySearch = () => {
+    if (!address.trim()) return;
+    
+    setIsSearching(true);
+    // Simulate address search with a timeout
+    setTimeout(() => {
+      setPropertyId('PROP12345'); // This would be set by the real search
+      setIsSearching(false);
+      setActiveTab('property');
+    }, 1000);
   };
-  
+
+  const handleModelSelect = (modelId: string) => {
+    setSelectedModelId(modelId);
+  };
+
   return (
-    <div className="grid md:grid-cols-2 gap-6">
-      <Card>
-        <CardHeader>
-          <CardTitle>Property Valuation</CardTitle>
-          <CardDescription>
-            Enter property details to calculate its estimated value
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField
-                control={form.control}
-                name="modelId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Valuation Model</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select a valuation model" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {models?.map((model) => (
-                          <SelectItem key={model.id} value={model.id}>
-                            {model.name} ({model.propertyClass})
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <FormDescription>
-                      Choose an appropriate valuation model for this property
-                    </FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Property Address</FormLabel>
-                    <FormControl>
-                      <Input placeholder="123 Main St, Grandview, WA" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="squareFeet"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Square Feet</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="lotSize"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Lot Size (sq ft)</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <div className="grid grid-cols-3 gap-4">
-                <FormField
-                  control={form.control}
-                  name="bedrooms"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bedrooms</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="bathrooms"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bathrooms</FormLabel>
-                      <FormControl>
-                        <Input type="number" step="0.5" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="garageSize"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Garage Size</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="yearBuilt"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Year Built</FormLabel>
-                      <FormControl>
-                        <Input type="number" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                
-                <FormField
-                  control={form.control}
-                  name="propertyType"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Property Type</FormLabel>
-                      <Select 
-                        onValueChange={field.onChange} 
-                        defaultValue={field.value}
+    <div className="space-y-6">
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="search">Search Property</TabsTrigger>
+          <TabsTrigger value="property" disabled={!propertyData}>Property Details</TabsTrigger>
+          <TabsTrigger value="valuation" disabled={!valuationResult}>Valuation Result</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="search">
+          <Card>
+            <CardHeader>
+              <CardTitle>Find a Property</CardTitle>
+              <CardDescription>
+                Search by address, parcel ID, or owner name to find a property for valuation
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row gap-4">
+                  <div className="flex-1">
+                    <Label htmlFor="address-search">Property Address</Label>
+                    <div className="flex mt-1">
+                      <Input
+                        id="address-search"
+                        placeholder="Enter address or parcel ID"
+                        value={address}
+                        onChange={(e) => setAddress(e.target.value)}
+                        className="rounded-r-none"
+                      />
+                      <Button 
+                        onClick={handlePropertySearch} 
+                        className="rounded-l-none"
+                        disabled={isSearching || !address.trim()}
                       >
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select property type" />
-                          </SelectTrigger>
-                        </FormControl>
+                        {isSearching ? <Spinner className="h-4 w-4 mr-2" /> : <Search className="h-4 w-4 mr-2" />}
+                        Search
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="pt-4">
+                  <h3 className="font-medium mb-2">Recent Properties</h3>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    {['2204 Hill Dr, Grandview, WA 98930', '1234 Main St, Grandview, WA 98930', '567 Oak Ave, Grandview, WA 98930', '890 Pine Rd, Grandview, WA 98930'].map((addr, idx) => (
+                      <Button 
+                        key={idx} 
+                        variant="outline" 
+                        className="justify-start h-auto py-3 px-4"
+                        onClick={() => {
+                          setAddress(addr);
+                          handlePropertySearch();
+                        }}
+                      >
+                        <Home className="h-4 w-4 mr-2 flex-shrink-0" />
+                        <span className="truncate">{addr}</span>
+                      </Button>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="property">
+          {isLoading ? (
+            <div className="flex justify-center py-10">
+              <Spinner className="h-8 w-8" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <Card className="col-span-1 lg:col-span-2">
+                <CardHeader>
+                  <CardTitle>Property Information</CardTitle>
+                  <CardDescription>
+                    Details about the selected property for valuation
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Address</Label>
+                      <div className="font-medium flex items-center">
+                        <MapPin className="h-4 w-4 mr-2" />
+                        {address}
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Parcel ID</Label>
+                      <div className="font-medium">PROP12345</div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Year Built</Label>
+                      <div className="font-medium flex items-center">
+                        <Calendar className="h-4 w-4 mr-2" />
+                        1985
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Last Sale Price</Label>
+                      <div className="font-medium flex items-center">
+                        <DollarSign className="h-4 w-4 mr-2" />
+                        $225,000
+                      </div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Last Sale Date</Label>
+                      <div className="font-medium">06/15/2018</div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Land Value</Label>
+                      <div className="font-medium">$65,000</div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Building Value</Label>
+                      <div className="font-medium">$162,000</div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Total Value</Label>
+                      <div className="font-medium">$227,000</div>
+                    </div>
+                    
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="text-muted-foreground">Property Class</Label>
+                      <div className="font-medium">Single Family Residential (R1)</div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Building Area</Label>
+                      <div className="font-medium">1,850 sq ft</div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Lot Size</Label>
+                      <div className="font-medium">0.25 acres</div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Bedrooms</Label>
+                      <div className="font-medium">3</div>
+                    </div>
+                    
+                    <div className="space-y-1">
+                      <Label className="text-muted-foreground">Bathrooms</Label>
+                      <div className="font-medium">2.5</div>
+                    </div>
+                  </div>
+
+                  <div className="mt-8 flex justify-end space-x-2">
+                    <Button variant="outline">
+                      <FileText className="h-4 w-4 mr-2" />
+                      View Assessment Record
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+
+              <Card>
+                <CardHeader>
+                  <CardTitle>Value Estimation</CardTitle>
+                  <CardDescription>
+                    Apply a valuation model to this property
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="model-select">Select Valuation Model</Label>
+                      <Select 
+                        value={selectedModelId} 
+                        onValueChange={handleModelSelect}
+                      >
+                        <SelectTrigger id="model-select">
+                          <SelectValue placeholder="Choose a model" />
+                        </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="Residential">Residential</SelectItem>
-                          <SelectItem value="Commercial">Commercial</SelectItem>
-                          <SelectItem value="Multi-Family">Multi-Family</SelectItem>
-                          <SelectItem value="Industrial">Industrial</SelectItem>
-                          <SelectItem value="Agricultural">Agricultural</SelectItem>
+                          {models.map(model => (
+                            <SelectItem key={model.id} value={model.id}>
+                              {model.name}
+                            </SelectItem>
+                          ))}
                         </SelectContent>
                       </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-              
-              <FormField
-                control={form.control}
-                name="neighborhood"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Neighborhood</FormLabel>
-                    <Select 
-                      onValueChange={field.onChange} 
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select neighborhood" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="GV-CENTRAL">Central Grandview</SelectItem>
-                        <SelectItem value="GV-NORTH">North Grandview</SelectItem>
-                        <SelectItem value="GV-SOUTH">South Grandview</SelectItem>
-                        <SelectItem value="GV-EAST">East Grandview</SelectItem>
-                        <SelectItem value="GV-WEST">West Grandview</SelectItem>
-                        <SelectItem value="GV-COMMERCIAL">Commercial District</SelectItem>
-                        <SelectItem value="GV-CBD">Central Business District</SelectItem>
-                        <SelectItem value="GV-INDUSTRIAL">Industrial Park</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              
-              <Button 
-                type="submit" 
-                className="w-full"
-                disabled={mutation.isPending}
-              >
-                {mutation.isPending ? (
-                  <>
-                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                    Calculating...
-                  </>
-                ) : (
-                  <>
-                    <Calculator className="mr-2 h-4 w-4" />
-                    Calculate Property Value
-                  </>
-                )}
-              </Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      
-      <Card>
-        <CardHeader>
-          <CardTitle>Valuation Results</CardTitle>
-          <CardDescription>
-            Estimated property value and valuation factors
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          {!valuationResult && !mutation.isPending && (
-            <div className="flex flex-col items-center justify-center h-[400px] text-center p-4">
-              <Home className="h-16 w-16 text-muted-foreground mb-4" />
-              <h3 className="text-lg font-medium">No Valuation Results</h3>
-              <p className="text-sm text-muted-foreground mt-2 max-w-md">
-                Fill out the property information form and click "Calculate Property Value" to see the
-                valuation results for your property.
-              </p>
-            </div>
-          )}
-          
-          {mutation.isPending && (
-            <div className="flex flex-col items-center justify-center h-[400px] text-center">
-              <Loader2 className="h-16 w-16 text-primary animate-spin mb-4" />
-              <h3 className="text-lg font-medium">Calculating Property Value</h3>
-              <p className="text-sm text-muted-foreground mt-2">
-                Please wait while we analyze comparable properties and market conditions...
-              </p>
-            </div>
-          )}
-          
-          {mutation.isError && (
-            <Alert variant="destructive" className="mb-6">
-              <AlertCircle className="h-4 w-4" />
-              <AlertTitle>Valuation Failed</AlertTitle>
-              <AlertDescription>
-                {(mutation.error as any)?.message || "There was an error valuing this property. Please try again."}
-              </AlertDescription>
-            </Alert>
-          )}
-          
-          {valuationResult && (
-            <div className="space-y-6">
-              <div className="text-center p-6 border rounded-lg">
-                <div className="text-sm font-medium text-muted-foreground mb-1">Estimated Value</div>
-                <div className="text-4xl font-bold text-primary">
-                  ${valuationResult.estimatedValue.toLocaleString()}
-                </div>
-                <div className="text-sm mt-2 text-muted-foreground">
-                  Range: ${valuationResult.valueRange[0].toLocaleString()} - ${valuationResult.valueRange[1].toLocaleString()}
-                </div>
-                <div className="flex items-center justify-center mt-2">
-                  <div className="text-sm font-medium text-muted-foreground mr-1">
-                    Confidence:
-                  </div>
-                  <div className="text-sm font-medium">
-                    {valuationResult.confidenceScore}%
-                  </div>
-                </div>
-              </div>
-              
-              <Separator />
-              
-              <div>
-                <h3 className="text-lg font-medium mb-2">Valuation Factors</h3>
-                <div className="space-y-3">
-                  {Object.entries(valuationResult.factors || {}).map(([factor, value]) => (
-                    <div key={factor} className="flex justify-between items-center">
-                      <span className="text-sm">{factor}</span>
-                      <span className="text-sm font-medium">${value.toLocaleString()}</span>
                     </div>
-                  ))}
-                </div>
-              </div>
-              
-              <div className="bg-muted p-4 rounded-md">
-                <div className="flex items-center mb-2">
-                  <CircleDollarSign className="h-4 w-4 mr-2 text-muted-foreground" />
-                  <h3 className="text-sm font-medium">Valuation Details</h3>
-                </div>
-                <div className="space-y-1 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Address</span>
-                    <span>{valuationResult.address}</span>
+
+                    <Button 
+                      className="w-full" 
+                      disabled={!selectedModelId || isValuationLoading}
+                      onClick={() => setActiveTab('valuation')}
+                    >
+                      {isValuationLoading ? (
+                        <Spinner className="h-4 w-4 mr-2" />
+                      ) : (
+                        <Calculator className="h-4 w-4 mr-2" />
+                      )}
+                      Calculate Value
+                    </Button>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Valuation Date</span>
-                    <span>{new Date(valuationResult.valuationDate).toLocaleDateString()}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Model</span>
-                    <span>{models?.find(m => m.id === valuationResult.modelId)?.name || 'Unknown'}</span>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="flex justify-end">
-                <Button variant="outline" className="mr-2">
-                  Save Report
-                </Button>
-                <Button>
-                  <Check className="mr-2 h-4 w-4" />
-                  Apply Valuation
-                </Button>
-              </div>
+                </CardContent>
+              </Card>
             </div>
           )}
-        </CardContent>
-      </Card>
+        </TabsContent>
+
+        <TabsContent value="valuation">
+          <Card>
+            <CardHeader>
+              <CardTitle>Property Valuation Results</CardTitle>
+              <CardDescription>
+                Value estimated using selected model with confidence intervals
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="md:col-span-2">
+                  <h3 className="text-xl font-bold mb-1">$246,800</h3>
+                  <p className="text-muted-foreground mb-4">Estimated Value (95% Confidence Interval: $233,500 - $258,200)</p>
+                  
+                  <div className="space-y-6">
+                    <div>
+                      <h4 className="font-medium mb-2">Value by Approach</h4>
+                      <div className="grid grid-cols-3 gap-4">
+                        <div className="bg-secondary/40 p-4 rounded-lg text-center">
+                          <div className="text-lg font-bold">$245,000</div>
+                          <div className="text-xs text-muted-foreground">Sales Comparison</div>
+                        </div>
+                        <div className="bg-secondary/40 p-4 rounded-lg text-center">
+                          <div className="text-lg font-bold">$250,200</div>
+                          <div className="text-xs text-muted-foreground">Cost Approach</div>
+                        </div>
+                        <div className="bg-secondary/40 p-4 rounded-lg text-center">
+                          <div className="text-lg font-bold">$242,500</div>
+                          <div className="text-xs text-muted-foreground">Income Approach</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-2">Valuation Factors</h4>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-1">
+                          <div className="text-sm text-muted-foreground">Location Factor</div>
+                          <div>1.05 (Above Average)</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-sm text-muted-foreground">Building Quality</div>
+                          <div>Average (+0%)</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-sm text-muted-foreground">Depreciation</div>
+                          <div>17% (Effective Age: 15 years)</div>
+                        </div>
+                        <div className="space-y-1">
+                          <div className="text-sm text-muted-foreground">Market Condition</div>
+                          <div>+3% (Rising Market)</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div>
+                      <h4 className="font-medium mb-2">Comparable Properties</h4>
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between p-3 bg-secondary/20 rounded">
+                          <div>2108 Valley View, Grandview</div>
+                          <div className="font-medium">$240,000</div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-secondary/20 rounded">
+                          <div>1975 Hill Rd, Grandview</div>
+                          <div className="font-medium">$249,500</div>
+                        </div>
+                        <div className="flex items-center justify-between p-3 bg-secondary/20 rounded">
+                          <div>2250 Summit Dr, Grandview</div>
+                          <div className="font-medium">$251,000</div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div>
+                  <Card>
+                    <CardHeader className="py-4">
+                      <CardTitle className="text-base">Valuation Summary</CardTitle>
+                    </CardHeader>
+                    <CardContent className="py-2">
+                      <div className="space-y-3">
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Previous Value:</span>
+                          <span>$227,000</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Current Value:</span>
+                          <span className="font-medium">$246,800</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Change:</span>
+                          <span className="text-green-600">+$19,800 (+8.7%)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Confidence:</span>
+                          <span>High (PRD: 1.02)</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Model Used:</span>
+                          <span>Residential Model</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Valuation Date:</span>
+                          <span>03/24/2025</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+
+                  <div className="mt-6 space-y-2">
+                    <Button className="w-full">Generate Report</Button>
+                    <Button variant="outline" className="w-full">Save Valuation</Button>
+                  </div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

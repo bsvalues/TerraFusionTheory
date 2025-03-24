@@ -1,143 +1,127 @@
-import { 
-  Table, 
-  TableBody, 
-  TableCell, 
-  TableHead, 
-  TableHeader, 
-  TableRow 
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
-import { Skeleton } from "@/components/ui/skeleton";
-import { CalendarClock, Calculator, ChevronRight, Info } from "lucide-react";
-import { formatDate } from "../../lib/utils";
+import { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Table, TableHeader, TableRow, TableHead, TableBody, TableCell } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
+import { Spinner } from '@/components/ui/spinner';
 
 interface Model {
   id: string;
   name: string;
-  description: string;
-  type: 'additive' | 'multiplicative' | 'hybrid' | 'nonlinear';
-  propertyClass: string;
+  type: string;
+  propertyType: string;
+  neighborhood?: string;
   rSquared: number;
-  adjustedRSquared: number;
-  meanAbsolutePercentageError: number;
   created: string;
-  lastCalibrated?: string;
+  updated?: string;
 }
 
 interface ModelsListProps {
-  models: Model[] | undefined;
+  models?: Model[];
   isLoading: boolean;
   onSelectModel: (modelId: string) => void;
 }
 
-const ModelsList = ({ models, isLoading, onSelectModel }: ModelsListProps) => {
-  // Helper for model type display
-  const getModelTypeDisplay = (type: string) => {
-    switch (type) {
-      case 'additive':
-        return { label: 'Additive', color: 'bg-blue-100 text-blue-800' };
-      case 'multiplicative':
-        return { label: 'Multiplicative', color: 'bg-purple-100 text-purple-800' };
-      case 'hybrid':
-        return { label: 'Hybrid', color: 'bg-amber-100 text-amber-800' };
-      case 'nonlinear':
-        return { label: 'Nonlinear', color: 'bg-emerald-100 text-emerald-800' };
-      default:
-        return { label: type, color: 'bg-gray-100 text-gray-800' };
-    }
-  };
+const ModelsList = ({ models = [], isLoading, onSelectModel }: ModelsListProps) => {
+  const [filter, setFilter] = useState('');
+  const [typeFilter, setTypeFilter] = useState('all');
 
-  if (isLoading) {
-    return (
-      <div className="space-y-4">
-        {[1, 2, 3].map((i) => (
-          <div key={i} className="flex items-center space-x-4 p-4 border rounded-md">
-            <div className="space-y-2 flex-1">
-              <Skeleton className="h-4 w-[250px]" />
-              <Skeleton className="h-4 w-[350px]" />
-            </div>
-            <Skeleton className="h-10 w-10 rounded-full" />
-          </div>
-        ))}
-      </div>
-    );
-  }
-
-  if (!models || models.length === 0) {
-    return (
-      <div className="text-center py-8">
-        <p className="text-muted-foreground">No valuation models found</p>
-      </div>
-    );
-  }
+  const filteredModels = models.filter(model => {
+    const matchesSearch = 
+      model.name.toLowerCase().includes(filter.toLowerCase()) ||
+      model.neighborhood?.toLowerCase().includes(filter.toLowerCase()) ||
+      model.propertyType.toLowerCase().includes(filter.toLowerCase());
+    
+    const matchesType = typeFilter === 'all' || model.type === typeFilter;
+    
+    return matchesSearch && matchesType;
+  });
 
   return (
-    <div>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Model Name</TableHead>
-            <TableHead>Property Type</TableHead>
-            <TableHead>Model Type</TableHead>
-            <TableHead>R²</TableHead>
-            <TableHead>MAPE</TableHead>
-            <TableHead>Created</TableHead>
-            <TableHead>Actions</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {models.map((model) => {
-            const modelType = getModelTypeDisplay(model.type);
-            
-            return (
-              <TableRow key={model.id}>
-                <TableCell className="font-medium">{model.name}</TableCell>
-                <TableCell>{model.propertyClass}</TableCell>
-                <TableCell>
-                  <Badge variant="outline" className={modelType.color}>
-                    {modelType.label}
-                  </Badge>
-                </TableCell>
-                <TableCell>{(model.rSquared * 100).toFixed(1)}%</TableCell>
-                <TableCell>{model.meanAbsolutePercentageError.toFixed(1)}%</TableCell>
-                <TableCell>
-                  <div className="flex items-center space-x-1 text-sm text-muted-foreground">
-                    <CalendarClock size={14} />
-                    <span>
-                      {formatDate(new Date(model.created))}
-                    </span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <div className="flex space-x-2">
+    <div className="space-y-4">
+      <div className="flex flex-col md:flex-row space-y-4 md:space-y-0 md:space-x-4">
+        <div className="flex-1">
+          <Input
+            placeholder="Search models..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+          />
+        </div>
+        <div className="w-full md:w-64">
+          <Select 
+            value={typeFilter}
+            onValueChange={setTypeFilter}
+          >
+            <SelectTrigger>
+              <SelectValue placeholder="Filter by type" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">All Types</SelectItem>
+              <SelectItem value="additive">Additive Models</SelectItem>
+              <SelectItem value="multiplicative">Multiplicative Models</SelectItem>
+              <SelectItem value="hybrid">Hybrid Models</SelectItem>
+              <SelectItem value="nonlinear">Nonlinear Models</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        <Button variant="outline">Create New Model</Button>
+      </div>
+
+      {isLoading ? (
+        <div className="flex justify-center py-8">
+          <Spinner className="h-8 w-8" />
+        </div>
+      ) : filteredModels.length === 0 ? (
+        <div className="text-center py-8">
+          <p className="text-muted-foreground">No models found matching your criteria</p>
+        </div>
+      ) : (
+        <div className="border rounded-md">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Name</TableHead>
+                <TableHead>Type</TableHead>
+                <TableHead>Property Type</TableHead>
+                <TableHead>Neighborhood</TableHead>
+                <TableHead>R²</TableHead>
+                <TableHead>Created</TableHead>
+                <TableHead className="text-right">Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredModels.map((model) => (
+                <TableRow key={model.id}>
+                  <TableCell className="font-medium">{model.name}</TableCell>
+                  <TableCell>
+                    <Badge variant={
+                      model.type === 'additive' ? 'default' :
+                      model.type === 'multiplicative' ? 'secondary' :
+                      model.type === 'hybrid' ? 'outline' : 'destructive'
+                    }>
+                      {model.type}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>{model.propertyType}</TableCell>
+                  <TableCell>{model.neighborhood || '—'}</TableCell>
+                  <TableCell>{model.rSquared.toFixed(3)}</TableCell>
+                  <TableCell>{new Date(model.created).toLocaleDateString()}</TableCell>
+                  <TableCell className="text-right">
                     <Button 
-                      variant="outline" 
+                      variant="ghost"
                       size="sm"
                       onClick={() => onSelectModel(model.id)}
                     >
-                      <Info className="h-4 w-4 mr-1" />
                       Details
                     </Button>
-                    <Button 
-                      variant="default" 
-                      size="sm"
-                      onClick={() => {
-                        // Navigate directly to property valuation with this model
-                        // For now, just view details
-                        onSelectModel(model.id);
-                      }}
-                    >
-                      <Calculator className="h-4 w-4 mr-1" />
-                      Use Model
-                    </Button>
-                  </div>
-                </TableCell>
-              </TableRow>
-            );
-          })}
-        </TableBody>
-      </Table>
+                  </TableCell>
+                </TableRow>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 };
