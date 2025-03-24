@@ -353,8 +353,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/mcp/execute", asyncHandler(mcpController.executeMCP));
   
   // Memory Manager routes
-  app.get("/api/memory/stats", asyncHandler(memoryManagerController.getMemoryStats));
-  app.post("/api/memory/optimize", asyncHandler(memoryManagerController.forceMemoryOptimization));
+  app.get("/api/memory/stats", asyncHandler(memoryManagerController.getMemoryStatsHandler));
+  app.post("/api/memory/optimize", asyncHandler(memoryManagerController.optimizeMemoryHandler)); 
+  app.get("/api/system/health", asyncHandler(memoryManagerController.getSystemHealthHandler));
   
   // Update the project messages route to use the new AI controller
   app.post("/api/v2/projects/:id/messages", async (req, res, next) => {
@@ -654,7 +655,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
   
   // System memory cleanup endpoint
-  app.post("/api/system/cleanup-memory", asyncHandler(memoryManagerController.forceMemoryOptimization));
+  app.post("/api/system/cleanup-memory", asyncHandler(memoryManagerController.optimizeMemoryHandler));
   
   // System monitoring test endpoint
   app.post("/api/system/test-alert", asyncHandler(async (req, res) => {

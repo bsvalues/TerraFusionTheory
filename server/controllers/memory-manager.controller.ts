@@ -1,280 +1,316 @@
 /**
  * Memory Manager Controller
  * 
- * This controller manages memory optimization and cleanup tasks to keep
- * application memory usage under control.
+ * This controller provides endpoints to monitor and optimize memory usage
+ * throughout the application, including both standard Node.js memory and
+ * specialized memory like vector embeddings for AI agents.
  */
 
-import { Request, Response } from 'express';
+import { Request, Response, NextFunction } from 'express';
+import { LogCategory, LogLevel } from '@shared/schema';
+import { createErrorFromUnknown } from '../errors';
 import { storage } from '../storage';
-import { LogCategory, LogLevel } from '../../shared/schema';
-import { ValidationError, ServiceError } from '../errors';
+import { scheduler } from '../services/scheduler.service';
+import path from 'path';
+import os from 'os';
 
-// Import vector memory optimization components if available
-let vectorMemoryEnhancer: any = null;
-let vectorMemory: any = null;
-let optimizedLogger: any = null;
+// Try to dynamically import vector memory utilities if they exist
+let vectorMemoryUtils: any = null;
+let memoryOptimizationUtils: any = null;
 
-// Dynamically import memory optimization tools
-async function loadMemoryTools() {
+// Format bytes to human readable form
+function formatBytes(bytes: number): string {
+  if (bytes === 0) return '0 Bytes';
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+}
+
+// Get detailed memory stats
+function getMemoryStats() {
+  const memStats = process.memoryUsage();
+  
+  return {
+    memoryUsage: {
+      heapUsed: memStats.heapUsed,
+      heapTotal: memStats.heapTotal,
+      rss: memStats.rss,
+      external: memStats.external,
+      arrayBuffers: memStats.arrayBuffers,
+      formatted: {
+        heapUsed: formatBytes(memStats.heapUsed),
+        heapTotal: formatBytes(memStats.heapTotal),
+        rss: formatBytes(memStats.rss),
+        external: formatBytes(memStats.external)
+      }
+    },
+    timestamp: new Date().toISOString()
+  };
+}
+
+// Helper to get vector memory stats if module is available
+async function getVectorMemoryStats() {
+  if (!vectorMemoryUtils) {
+    return null;
+  }
+  
   try {
-    // Try to import vector memory enhancer
-    const vectorEnhancerModule = await import('../../agents/memory/vector-enhancer');
-    vectorMemoryEnhancer = vectorEnhancerModule.vectorMemoryEnhancer;
+    const vectorMemory = vectorMemoryUtils.getVectorMemory?.();
+    if (!vectorMemory) return null;
     
-    // Try to import vector memory
-    const vectorModule = await import('../../agents/memory/vector');
-    vectorMemory = vectorModule.vectorMemory;
+    const count = await vectorMemory.getCount();
+    const approximateSize = formatBytes(count * 1536 * 4); // Estimate based on typical vector size
     
-    // Try to import optimized logger
-    const optLoggerModule = await import('../services/optimized-logging');
-    optimizedLogger = optLoggerModule.optimizedLogger;
+    return {
+      count,
+      approximate_size: approximateSize
+    };
+  } catch (error) {
+    console.error('Error getting vector memory stats:', error);
+    return null;
+  }
+}
+
+// Load memory optimization utilities dynamically
+async function loadMemoryUtils() {
+  try {
+    // Try to import the vector memory module
+    try {
+      // Use relative path from the controller location to the agents directory
+      const vectorModulePath = path.resolve(__dirname, '../../agents/memory/vector.ts');
+      vectorMemoryUtils = await import(vectorModulePath);
+      console.log('[MemoryManager] Successfully loaded vector memory module');
+    } catch (err) {
+      console.warn('[MemoryManager] Vector memory module not available:', err.message);
+    }
+
+    // Try to import memory optimization utilities
+    try {
+      // Attempt to find memory optimization utils in agents directory
+      const optimizationModulePath = path.resolve(__dirname, '../../agents/memory/optimizations.ts');
+      memoryOptimizationUtils = await import(optimizationModulePath);
+      console.log('[MemoryManager] Successfully loaded memory optimization tools');
+    } catch (err) {
+      console.warn('[MemoryManager] Memory optimization tools not available:', err.message);
+    }
+
+    // Schedule periodic memory optimization 
+    scheduler.addJob('memory-optimization', 5, runMemoryOptimization);
     
-    console.log('[MemoryManager] Successfully loaded memory optimization tools');
     return true;
   } catch (error) {
-    console.error('[MemoryManager] Error loading memory optimization tools:', error);
+    console.error('[MemoryManager] Failed to load memory utilities:', error);
     return false;
   }
 }
 
-// Initialize memory tools 
-loadMemoryTools().then(success => {
+// Function to run memory optimization
+async function runMemoryOptimization() {
+  try {
+    const initialMemory = process.memoryUsage();
+    console.log('[MemoryManager] Running scheduled memory optimization');
+    
+    // Step 1: Clean up old logs (older than 7 days)
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    const logStats = await storage.getLogStats();
+    const deletedLogs = await storage.clearLogs({ olderThan: sevenDaysAgo });
+    
+    // Step 2: Run vector memory optimization if available
+    let vectorMemoryResult = null;
+    if (memoryOptimizationUtils?.optimizeVectorMemory) {
+      try {
+        vectorMemoryResult = await memoryOptimizationUtils.optimizeVectorMemory();
+      } catch (err) {
+        console.error('[MemoryManager] Vector memory optimization failed:', err);
+      }
+    }
+    
+    // Step 3: Try to run garbage collection if available
+    let gcResult;
+    if (global.gc) {
+      try {
+        global.gc();
+        gcResult = true;
+      } catch (err) {
+        gcResult = { error: err.message };
+      }
+    } else {
+      gcResult = { available: false };
+    }
+    
+    // Measure final memory state
+    const finalMemory = process.memoryUsage();
+    
+    // Calculate improvements
+    const heapReduction = initialMemory.heapUsed - finalMemory.heapUsed;
+    const rssReduction = initialMemory.rss - finalMemory.rss;
+    const percentReduction = initialMemory.heapUsed > 0 
+      ? Math.round((heapReduction / initialMemory.heapUsed) * 100) 
+      : 0;
+    
+    // Add a log entry for the optimization
+    await storage.createLog({
+      timestamp: new Date(),
+      level: LogLevel.INFO,
+      category: LogCategory.SYSTEM,
+      message: `Memory optimization completed: ${formatBytes(heapReduction)} freed (${percentReduction}%)`,
+      details: { 
+        initialMemory: { 
+          heapUsed: formatBytes(initialMemory.heapUsed),
+          rss: formatBytes(initialMemory.rss)
+        },
+        finalMemory: {
+          heapUsed: formatBytes(finalMemory.heapUsed),
+          rss: formatBytes(finalMemory.rss)
+        },
+        logsCleaned: deletedLogs,
+        vectorMemoryOptimized: vectorMemoryResult !== null
+      },
+      source: 'MemoryManager',
+      userId: null,
+      projectId: null,
+      sessionId: null,
+      duration: null,
+      statusCode: null,
+      endpoint: null,
+      tags: ["memory-optimization"]
+    });
+    
+    return {
+      status: 'success',
+      optimizations: {
+        initialMemory,
+        finalMemory,
+        improvements: {
+          heapReduction: formatBytes(heapReduction),
+          rssReduction: formatBytes(rssReduction),
+          percentReduction: `${percentReduction}%`
+        },
+        vectorMemory: vectorMemoryResult,
+        logsCleaned: {
+          countBefore: logStats.totalCount,
+          deleted: deletedLogs
+        },
+        gcRun: gcResult
+      }
+    };
+  } catch (error) {
+    console.error('[MemoryManager] Optimization error:', error);
+    return {
+      status: 'error',
+      message: error.message || 'Unknown error during memory optimization',
+      error: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+    };
+  }
+}
+
+// Initialize memory manager
+loadMemoryUtils().then(success => {
   if (success) {
-    // Schedule regular memory optimization
-    setInterval(runMemoryOptimization, 5 * 60 * 1000); // Every 5 minutes
+    console.log('[MemoryManager] Initialization complete');
+  } else {
+    console.error('[MemoryManager] Initialization failed');
   }
 });
 
 /**
- * Run all memory optimization procedures
+ * Get memory statistics
  */
-export async function runMemoryOptimization(): Promise<{
-  status: string;
-  optimizations: Record<string, any>;
-}> {
-  const optimizations: Record<string, any> = {};
-  
+export async function getMemoryStatsHandler(req: Request, res: Response, next: NextFunction) {
   try {
-    // Log start of optimization
-    console.log('[MemoryManager] Running memory optimization cycle');
-    
-    // Measure initial memory stats
-    const initialMemory = getMemoryUsage();
-    optimizations.initialMemory = initialMemory;
-    
-    // 1. Run vector memory optimization if available
-    if (vectorMemoryEnhancer) {
-      try {
-        console.log('[MemoryManager] Running vector memory optimization');
-        const vectorResult = await vectorMemoryEnhancer.optimizeMemory();
-        optimizations.vectorMemory = vectorResult;
-      } catch (error) {
-        console.error('[MemoryManager] Error in vector memory optimization:', error);
-        optimizations.vectorMemory = { error: String(error) };
-      }
-    }
-    
-    // 2. Clear old logs
-    try {
-      console.log('[MemoryManager] Clearing old logs');
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      
-      // First, count logs to be deleted
-      const logsToDelete = await storage.getLogs({
-        endDate: thirtyDaysAgo,
-        level: [LogLevel.DEBUG, LogLevel.INFO]
-      });
-      
-      // Then clear them
-      const clearedCount = await storage.clearLogs({ 
-        olderThan: thirtyDaysAgo,
-        level: LogLevel.DEBUG
-      });
-      
-      optimizations.logsCleaned = {
-        countBefore: logsToDelete.length,
-        deleted: clearedCount
-      };
-    } catch (error) {
-      console.error('[MemoryManager] Error in logs cleanup:', error);
-      optimizations.logsCleaned = { error: String(error) };
-    }
-    
-    // 3. Run garbage collection if possible
-    if (global.gc) {
-      try {
-        console.log('[MemoryManager] Running manual garbage collection');
-        global.gc();
-        optimizations.gcRun = true;
-      } catch (error) {
-        console.error('[MemoryManager] Error in garbage collection:', error);
-        optimizations.gcRun = { error: String(error) };
-      }
-    } else {
-      optimizations.gcRun = { available: false };
-    }
-    
-    // Measure final memory stats
-    const finalMemory = getMemoryUsage();
-    optimizations.finalMemory = finalMemory;
-    
-    // Calculate improvement
-    const heapReduction = initialMemory.heapUsed - finalMemory.heapUsed;
-    const rssReduction = initialMemory.rss - finalMemory.rss;
-    
-    optimizations.improvements = {
-      heapReduction: formatBytes(heapReduction),
-      rssReduction: formatBytes(rssReduction),
-      percentReduction: heapReduction > 0 ? 
-        ((heapReduction / initialMemory.heapUsed) * 100).toFixed(2) + '%' : 
-        '0%'
-    };
-    
-    // Log results
-    console.log(`[MemoryManager] Memory optimization complete: ${optimizations.improvements.heapReduction} heap reduction`);
-    
-    if (optimizedLogger) {
-      optimizedLogger.info(
-        LogCategory.PERFORMANCE,
-        `Memory optimization cycle completed`,
-        { optimizations }
-      );
-    }
-    
-    return {
-      status: 'success',
-      optimizations
-    };
-  } catch (error) {
-    console.error('[MemoryManager] Error in memory optimization:', error);
-    
-    if (optimizedLogger) {
-      optimizedLogger.error(
-        LogCategory.PERFORMANCE,
-        `Memory optimization cycle failed`,
-        { error }
-      );
-    }
-    
-    return {
-      status: 'error',
-      optimizations: {
-        error: String(error)
-      }
-    };
-  }
-}
-
-/**
- * Force run memory optimization
- */
-export async function forceMemoryOptimization(req: Request, res: Response) {
-  try {
-    console.log('[MemoryManager] Forced memory optimization requested');
-    
-    // Run optimization
-    const result = await runMemoryOptimization();
-    
-    // Return results
-    return res.json({
-      success: true,
-      message: 'Memory optimization completed',
-      ...result
-    });
-  } catch (error) {
-    console.error('[MemoryManager] Error in forced memory optimization:', error);
-    
-    return res.status(500).json({
-      success: false,
-      message: 'Memory optimization failed',
-      error: error instanceof Error ? error.message : String(error)
-    });
-  }
-}
-
-/**
- * Get memory stats
- */
-export async function getMemoryStats(req: Request, res: Response) {
-  try {
-    // Get current memory usage
-    const memoryUsage = getMemoryUsage();
+    // Get basic memory stats
+    const memStats = getMemoryStats();
     
     // Get vector memory stats if available
-    let vectorStats = null;
-    if (vectorMemory) {
-      try {
-        const count = await vectorMemory.count();
-        vectorStats = {
-          count,
-          approximate_size: formatBytes(count * 1536 * 4) // Rough estimate based on embedding size
-        };
-      } catch (error) {
-        console.error('[MemoryManager] Error getting vector memory stats:', error);
-        vectorStats = { error: String(error) };
-      }
-    }
+    const vectorMemory = await getVectorMemoryStats();
     
-    // Get log stats
-    let logStats = null;
-    try {
-      logStats = await storage.getLogStats();
-    } catch (error) {
-      console.error('[MemoryManager] Error getting log stats:', error);
-      logStats = { error: String(error) };
-    }
+    // Get log statistics
+    const logStats = await storage.getLogStats();
     
-    // Return stats
-    return res.json({
-      success: true,
-      memoryUsage: {
-        ...memoryUsage,
-        formatted: {
-          heapUsed: formatBytes(memoryUsage.heapUsed),
-          heapTotal: formatBytes(memoryUsage.heapTotal),
-          rss: formatBytes(memoryUsage.rss),
-          external: formatBytes(memoryUsage.external)
+    // Return combined stats
+    res.json({
+      ...memStats,
+      vectorMemory,
+      logs: logStats,
+    });
+  } catch (error) {
+    next(createErrorFromUnknown(error, 'Failed to get memory statistics'));
+  }
+}
+
+/**
+ * Run memory optimization
+ */
+export async function optimizeMemoryHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    const result = await runMemoryOptimization();
+    res.json(result);
+  } catch (error) {
+    next(createErrorFromUnknown(error, 'Memory optimization failed'));
+  }
+}
+
+/**
+ * Get system health status
+ */
+export async function getSystemHealthHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Get CPU load averages (1, 5, 15 minutes)
+    const loadAvg = os.loadavg();
+    
+    // Get system uptime (in seconds)
+    const uptime = os.uptime();
+    
+    // Format uptime into days, hours, minutes
+    const days = Math.floor(uptime / 86400);
+    const hours = Math.floor((uptime % 86400) / 3600);
+    const minutes = Math.floor((uptime % 3600) / 60);
+    const uptimeFormatted = `${days}d ${hours}h ${minutes}m`;
+    
+    // Get CPU info
+    const cpus = os.cpus();
+    const cpuCount = cpus.length;
+    const cpuModel = cpus[0]?.model || 'Unknown';
+    
+    // Get memory info
+    const totalMem = os.totalmem();
+    const freeMem = os.freemem();
+    const memoryUsage = ((totalMem - freeMem) / totalMem) * 100;
+    
+    // Get scheduler info
+    const schedulerStats = scheduler.getStatus();
+    
+    res.json({
+      status: 'ok',
+      cpu: {
+        model: cpuModel,
+        count: cpuCount,
+        loadAverage: {
+          '1m': loadAvg[0].toFixed(2),
+          '5m': loadAvg[1].toFixed(2),
+          '15m': loadAvg[2].toFixed(2)
         }
       },
-      vectorMemory: vectorStats,
-      logs: logStats,
+      memory: {
+        total: formatBytes(totalMem),
+        free: formatBytes(freeMem),
+        usage: `${memoryUsage.toFixed(1)}%`
+      },
+      system: {
+        platform: os.platform(),
+        arch: os.arch(),
+        uptime: uptimeFormatted,
+        hostname: os.hostname()
+      },
+      scheduler: {
+        jobs: schedulerStats
+      },
       timestamp: new Date().toISOString()
     });
   } catch (error) {
-    console.error('[MemoryManager] Error getting memory stats:', error);
-    
-    return res.status(500).json({
-      success: false,
-      message: 'Failed to get memory stats',
-      error: error instanceof Error ? error.message : String(error)
-    });
+    next(createErrorFromUnknown(error, 'Failed to get system health'));
   }
-}
-
-/**
- * Get current memory usage
- */
-function getMemoryUsage() {
-  const memoryUsage = process.memoryUsage();
-  return {
-    rss: memoryUsage.rss,
-    heapTotal: memoryUsage.heapTotal,
-    heapUsed: memoryUsage.heapUsed,
-    external: memoryUsage.external,
-    arrayBuffers: memoryUsage.arrayBuffers || 0
-  };
-}
-
-/**
- * Format bytes to human-readable format
- */
-function formatBytes(bytes: number): string {
-  if (bytes === 0) return '0 B';
-  
-  const units = ['B', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(Math.abs(bytes)) / Math.log(1024));
-  
-  return (bytes / Math.pow(1024, i)).toFixed(2) + ' ' + units[i];
 }

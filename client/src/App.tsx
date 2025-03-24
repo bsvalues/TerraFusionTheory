@@ -47,6 +47,7 @@ import {
 import { AISpecialistChat } from './components/ai';
 import ComparisonButton from './components/property/ComparisonButton';
 import ComparisonFloatingButton from './components/property/ComparisonFloatingButton';
+import SystemMonitorPage from './pages/SystemMonitorPage';
 
 // Main App component
 const App = () => {
@@ -97,6 +98,7 @@ const App = () => {
               <Route path="/adaptive-color-scheme" component={AdaptiveColorSchemePage} />
               <Route path="/mcp-tool" component={MCPToolPage} />
               <Route path="/recommendations" component={RecommendationsPage} />
+              <Route path="/system/monitor" component={SystemMonitorPage} />
               <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
               <Route path="/help" component={HelpCenterPage} />
               <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
