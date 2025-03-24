@@ -392,6 +392,14 @@ const MarketDashboard = () => {
                 <LucideBrainCircuit className="mr-2 h-4 w-4 text-primary" />
                 AI Prediction
               </TabsTrigger>
+              
+              <TabsTrigger 
+                value="sentiment" 
+                className="animate-in fade-in-0 slide-in-from-right-3 duration-500 delay-400"
+              >
+                <LucideHeartHandshake className="mr-2 h-4 w-4 text-primary" />
+                Neighborhood Sentiment
+              </TabsTrigger>
             </TabsList>
             
             <TabsContent value="overview" className="h-full overflow-auto">
