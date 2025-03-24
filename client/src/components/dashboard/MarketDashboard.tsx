@@ -932,8 +932,11 @@ const MarketDashboard = () => {
             <TabsContent value="sentiment" className="h-full overflow-auto animate-in fade-in-0 slide-in-from-right-3 duration-500 delay-400">
               <div className="grid grid-cols-1 gap-4">
                 <NeighborhoodSentimentDashboard 
-                  selectedArea={selectedArea} 
-                  selectedAreaType={selectedAreaType}
+                  defaultCity={selectedArea === "98930" ? "Grandview" : 
+                              selectedArea === "98932" ? "Granger" : 
+                              selectedArea === "98944" ? "Sunnyside" : 
+                              selectedArea === "98933" ? "Hanford" : 
+                              selectedArea === "98935" ? "Mabton" : "Grandview"}
                 />
                 
                 <Card>
