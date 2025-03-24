@@ -266,8 +266,8 @@ const SentimentHeatMap: React.FC<SentimentHeatMapProps> = ({
             center={mapCenter}
             zoom={12}
             style={{ width: '100%', height: '100%' }}
-            whenCreated={(map) => {
-              mapRef.current = map;
+            whenReady={(e: { target: L.Map }) => {
+              mapRef.current = e.target;
               setMapLoaded(true);
             }}
           >

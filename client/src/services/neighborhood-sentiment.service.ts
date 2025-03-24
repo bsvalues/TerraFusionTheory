@@ -264,7 +264,7 @@ class NeighborhoodSentimentService {
    */
   private getNeighborhoodGeolocation(neighborhood: string, city: string): { latitude: number; longitude: number } {
     // Base coordinates for Richland and Grandview
-    const cityCoordinates = {
+    const cityCoordinates: Record<string, { base: { lat: number; lng: number }; radius: number }> = {
       'Richland': { base: { lat: 46.2804, lng: -119.2752 }, radius: 0.05 },
       'Grandview': { base: { lat: 46.2562, lng: -119.9010 }, radius: 0.04 }
     };
@@ -294,7 +294,10 @@ class NeighborhoodSentimentService {
     }
     
     // Otherwise, generate pseudo-random coordinates based on the city
-    const cityInfo = cityCoordinates[city] || cityCoordinates['Richland'];
+    const defaultCity = 'Richland';
+    const cityKey = Object.keys(cityCoordinates).includes(city) ? city : defaultCity;
+    const cityInfo = cityCoordinates[cityKey];
+    
     const angle = this.getHashedAngle(neighborhood);
     const distance = cityInfo.radius * Math.random() * 0.8;
     
@@ -741,7 +744,11 @@ class NeighborhoodSentimentService {
         }
       ],
       lastUpdated: "2025-03-24T00:00:00.000Z",
-      summaryText: "Meadow Springs in Richland, WA is a well-established neighborhood centered around a beautiful country club and golf course. It receives very positive sentiment for its excellent amenities, strong sense of community, and family-friendly environment. The neighborhood's schools are highly rated, and safety is considered excellent. While prices are somewhat higher than the city average, residents find good value in the lifestyle offerings and consistent property appreciation."
+      summaryText: "Meadow Springs in Richland, WA is a well-established neighborhood centered around a beautiful country club and golf course. It receives very positive sentiment for its excellent amenities, strong sense of community, and family-friendly environment. The neighborhood's schools are highly rated, and safety is considered excellent. While prices are somewhat higher than the city average, residents find good value in the lifestyle offerings and consistent property appreciation.",
+      geolocation: {
+        latitude: 46.2713,
+        longitude: -119.3037
+      }
     };
   }
 }
