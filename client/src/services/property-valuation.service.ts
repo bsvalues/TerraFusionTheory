@@ -79,7 +79,7 @@ export const getPropertyValuation = async (
   demographicData?: any
 ): Promise<PropertyValuation> => {
   try {
-    const response = await apiRequest('/api/valuation/property', {
+    const response = await apiRequest<PropertyValuation>('/api/valuation/property', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -113,7 +113,7 @@ export const getComparableProperties = async (
   demographicData?: any
 ): Promise<ComparableProperty[]> => {
   try {
-    const response = await apiRequest('/api/valuation/comparables', {
+    const response = await apiRequest<ComparableProperty[]>('/api/valuation/comparables', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
