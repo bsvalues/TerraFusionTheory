@@ -25,7 +25,9 @@ import {
   ChevronRight,
   AlertTriangle,
   Info,
-  ArrowLeft
+  ArrowLeft,
+  Check,
+  Plus
 } from 'lucide-react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
@@ -74,6 +76,7 @@ const PropertyDetailPage: React.FC = () => {
   
   const params = useParams<{ propertyId: string }>();
   const [_, navigate] = useLocation();
+  const { addToComparison, removeFromComparison, isSelected } = useComparison();
   
   useEffect(() => {
     const fetchPropertyData = async () => {
@@ -151,13 +154,37 @@ const PropertyDetailPage: React.FC = () => {
           Back
         </Button>
         <Button
-          variant="outline"
+          variant={isSelected(property.propertyId) ? "default" : "outline"}
           size="sm"
-          onClick={() => navigate(`/property-comparison?ids=${property.propertyId}`)}
+          onClick={() => {
+            if (isSelected(property.propertyId)) {
+              removeFromComparison(property.propertyId);
+            } else {
+              addToComparison({
+                id: property.propertyId,
+                address: property.address,
+                price: property.price,
+                bedrooms: property.bedrooms,
+                bathrooms: property.bathrooms,
+                squareFeet: property.squareFeet,
+                yearBuilt: property.yearBuilt,
+                propertyType: property.propertyType
+              });
+            }
+          }}
           className="flex items-center"
         >
-          <TrendingUp className="mr-1 h-4 w-4" />
-          Compare
+          {isSelected(property.propertyId) ? (
+            <>
+              <Check className="mr-1 h-4 w-4" />
+              Added to Comparison
+            </>
+          ) : (
+            <>
+              <Plus className="mr-1 h-4 w-4" />
+              Add to Comparison
+            </>
+          )}
         </Button>
       </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
