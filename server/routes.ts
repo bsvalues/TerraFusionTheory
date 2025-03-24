@@ -14,6 +14,7 @@ import { alertManager, AlertSeverity } from "./services/alert";
 import { realEstateAnalyticsService } from "./services/real-estate-analytics.service";
 import registerDevAuthRoutes from "./routes/dev-auth.routes";
 import registerUserRoutes from "./routes/users.routes";
+import registerRecommendationsRoutes from "./routes/recommendations.routes";
 
 // Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';
@@ -60,6 +61,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register user routes
   registerUserRoutes(app, storage);
+  
+  // Register recommendation routes
+  registerRecommendationsRoutes(app, storage);
   
   // API routes - prefix all routes with /api
   

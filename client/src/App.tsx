@@ -31,6 +31,7 @@ import HelpCenterPage from './pages/HelpCenterPage';
 import DevAuthLoginPage from './pages/DevAuthLoginPage';
 import DevAuthAdminPage from './pages/DevAuthAdminPage';
 import UserAdminPage from './pages/UserAdminPage';
+import { RecommendationsPage } from './pages/RecommendationsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import { 
   TutorialManager, 
@@ -85,6 +86,7 @@ const App = () => {
               <Route path="/advanced-property-comparison" component={AdvancedPropertyComparisonPage} />
               <Route path="/market-trends" component={MarketTrendsPage} />
               <Route path="/natural-hazards" component={NaturalHazardPage} />
+              <Route path="/recommendations" component={RecommendationsPage} />
               <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
               <Route path="/help" component={HelpCenterPage} />
               <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
