@@ -95,6 +95,36 @@ export class ConnectorFactory {
   }
   
   /**
+   * Create a Weather connector
+   */
+  public createWeatherConnector(name: string, config: WeatherConnectorConfig): WeatherConnector {
+    try {
+      const connector = new WeatherConnector(name, config);
+      this.registry.registerConnector(connector);
+      this.logConnectorCreation(name, 'weather', true);
+      return connector;
+    } catch (error) {
+      this.logConnectorCreation(name, 'weather', false, error);
+      throw error;
+    }
+  }
+  
+  /**
+   * Create a Census data connector
+   */
+  public createCensusConnector(name: string, config: CensusConnectorConfig): CensusConnector {
+    try {
+      const connector = new CensusConnector(name, config);
+      this.registry.registerConnector(connector);
+      this.logConnectorCreation(name, 'census', true);
+      return connector;
+    } catch (error) {
+      this.logConnectorCreation(name, 'census', false, error);
+      throw error;
+    }
+  }
+  
+  /**
    * Create a connector based on type
    */
   public createConnector(
@@ -111,6 +141,10 @@ export class ConnectorFactory {
         return this.createMarketDataConnector(name, config as MarketDataConnectorConfig);
       case 'pdf':
         return this.createPDFConnector(name, config as PDFConnectorConfig);
+      case 'weather':
+        return this.createWeatherConnector(name, config as WeatherConnectorConfig);
+      case 'census':
+        return this.createCensusConnector(name, config as CensusConnectorConfig);
       default:
         throw new Error(`Unsupported connector type: ${type}`);
     }

@@ -3,6 +3,8 @@ import { CAMAConnectorConfig } from './cama.connector';
 import { GISConnectorConfig } from './gis.connector';
 import { MarketDataConnectorConfig } from './market.connector';
 import { PDFConnectorConfig } from './pdf.connector';
+import { WeatherConnectorConfig } from './weather.connector';
+import { CensusConnectorConfig } from './census.connector';
 import { LogLevel, LogCategory } from '@shared/schema';
 import { storage } from '../../storage';
 
@@ -64,6 +66,36 @@ const defaultPDFConnectors: { name: string; config: PDFConnectorConfig }[] = [
 ];
 
 /**
+ * Default Weather connector configurations
+ */
+const defaultWeatherConnectors: { name: string; config: WeatherConnectorConfig }[] = [
+  {
+    name: 'weather-data',
+    config: {
+      baseUrl: 'https://api.weatherapi.com/v1',
+      apiKey: 'WEATHER_API_KEY',
+      defaultLocation: 'Grandview,WA',
+      units: 'imperial'
+    }
+  }
+];
+
+/**
+ * Default Census connector configurations
+ */
+const defaultCensusConnectors: { name: string; config: CensusConnectorConfig }[] = [
+  {
+    name: 'census-data',
+    config: {
+      baseUrl: 'https://api.census.gov/data',
+      apiKey: 'CENSUS_API_KEY',
+      defaultYear: '2021',
+      defaultState: '53' // Washington state FIPS code
+    }
+  }
+];
+
+/**
  * Initialize connectors with default configurations
  */
 export async function initializeConnectors(): Promise<void> {
@@ -93,6 +125,24 @@ export async function initializeConnectors(): Promise<void> {
       console.log(`Registered PDF connector: ${name}`);
     }
     
+    // Register Weather connectors
+    for (const { name, config } of defaultWeatherConnectors) {
+      // Replace the placeholder API key with the environment variable if available
+      const apiKey = process.env.WEATHER_API_KEY || config.apiKey;
+      const weatherConfig = { ...config, apiKey };
+      connectorFactory.createWeatherConnector(name, weatherConfig);
+      console.log(`Registered Weather connector: ${name}`);
+    }
+    
+    // Register Census connectors
+    for (const { name, config } of defaultCensusConnectors) {
+      // Replace the placeholder API key with the environment variable if available
+      const apiKey = process.env.CENSUS_API_KEY || config.apiKey;
+      const censusConfig = { ...config, apiKey };
+      connectorFactory.createCensusConnector(name, censusConfig);
+      console.log(`Registered Census connector: ${name}`);
+    }
+    
     console.log('Connectors initialization completed');
 
     await storage.createLog({
@@ -103,7 +153,9 @@ export async function initializeConnectors(): Promise<void> {
         camaConnectors: defaultCAMAConnectors.map(c => c.name),
         gisConnectors: defaultGISConnectors.map(c => c.name),
         marketConnectors: defaultMarketDataConnectors.map(c => c.name),
-        pdfConnectors: defaultPDFConnectors.map(c => c.name)
+        pdfConnectors: defaultPDFConnectors.map(c => c.name),
+        weatherConnectors: defaultWeatherConnectors.map(c => c.name),
+        censusConnectors: defaultCensusConnectors.map(c => c.name)
       }),
       source: 'connectors-init',
       projectId: null,
