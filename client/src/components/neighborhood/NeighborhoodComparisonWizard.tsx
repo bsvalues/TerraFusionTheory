@@ -447,7 +447,7 @@ const NeighborhoodComparisonWizard: React.FC<NeighborhoodComparisonWizardProps> 
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip formatter={(value, name) => [value, name]} />
+              <RechartsTooltip formatter={(value: any, name: string) => [value, name]} />
               <Legend />
               {selectedNeighborhoods.map((neighborhood, index) => (
                 <Bar 
@@ -464,11 +464,11 @@ const NeighborhoodComparisonWizard: React.FC<NeighborhoodComparisonWizardProps> 
       case 'line':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <LineChart data={chartData}>
+            <RechartsLineChart data={chartData}>
               <CartesianGrid strokeDasharray="3 3" />
               <XAxis dataKey="name" />
               <YAxis />
-              <Tooltip formatter={(value, name) => [value, name]} />
+              <RechartsTooltip formatter={(value, name) => [value, name]} />
               <Legend />
               {selectedNeighborhoods.map((neighborhood, index) => (
                 <Line 
@@ -480,7 +480,7 @@ const NeighborhoodComparisonWizard: React.FC<NeighborhoodComparisonWizardProps> 
                   activeDot={{ r: 8 }} 
                 />
               ))}
-            </LineChart>
+            </RechartsLineChart>
           </ResponsiveContainer>
         );
         
@@ -502,7 +502,7 @@ const NeighborhoodComparisonWizard: React.FC<NeighborhoodComparisonWizardProps> 
                 />
               ))}
               <Legend />
-              <Tooltip />
+              <RechartsTooltip formatter={(value: any, name: string) => [value, name]} />
             </RadarChart>
           </ResponsiveContainer>
         );
@@ -510,7 +510,7 @@ const NeighborhoodComparisonWizard: React.FC<NeighborhoodComparisonWizardProps> 
       case 'pie':
         return (
           <ResponsiveContainer width="100%" height={400}>
-            <PieChart>
+            <RechartsPieChart>
               <Pie
                 data={pieData}
                 dataKey="value"
@@ -524,9 +524,9 @@ const NeighborhoodComparisonWizard: React.FC<NeighborhoodComparisonWizardProps> 
                   <Cell key={`cell-${index}`} fill={entry.color} />
                 ))}
               </Pie>
-              <Tooltip formatter={(value, name, props) => [value, name]} />
+              <RechartsTooltip formatter={(value: any, name: string, props: any) => [value, name]} />
               <Legend />
-            </PieChart>
+            </RechartsPieChart>
           </ResponsiveContainer>
         );
         
@@ -669,7 +669,7 @@ const NeighborhoodComparisonWizard: React.FC<NeighborhoodComparisonWizardProps> 
               ) : neighborhoods && neighborhoods.length > 0 ? (
                 <ScrollArea className="h-[300px] pr-4">
                   <div className="space-y-2">
-                    {neighborhoods.map(neighborhood => (
+                    {neighborhoods.map((neighborhood: Neighborhood) => (
                       <div 
                         key={neighborhood.id} 
                         className={cn(
