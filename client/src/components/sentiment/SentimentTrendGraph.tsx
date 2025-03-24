@@ -445,7 +445,7 @@ const SentimentTrendGraph: React.FC<SentimentTrendGraphProps> = ({
                   isAnimationActive={false}
                   name="Min"
                   connectNulls
-                  baseValue={(dataMin: any) => dataMin}
+                  baseValue="dataMin"
                 />
                 <Line 
                   type="monotone" 
@@ -610,7 +610,7 @@ const SentimentTrendGraph: React.FC<SentimentTrendGraphProps> = ({
                 isAnimationActive={false}
                 name="min"
                 connectNulls
-                baseValue={(dataMin: any) => dataMin}
+                baseValue="dataMin"
               />
               
               {/* Main sentiment score line */}
@@ -681,7 +681,7 @@ const SentimentTrendGraph: React.FC<SentimentTrendGraphProps> = ({
           
           <Separator className="my-2" />
           
-          <Alert variant="outline" className="bg-blue-50/50 border-blue-200">
+          <Alert className="bg-blue-50/50 border-blue-200">
             <Info className="h-4 w-4 text-blue-600" />
             <AlertTitle className="text-blue-700 text-sm">About Sentiment Predictions</AlertTitle>
             <AlertDescription className="text-blue-600 text-xs">
