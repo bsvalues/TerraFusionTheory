@@ -138,6 +138,26 @@ const PropertyDetailPage: React.FC = () => {
   
   return (
     <div className="container mx-auto py-8 px-4">
+      <div className="flex items-center mb-4 space-x-2">
+        <Button 
+          variant="outline" 
+          size="sm" 
+          onClick={() => navigate('/')}
+          className="flex items-center"
+        >
+          <ArrowLeft className="mr-1 h-4 w-4" />
+          Back
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => navigate(`/property-comparison?ids=${property.propertyId}`)}
+          className="flex items-center"
+        >
+          <TrendingUp className="mr-1 h-4 w-4" />
+          Compare
+        </Button>
+      </div>
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Left column - Property basics and images */}
         <div className="lg:col-span-2 space-y-6">
@@ -809,7 +829,28 @@ const PropertyDetailPage: React.FC = () => {
                 <p className="text-muted-foreground mb-4">
                   Interested in this property? Contact an agent to schedule a viewing or ask questions.
                 </p>
-                <Button className="w-full">Contact Agent</Button>
+                <Button className="w-full mb-3">Contact Agent</Button>
+                <Button 
+                  variant="outline" 
+                  className="w-full"
+                  onClick={() => integratedPropertyDataService.searchProperties({
+                    city: property.city,
+                    state: property.state
+                  }).then(similarProperties => {
+                    // Get up to 3 similar properties including current one
+                    const propertyIds = [
+                      property.propertyId,
+                      ...similarProperties
+                        .filter(p => p.propertyId !== property.propertyId)
+                        .slice(0, 2)
+                        .map(p => p.propertyId)
+                    ];
+                    navigate(`/property-comparison?ids=${propertyIds.join(',')}`);
+                  })}
+                >
+                  <TrendingUp className="mr-2 h-4 w-4" />
+                  Compare with Similar Properties
+                </Button>
               </div>
             </CardContent>
           </Card>

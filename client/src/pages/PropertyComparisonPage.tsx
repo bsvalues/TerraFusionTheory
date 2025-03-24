@@ -488,9 +488,10 @@ export default function PropertyComparisonPage() {
                         {property.schoolDistrict && (
                           <div className="h-48">
                             <SchoolDistrictMap 
-                              propertyLocation={property.location}
-                              schoolDistrict={property.schoolDistrict}
-                              nearbySchools={property.nearbySchools || []}
+                              initialCity={property.city}
+                              initialState={property.state}
+                              height="100%"
+                              width="100%"
                             />
                           </div>
                         )}
@@ -1010,8 +1011,8 @@ export default function PropertyComparisonPage() {
                     <CardContent>
                       {property.marketCyclePrediction ? (
                         <MarketCyclePredictor 
-                          prediction={property.marketCyclePrediction} 
-                          compact={true}
+                          predictionData={property.marketCyclePrediction} 
+                          location={{city: property.city, state: property.state}}
                         />
                       ) : (
                         <div className="text-center py-4 text-muted-foreground">
