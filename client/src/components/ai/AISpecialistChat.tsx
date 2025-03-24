@@ -5,6 +5,8 @@
  * assistance for real estate analysis and technical integration questions.
  * It features different AI specialists with contextual property insights
  * that automatically appear when discussing specific properties.
+ * 
+ * Enhanced with voice-activated property search functionality.
  */
 
 import { useState, useRef, useEffect } from 'react';
@@ -21,6 +23,7 @@ import { cn } from '@/lib/utils';
 import agentService, { QueryContext } from '@/services/agent.service';
 import PropertyInsightCard, { PropertyInsight } from './PropertyInsightCard';
 import propertyInsightsService from '@/services/property-insights.service';
+import VoiceSearch from '../voice/VoiceSearch';
 
 // AI Specialist types
 enum SpecialistType {
@@ -225,6 +228,30 @@ const AISpecialistChat = () => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       handleSendMessage();
+    }
+  };
+
+  // Handle voice input from the voice search component
+  const handleVoiceInput = (transcript: string) => {
+    // Append the transcript to any existing input
+    setInput(currentInput => currentInput + (currentInput ? ' ' : '') + transcript);
+    
+    toast({
+      title: "Voice input received",
+      description: transcript,
+      duration: 3000,
+    });
+    
+    // If the transcript is a complete query, we can auto-send it
+    // This is optional and can be adjusted based on user feedback
+    if (transcript.trim().length > 15 && 
+        (transcript.endsWith('.') || 
+         transcript.endsWith('?') || 
+         transcript.endsWith('!'))) {
+      // Short delay to allow user to see what was transcribed
+      setTimeout(() => {
+        handleSendMessage();
+      }, 500);
     }
   };
 
@@ -447,14 +474,23 @@ const AISpecialistChat = () => {
                           handleSendMessage();
                         }}
                       >
-                        <Textarea
-                          value={input}
-                          onChange={(e) => setInput(e.target.value)}
-                          onKeyDown={handleKeyPress}
-                          placeholder="Type your message..."
-                          className="min-h-10 resize-none flex-1"
-                          disabled={isProcessing}
-                        />
+                        <div className="relative flex-1">
+                          <Textarea
+                            value={input}
+                            onChange={(e) => setInput(e.target.value)}
+                            onKeyDown={handleKeyPress}
+                            placeholder="Type or speak your message..."
+                            className="min-h-10 resize-none w-full pr-9"
+                            disabled={isProcessing}
+                          />
+                          <div className="absolute right-2 bottom-2">
+                            <VoiceSearch 
+                              onTranscript={handleVoiceInput}
+                              isEnabled={!isProcessing}
+                            />
+                          </div>
+                        </div>
+                        
                         <Button 
                           type="submit" 
                           size="sm"
