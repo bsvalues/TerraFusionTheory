@@ -151,7 +151,7 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
           }
         ],
         matchScore: 80,
-        tags: ["Under-assessed", "High Quality", "Recent Construction"],
+        tags: ["Under-assessed", "Construction Quality 1", "Minimal Depreciation"],
         latitude: 46.2600,
         longitude: -119.9000
       },
@@ -184,7 +184,7 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
           }
         ],
         matchScore: 78,
-        tags: ["Needs Assessment", "Functionally Obsolete", "Older Home"],
+        tags: ["Needs Reassessment", "Functional Obsolescence", "Substantial Depreciation"],
         latitude: 46.2520,
         longitude: -119.9120
       }
@@ -307,31 +307,31 @@ export async function getPropertyInsights(req: Request, res: Response) {
       {
         type: "valuation",
         title: "Cost Approach Valuation",
-        description: "Marshall & Swift cost manual: Class 4, Good quality. RCN: $180/sqft × 1,800 sqft = $324,000. Less depreciation: 14.5% accrued (age-life method). Plus land: $95,000. Total: $430,000.",
+        description: "Marshall & Swift cost manual Section 1301: Class D, Good quality residence. RCN: $180/sqft × 1,800 sqft = $324,000. Accrued depreciation analysis: Physical 14.5% (age-life method), Functional 0%, External 0%. Land value (allocation method): $95,000. Contributory site improvements: $11,000. Total value indication: $430,000.",
         score: 88
       },
       {
         type: "comparable",
         title: "Sales Comparison Grid Analysis",
-        description: "5 comparable sales analyzed with adjustments for time (+0.5%/month), location (±5-10%), GLA ($55/sf), quality/condition (±5-15%), and amenities. Range: $432,000-$458,000. Reconciled value: $442,500.",
+        description: "5 comparable sales analyzed with adjustments for market conditions (+0.5%/month), location (±5-10%), GLA ($55/sf), quality (±5-10%), condition (±5-15%), and site improvements. Net adjustments range: 2.5%-12.4%. Concluded value range: $432,000-$458,000. Reconciled point value estimate: $442,500.",
         score: 92
       },
       {
         type: "mass-appraisal",
-        title: "Automated Valuation Model",
-        description: "Multiplicative model with location factor (1.12), time adjustment (1.085), and quality/condition index (0.97). Model diagnostics: R²: 0.86, COV: 7.2%. Indicated value: $438,000.",
+        title: "CAMA System Value Estimate",
+        description: "Multiplicative model with location factor (1.12), time adjustment (1.085), physical index (1.03), and economic index (0.97). Model diagnostics: R²: 0.86, COV: 7.2%, COD: 8.5%. IAAO compliant reliability. Indicated value: $438,000.",
         score: 90
       },
       {
         type: "appraisal",
         title: "Reconciliation & Final Value Opinion",
-        description: "Weighted reconciliation: Sales comparison (60%, $442,500), Cost approach (25%, $430,000), Income approach ($435,000, 15%). Final market value opinion: $440,000.",
+        description: "Correlation and weighted reconciliation of approaches: Sales comparison (reliability: high, weight: 60%, $442,500), Cost approach (reliability: moderate, weight: 25%, $430,000), Income approach (reliability: moderate-low, weight: 15%, $435,000). Final market value opinion as of March 15, 2025: $440,000. Exposure time: 30-45 days. Marketing time: 30-60 days.",
         score: 95
       },
       {
         type: "assessment",
-        title: "Assessment Equity Study",
-        description: "Current assessment: $415,000. Ratio to indicated market value: 0.94. Neighborhood statistical measures: COD: 10.2, PRD: 1.01, PRB: -0.012. All indicators within IAAO standards.",
+        title: "Assessment Ratio Study",
+        description: "Current assessment: $415,000. Assessment ratio: 0.94 (within IAAO target: 0.90-1.10). Horizontal equity measures: COD: 10.2 (standard: <15.0), COV: 11.8% (standard: <20%). Vertical equity measures: PRD: 1.01 (standard: 0.98-1.03), PRB: -0.012 (standard: -0.05 to 0.05).",
         score: 88
       }
     ];
