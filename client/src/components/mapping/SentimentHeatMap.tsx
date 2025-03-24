@@ -33,6 +33,17 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import * as turf from '@turf/turf';
 
+// Map ready detection component
+function MapReadyDetector({ setMapLoaded }: { setMapLoaded: (loaded: boolean) => void }) {
+  const map = useMap();
+  
+  useEffect(() => {
+    setMapLoaded(true);
+  }, [map, setMapLoaded]);
+  
+  return null;
+}
+
 // Import sentiment service
 import neighborhoodSentimentService, { 
   NeighborhoodSentiment,
@@ -72,6 +83,7 @@ const SentimentHeatMap: React.FC<SentimentHeatMapProps> = ({
   const [legendVisible, setLegendVisible] = useState(true);
   const { toast } = useToast();
   
+  // MapContainer reference with correct type
   const mapRef = useRef<L.Map | null>(null);
 
   // Load city sentiment data
@@ -267,9 +279,6 @@ const SentimentHeatMap: React.FC<SentimentHeatMapProps> = ({
             zoom={12}
             style={{ width: '100%', height: '100%' }}
             ref={mapRef}
-            whenReady={() => {
-              setMapLoaded(true);
-            }}
           >
             {/* Base Tile Layer */}
             <TileLayer
