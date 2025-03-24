@@ -621,13 +621,13 @@ class SchoolDistrictService {
    * @param latitude Latitude of the property
    * @param longitude Longitude of the property
    * @param radiusMiles Radius to search in miles
-   * @returns Array of schools within the specified radius
+   * @returns Array of schools within the specified radius, with distance property added
    */
   async getSchoolsNearProperty(
     latitude: number,
     longitude: number,
     radiusMiles: number = 2
-  ): Promise<School[]> {
+  ): Promise<(School & { distance: number })[]> {
     try {
       // In a production app, this would be an API call using spatial query:
       // return await apiRequest.get('/api/schools/near', {
@@ -657,16 +657,18 @@ class SchoolDistrictService {
         schools = [...richlandSchools, ...grandviewSchools];
       }
       
-      // Filter schools by distance
-      return schools.filter(school => {
+      // Calculate distance for each school and filter by radius
+      const schoolsWithDistance = schools.map(school => {
         const distance = this.calculateDistance(
           latitude, 
           longitude, 
           school.location.latitude, 
           school.location.longitude
         );
-        return distance <= radiusMiles;
-      });
+        return { ...school, distance };
+      }).filter(school => school.distance <= radiusMiles);
+      
+      return schoolsWithDistance;
     } catch (error) {
       console.error('Error fetching schools near property:', error);
       throw new Error('Failed to fetch schools near property');

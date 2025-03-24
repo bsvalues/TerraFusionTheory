@@ -101,7 +101,7 @@ export interface IntegratedPropertyData {
   
   // School district info
   schoolDistrict?: SchoolDistrict;
-  nearbySchools?: School[];
+  nearbySchools?: (School & { distance: number })[];
   schoolScorecard?: {
     averageRating: number; // 0-10
     bestSchoolName: string;
@@ -806,8 +806,20 @@ class IntegratedPropertyDataService {
           property.schoolDistrict = schoolDistricts[0];
         }
         
-        // Set nearby schools
-        property.nearbySchools = nearbySchools;
+        // Set nearby schools with calculated distances
+        property.nearbySchools = nearbySchools.map((school, index) => {
+          const distance = this.calculateDistance(
+            property.location.latitude, 
+            property.location.longitude,
+            school.location.latitude,
+            school.location.longitude
+          );
+          
+          return {
+            ...school,
+            distance // Add distance property to each school
+          };
+        });
         
         // Calculate school scorecard
         const ratings = nearbySchools.map(school => school.rating);
