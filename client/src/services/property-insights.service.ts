@@ -9,8 +9,8 @@ import { PropertyInsight } from "@/components/ai/PropertyInsightCard";
 
 // Pattern to detect common property address formats in text
 const ADDRESS_PATTERNS = [
-  // Standard street address with optional apartment/unit
-  /\b\d+\s+[A-Za-z0-9\s,.'()-]+(?:Avenue|Ave|Boulevard|Blvd|Circle|Cir|Court|Ct|Drive|Dr|Lane|Ln|Parkway|Pkwy|Place|Pl|Road|Rd|Square|Sq|Street|St|Terrace|Ter|Way)\b(?:\s+(?:Apt|Unit|#)\s*[A-Za-z0-9-]+)?/gi,
+  // Standard street address with optional apartment/unit - extended street types
+  /\b\d+\s+[A-Za-z0-9\s,.'()-]+(?:Avenue|Ave|Boulevard|Blvd|Circle|Cir|Court|Ct|Drive|Dr|Lane|Ln|Parkway|Pkwy|Place|Pl|Road|Rd|Square|Sq|Street|St|Terrace|Ter|Way|Loop|Point|Pt|Trail|Trl|Run|Pass|Ridge|View|Vw|Bend|Canyon|Heights|Ht|Highway|Hwy)\b(?:\s+(?:Apt|Unit|#)\s*[A-Za-z0-9-]+)?/gi,
   
   // Address with city/state/zip
   /\b\d+\s+[A-Za-z0-9\s,.'()-]+,\s*[A-Za-z\s]+,\s*[A-Z]{2}\s*\d{5}(?:-\d{4})?\b/gi,
@@ -19,7 +19,13 @@ const ADDRESS_PATTERNS = [
   /\b\d+\s+[A-Za-z0-9\s,.'()-]+(?:Grandview|GRANDVIEW|grandview)(?:,)?\s*(?:WA|Washington)?\s*(?:\d{5}(?:-\d{4})?)?\b/gi,
   
   // Addresses that specifically mention Richland, WA
-  /\b\d+\s+[A-Za-z0-9\s,.'()-]+(?:Richland|RICHLAND|richland)(?:,)?\s*(?:WA|Washington)?\s*(?:\d{5}(?:-\d{4})?)?\b/gi
+  /\b\d+\s+[A-Za-z0-9\s,.'()-]+(?:Richland|RICHLAND|richland)(?:,)?\s*(?:WA|Washington)?\s*(?:\d{5}(?:-\d{4})?)?\b/gi,
+  
+  // Specific Richland neighborhoods
+  /\b(?:Columbia Point|South Richland|Horn Rapids|Meadow Springs|Central Richland|Badger Mountain|Bellerive)\b/gi,
+  
+  // Named streets in Richland with house number detection
+  /\b\d+\s+(?:Newcomer|Columbia Point|Aaron|Jadwin|Bellerive|George Washington|Lee|Thayer|Williams|Duportail|Keene|Leslie|Gage|Wright|Stevens|Swift|Goethals|Wellsian|Comstock|Torbett|Van Giesen)\b/gi
 ];
 
 // Property data including real Richland, WA listings in Benton County
@@ -448,6 +454,19 @@ function findMatchingProperty(address: string): PropertyInsight | null {
   } else if (normalizedAddress.includes('jadwin')) {
     return mockProperties.r4;
   } else if (normalizedAddress.includes('bellerive')) {
+    return mockProperties.r5;
+  }
+  
+  // Check for Richland neighborhood names
+  if (normalizedAddress.includes('south richland')) {
+    return mockProperties.r1;
+  } else if (normalizedAddress.includes('columbia point')) {
+    return mockProperties.r2;
+  } else if (normalizedAddress.includes('horn rapids')) {
+    return mockProperties.r3;
+  } else if (normalizedAddress.includes('central richland')) {
+    return mockProperties.r4;
+  } else if (normalizedAddress.includes('meadow springs')) {
     return mockProperties.r5;
   }
   

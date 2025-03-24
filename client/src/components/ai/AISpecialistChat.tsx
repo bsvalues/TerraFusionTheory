@@ -66,11 +66,11 @@ const AISpecialistChat = () => {
     if (isOpen && messages.length === 0) {
       const welcomeMessages: Record<SpecialistType, string> = {
         [SpecialistType.PROPERTY]: 
-          "Hello! I'm your Property Valuation Specialist. I can help you analyze market trends, evaluate property values, and understand investment opportunities. Just mention a property address like '123 Main St, Grandview, WA' and I'll show you detailed insights! How can I assist you today?",
+          "Hello! I'm your Property Valuation Specialist. I can help you analyze market trends, evaluate property values, and understand investment opportunities.\n\nTry mentioning a property address like:\n• '1205 Newcomer St, Richland, WA'\n• '324 Columbia Point Dr, Richland'\n• '123 Main St, Grandview'\n\nI'll show you detailed property insights! How can I assist you today?",
         [SpecialistType.TECHNICAL]: 
           "Welcome! I'm your Technical Integration Specialist. I can help with integrating data sources, troubleshooting technical issues, and optimizing your analytics workflow. What can I help you with?",
         [SpecialistType.COLLABORATIVE]:
-          "Welcome to Collaborative Mode! Here, both the Real Estate and Technical specialists work together to provide comprehensive answers that combine real estate expertise with technical implementation knowledge. You can ask about specific properties like '456 Vine Avenue, Grandview' and I'll show you property insights alongside technical information. How can we assist you today?"
+          "Welcome to Collaborative Mode! Here, both the Real Estate and Technical specialists work together to provide comprehensive answers that combine real estate expertise with technical implementation knowledge.\n\nTry asking about specific properties or neighborhoods like:\n• 'Tell me about Columbia Point in Richland'\n• 'What's the market like in Meadow Springs?'\n• 'Property values in South Richland'\n\nHow can we assist you today?"
       };
       
       // Add welcome message for active specialist
@@ -393,15 +393,24 @@ const AISpecialistChat = () => {
                                         compact={true}
                                         className="mt-2"
                                         onViewDetails={(id) => {
+                                          const message = `Tell me more about the property at ${property.address}`;
+                                          setInput(message);
                                           toast({
-                                            title: "Property Details",
-                                            description: `Viewing details for property at ${property.address}`,
+                                            title: "Property Selected",
+                                            description: `Loaded query for ${property.address}`,
                                           });
                                         }}
                                         onViewOnMap={(coordinates) => {
+                                          // In a real app, we would center the map on these coordinates
+                                          // For now, just set up a query about the neighborhood
+                                          const neighborhood = property.neighborhood || "";
+                                          const message = neighborhood 
+                                            ? `What can you tell me about the ${neighborhood} neighborhood in ${property.address.split(',')[1]}?` 
+                                            : `What's the area like around ${property.address}?`;
+                                          setInput(message);
                                           toast({
-                                            title: "Property Location",
-                                            description: `Viewing location at ${coordinates.lat.toFixed(4)}, ${coordinates.lng.toFixed(4)}`,
+                                            title: "Location Selected",
+                                            description: `Loaded neighborhood query for ${property.address.split(',')[0]}`,
                                           });
                                         }}
                                       />
