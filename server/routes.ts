@@ -19,6 +19,8 @@ import registerDevAuthRoutes from "./routes/dev-auth.routes";
 import registerUserRoutes from "./routes/users.routes";
 import registerRecommendationsRoutes from "./routes/recommendations.routes";
 import { registerValuationAgentRoutes } from "./routes/valuation-agent.routes";
+import { registerMicroservicesRoutes } from "./routes/microservices-routes";
+import { microservicesClient } from "./services/microservices-client";
 
 // Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';
@@ -71,6 +73,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register valuation agent routes
   registerValuationAgentRoutes(app);
+  
+  // Register microservices integration routes
+  registerMicroservicesRoutes(app);
   
   // API routes - prefix all routes with /api
   
