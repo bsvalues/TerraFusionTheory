@@ -26,6 +26,7 @@ import PropertyComparisonPage from './pages/PropertyComparisonPage';
 import AdvancedPropertyComparisonPage from './pages/AdvancedPropertyComparisonPage';
 import MarketTrendsPage from './pages/MarketTrendsPage';
 import NaturalHazardPage from './pages/NaturalHazardPage';
+import MassAppraisalPage from './pages/MassAppraisalPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import DevAuthLoginPage from './pages/DevAuthLoginPage';
@@ -86,6 +87,7 @@ const App = () => {
               <Route path="/advanced-property-comparison" component={AdvancedPropertyComparisonPage} />
               <Route path="/market-trends" component={MarketTrendsPage} />
               <Route path="/natural-hazards" component={NaturalHazardPage} />
+              <Route path="/mass-appraisal" component={MassAppraisalPage} />
               <Route path="/recommendations" component={RecommendationsPage} />
               <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
               <Route path="/help" component={HelpCenterPage} />

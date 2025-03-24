@@ -1081,7 +1081,7 @@ const RatioStudyPanel = () => {
                     
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm text-muted-foreground">Below Range (<0.90)</CardTitle>
+                        <CardTitle className="text-sm text-muted-foreground">Below Range (&lt;0.90)</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">
@@ -1096,7 +1096,7 @@ const RatioStudyPanel = () => {
                     
                     <Card>
                       <CardHeader className="pb-2">
-                        <CardTitle className="text-sm text-muted-foreground">Above Range (>1.10)</CardTitle>
+                        <CardTitle className="text-sm text-muted-foreground">Above Range (&gt;1.10)</CardTitle>
                       </CardHeader>
                       <CardContent>
                         <div className="text-2xl font-bold">
