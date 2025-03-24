@@ -23,6 +23,7 @@ import SchoolAndEconomicAnalysisPage from './pages/SchoolAndEconomicAnalysisPage
 import EconomicIndicatorsPage from './pages/EconomicIndicatorsPage';
 import PropertyDetailPage from './pages/PropertyDetailPage';
 import PropertyComparisonPage from './pages/PropertyComparisonPage';
+import AdvancedPropertyComparisonPage from './pages/AdvancedPropertyComparisonPage';
 import MarketTrendsPage from './pages/MarketTrendsPage';
 import NaturalHazardPage from './pages/NaturalHazardPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
@@ -78,6 +79,7 @@ const App = () => {
               <Route path="/economic-indicators" component={EconomicIndicatorsPage} />
               <Route path="/property/:propertyId" component={PropertyDetailPage} />
               <Route path="/property-comparison" component={PropertyComparisonPage} />
+              <Route path="/advanced-property-comparison" component={AdvancedPropertyComparisonPage} />
               <Route path="/market-trends" component={MarketTrendsPage} />
               <Route path="/natural-hazards" component={NaturalHazardPage} />
               <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
