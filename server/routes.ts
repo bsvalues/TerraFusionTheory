@@ -10,6 +10,7 @@ import * as agentController from "./controllers/agent.controller";
 import * as propertyValuationController from "./controllers/property-valuation.controller";
 import * as massAppraisalController from "./controllers/mass-appraisal.controller";
 import * as mcpController from "./controllers/mcp.controller";
+import * as memoryManagerController from "./controllers/memory-manager.controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
@@ -351,6 +352,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // MCP (Model Control Protocol) routes
   app.post("/api/mcp/execute", asyncHandler(mcpController.executeMCP));
   
+  // Memory Manager routes
+  app.get("/api/memory/stats", asyncHandler(memoryManagerController.getMemoryStats));
+  app.post("/api/memory/optimize", asyncHandler(memoryManagerController.forceMemoryOptimization));
+  
   // Update the project messages route to use the new AI controller
   app.post("/api/v2/projects/:id/messages", async (req, res, next) => {
     const projectId = parseInt(req.params.id);
@@ -649,56 +654,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
   
   // System memory cleanup endpoint
-  app.post("/api/system/cleanup-memory", asyncHandler(async (req, res) => {
-    try {
-      const beforeCleanup = process.memoryUsage();
-      
-      // Perform cleanup operations similar to what we do in memory monitoring
-      const tempArray = new Array(1000000);
-      for (let i = 0; i < 1000000; i++) {
-        tempArray[i] = i;
-      }
-      tempArray.length = 0;
-      
-      // Force several garbage collection-friendly operations
-      for (let i = 0; i < 5; i++) {
-        const largeObj = { data: new Array(100000).fill('x') };
-        JSON.stringify(largeObj);
-      }
-      
-      // Check if memory was freed
-      const afterCleanup = process.memoryUsage();
-      const freedMemoryMB = Math.max(0, Math.round((beforeCleanup.heapUsed - afterCleanup.heapUsed) / 1024 / 1024));
-      
-      // Trigger a log cleanup for entries older than 3 days
-      const olderThan = new Date();
-      olderThan.setDate(olderThan.getDate() - 3);
-      const deletedLogs = await storage.clearLogs({ olderThan });
-      
-      res.json({
-        success: true,
-        message: `Memory cleanup attempted, freed approximately ${freedMemoryMB}MB and deleted ${deletedLogs} logs older than 3 days`,
-        before: {
-          heapUsed: Math.round(beforeCleanup.heapUsed / 1024 / 1024),
-          heapTotal: Math.round(beforeCleanup.heapTotal / 1024 / 1024),
-        },
-        after: {
-          heapUsed: Math.round(afterCleanup.heapUsed / 1024 / 1024),
-          heapTotal: Math.round(afterCleanup.heapTotal / 1024 / 1024),
-        },
-        freedMemoryMB,
-        deletedLogs,
-        timestamp: new Date().toISOString()
-      });
-    } catch (error) {
-      console.error("Error during memory cleanup:", error);
-      res.status(500).json({ 
-        success: false,
-        error: "Failed to perform memory cleanup",
-        timestamp: new Date().toISOString()
-      });
-    }
-  }));
+  app.post("/api/system/cleanup-memory", asyncHandler(memoryManagerController.forceMemoryOptimization));
   
   // System monitoring test endpoint
   app.post("/api/system/test-alert", asyncHandler(async (req, res) => {
