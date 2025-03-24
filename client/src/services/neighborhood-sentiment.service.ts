@@ -69,6 +69,11 @@ export interface NeighborhoodSentiment {
   mentions: SentimentMention[];
   lastUpdated: string;
   summaryText: string;
+  geolocation?: {
+    latitude: number;
+    longitude: number;
+    boundaryPoints?: Array<[number, number]>; // Polygon boundary points
+  };
 }
 
 // Query parameters for sentiment analysis
@@ -254,6 +259,69 @@ class NeighborhoodSentimentService {
   /**
    * Generate realistic mock sentiment data for a neighborhood
    */
+  /**
+   * Get geolocation for a neighborhood based on city
+   */
+  private getNeighborhoodGeolocation(neighborhood: string, city: string): { latitude: number; longitude: number } {
+    // Base coordinates for Richland and Grandview
+    const cityCoordinates = {
+      'Richland': { base: { lat: 46.2804, lng: -119.2752 }, radius: 0.05 },
+      'Grandview': { base: { lat: 46.2562, lng: -119.9010 }, radius: 0.04 }
+    };
+    
+    // Specific coordinates for known neighborhoods
+    const knownLocations: Record<string, { lat: number; lng: number }> = {
+      'Columbia Point': { lat: 46.2603, lng: -119.2583 },
+      'Meadow Springs': { lat: 46.2713, lng: -119.3037 },
+      'Horn Rapids': { lat: 46.3398, lng: -119.3184 },
+      'Badger Mountain South': { lat: 46.2276, lng: -119.2913 },
+      'Central Richland': { lat: 46.2832, lng: -119.2852 },
+      'North Richland': { lat: 46.3403, lng: -119.2796 },
+      'South Richland': { lat: 46.2505, lng: -119.2970 },
+      'Downtown Grandview': { lat: 46.2513, lng: -119.9012 },
+      'Grandview Heights': { lat: 46.2603, lng: -119.9089 },
+      'East Grandview': { lat: 46.2532, lng: -119.8872 },
+      'West Valley': { lat: 46.2495, lng: -119.9183 },
+      'Mountainview': { lat: 46.2674, lng: -119.9057 }
+    };
+    
+    // If we have specific coordinates for this neighborhood, use them
+    if (knownLocations[neighborhood]) {
+      return {
+        latitude: knownLocations[neighborhood].lat,
+        longitude: knownLocations[neighborhood].lng
+      };
+    }
+    
+    // Otherwise, generate pseudo-random coordinates based on the city
+    const cityInfo = cityCoordinates[city] || cityCoordinates['Richland'];
+    const angle = this.getHashedAngle(neighborhood);
+    const distance = cityInfo.radius * Math.random() * 0.8;
+    
+    const lat = cityInfo.base.lat + distance * Math.cos(angle);
+    const lng = cityInfo.base.lng + distance * Math.sin(angle);
+    
+    return {
+      latitude: lat,
+      longitude: lng
+    };
+  }
+  
+  /**
+   * Generate a consistent angle based on neighborhood name (for reproducible coordinates)
+   */
+  private getHashedAngle(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash = hash & hash;
+    }
+    return (Math.abs(hash) % 360) * Math.PI / 180;
+  }
+  
+  /**
+   * Generate realistic mock sentiment data for a neighborhood
+   */
   private generateSentimentData(
     neighborhood: string, 
     city: string, 
@@ -289,6 +357,9 @@ class NeighborhoodSentimentService {
       Object.keys(topicScores) as SentimentTopic[]
     );
     
+    // Get geolocation for this neighborhood
+    const geolocation = this.getNeighborhoodGeolocation(neighborhood, city);
+    
     return {
       neighborhoodId: this.generateId(neighborhood),
       neighborhoodName: neighborhood,
@@ -306,7 +377,9 @@ class NeighborhoodSentimentService {
       },
       mentions,
       lastUpdated: new Date().toISOString(),
-      summaryText: this.generateSummaryText(neighborhood, city, topicScores, overallScore)
+      summaryText: this.generateSummaryText(neighborhood, city, topicScores, overallScore),
+      // Add geolocation data
+      geolocation
     };
   }
   
@@ -585,7 +658,11 @@ class NeighborhoodSentimentService {
         }
       ],
       lastUpdated: "2025-03-24T00:00:00.000Z",
-      summaryText: "Columbia Point in Richland, WA is a highly sought-after neighborhood known for its upscale properties, exceptional river views, and access to premium amenities including a golf course and marina. The area receives very positive sentiment across most metrics, particularly for its natural environment, lifestyle options, and strong market trends. While affordability remains a challenge due to premium pricing, the neighborhood continues to see property value appreciation and development interest."
+      summaryText: "Columbia Point in Richland, WA is a highly sought-after neighborhood known for its upscale properties, exceptional river views, and access to premium amenities including a golf course and marina. The area receives very positive sentiment across most metrics, particularly for its natural environment, lifestyle options, and strong market trends. While affordability remains a challenge due to premium pricing, the neighborhood continues to see property value appreciation and development interest.",
+      geolocation: {
+        latitude: 46.2603,
+        longitude: -119.2583
+      }
     };
   }
   
