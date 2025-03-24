@@ -149,6 +149,7 @@ export interface EconomicSearchParams {
   regionType?: string;
   state?: string;
   indicator?: string;
+  indicatorId?: string; // Used internally in the service
   category?: string;
   timeframe?: string;
   startDate?: string;
