@@ -33,6 +33,7 @@ import {
 } from './components/onboarding';
 import { AISpecialistChat } from './components/ai';
 import ComparisonButton from './components/property/ComparisonButton';
+import ComparisonFloatingButton from './components/property/ComparisonFloatingButton';
 
 // Main App component
 const App = () => {
@@ -82,6 +83,7 @@ const App = () => {
             <TutorialButton position="bottom-right" />
             <AIAssistant />
             <ComparisonButton position="bottom-right" />
+            <ComparisonFloatingButton />
             
             {/* Add the new AI Specialist Chat with fix positioned button in the header */}
             <div className="fixed top-4 right-4 z-40">
