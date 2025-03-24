@@ -283,6 +283,191 @@ export async function queryGISData(req: Request, res: Response) {
 }
 
 /**
+ * Query data from a Weather connector
+ */
+export async function queryWeatherData(req: Request, res: Response) {
+  try {
+    const { name } = req.params;
+    const query = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Connector name is required' });
+    }
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameters are required' });
+    }
+    
+    const connector = connectorFactory.getConnector(name);
+    
+    if (!connector) {
+      return res.status(404).json({ error: `Connector '${name}' not found` });
+    }
+    
+    if (connector.getType() !== 'weather') {
+      return res.status(400).json({ error: `Connector '${name}' is not a Weather connector` });
+    }
+    
+    const data = await connector.fetchData(query);
+    
+    return res.json({
+      name: connector.getName(),
+      type: connector.getType(),
+      query,
+      data
+    });
+  } catch (error) {
+    console.error(`Failed to query Weather data from connector ${req.params.name}:`, error);
+    await logControllerError('queryWeatherData', error, req);
+    return res.status(500).json({ 
+      error: 'Failed to query Weather data',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+/**
+ * Get climate normals from a Weather connector
+ */
+export async function getClimateNormals(req: Request, res: Response) {
+  try {
+    const { name } = req.params;
+    const { location } = req.query;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Connector name is required' });
+    }
+    
+    if (!location) {
+      return res.status(400).json({ error: 'Location parameter is required' });
+    }
+    
+    const connector = connectorFactory.getConnector(name);
+    
+    if (!connector) {
+      return res.status(404).json({ error: `Connector '${name}' not found` });
+    }
+    
+    if (connector.getType() !== 'weather') {
+      return res.status(400).json({ error: `Connector '${name}' is not a Weather connector` });
+    }
+    
+    // Cast the connector to WeatherConnector to access specific methods
+    const weatherConnector = connector as any;
+    const data = await weatherConnector.getClimateNormals(location as string);
+    
+    return res.json({
+      name: connector.getName(),
+      type: connector.getType(),
+      location,
+      data
+    });
+  } catch (error) {
+    console.error(`Failed to get climate normals from connector ${req.params.name}:`, error);
+    await logControllerError('getClimateNormals', error, req);
+    return res.status(500).json({ 
+      error: 'Failed to get climate normals',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+/**
+ * Query data from a Census connector
+ */
+export async function queryCensusData(req: Request, res: Response) {
+  try {
+    const { name } = req.params;
+    const query = req.body;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Connector name is required' });
+    }
+    
+    if (!query) {
+      return res.status(400).json({ error: 'Query parameters are required' });
+    }
+    
+    const connector = connectorFactory.getConnector(name);
+    
+    if (!connector) {
+      return res.status(404).json({ error: `Connector '${name}' not found` });
+    }
+    
+    if (connector.getType() !== 'census') {
+      return res.status(400).json({ error: `Connector '${name}' is not a Census connector` });
+    }
+    
+    const data = await connector.fetchData(query);
+    
+    return res.json({
+      name: connector.getName(),
+      type: connector.getType(),
+      query,
+      data
+    });
+  } catch (error) {
+    console.error(`Failed to query Census data from connector ${req.params.name}:`, error);
+    await logControllerError('queryCensusData', error, req);
+    return res.status(500).json({ 
+      error: 'Failed to query Census data',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+/**
+ * Get demographic data from a Census connector
+ */
+export async function getDemographicData(req: Request, res: Response) {
+  try {
+    const { name } = req.params;
+    const { state, county, tract, blockGroup, year, geographyType } = req.query;
+    
+    if (!name) {
+      return res.status(400).json({ error: 'Connector name is required' });
+    }
+    
+    const connector = connectorFactory.getConnector(name);
+    
+    if (!connector) {
+      return res.status(404).json({ error: `Connector '${name}' not found` });
+    }
+    
+    if (connector.getType() !== 'census') {
+      return res.status(400).json({ error: `Connector '${name}' is not a Census connector` });
+    }
+    
+    // Cast the connector to CensusConnector to access specific methods
+    const censusConnector = connector as any;
+    const data = await censusConnector.getDemographicData({
+      state: state as string,
+      county: county as string,
+      tract: tract as string,
+      blockGroup: blockGroup as string,
+      year: year as string,
+      geographyType: geographyType as string
+    });
+    
+    return res.json({
+      name: connector.getName(),
+      type: connector.getType(),
+      parameters: {
+        state, county, tract, blockGroup, year, geographyType
+      },
+      data
+    });
+  } catch (error) {
+    console.error(`Failed to get demographic data from connector ${req.params.name}:`, error);
+    await logControllerError('getDemographicData', error, req);
+    return res.status(500).json({ 
+      error: 'Failed to get demographic data',
+      message: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+/**
  * Helper to log controller errors
  */
 async function logControllerError(method: string, error: any, req: Request): Promise<void> {
