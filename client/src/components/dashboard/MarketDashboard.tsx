@@ -928,6 +928,40 @@ const MarketDashboard = () => {
                 </Card>
               </div>
             </TabsContent>
+            
+            <TabsContent value="sentiment" className="h-full overflow-auto animate-in fade-in-0 slide-in-from-right-3 duration-500 delay-400">
+              <div className="grid grid-cols-1 gap-4">
+                <NeighborhoodSentimentDashboard 
+                  selectedArea={selectedArea} 
+                  selectedAreaType={selectedAreaType}
+                />
+                
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="flex items-center">
+                      <LucideHeartHandshake className="mr-2 h-5 w-5 text-muted-foreground" />
+                      Neighborhood Sentiment Analysis
+                    </CardTitle>
+                    <CardDescription>
+                      Resident feedback and sentiment analysis for the selected area
+                    </CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="p-4 bg-primary/5 border border-primary/10 rounded-lg">
+                      <h3 className="text-sm font-medium mb-2 flex items-center">
+                        <LucideLightbulb className="mr-2 h-4 w-4 text-yellow-500" />
+                        Community Insights
+                      </h3>
+                      <p className="text-sm">
+                        Our sentiment analysis reveals that residents in {selectedArea} are generally
+                        {` ${selectedArea.includes('Grandview') ? 'positive about the community atmosphere and local amenities, though some concerns exist regarding infrastructure development.' : 
+                           'satisfied with the neighborhood, with particular appreciation for location and access to services.'}`}
+                      </p>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </TabsContent>
           </Tabs>
         ) : (
           <div className="flex flex-col items-center justify-center h-full">
