@@ -6,8 +6,8 @@
  * and various valuation techniques for high-volume property valuation.
  */
 
-import { PropertyData, PropertyListing } from '../types/property';
-import { DemographicData } from '../types/external-data';
+import { PropertyData, PropertyListing } from '../../server/types/property';
+import { DemographicData } from '../../server/types/external-data';
 import { AppError } from '../errors';
 
 /**
