@@ -8,6 +8,7 @@ import * as marketController from "./controllers/market.controller";
 import * as analyticsController from "./controllers/analytics.controller";
 import * as agentController from "./controllers/agent.controller";
 import * as propertyValuationController from "./controllers/property-valuation.controller";
+import * as massAppraisalController from "./controllers/mass-appraisal.controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
