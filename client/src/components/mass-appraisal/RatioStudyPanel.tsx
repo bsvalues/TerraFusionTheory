@@ -177,8 +177,11 @@ const RatioStudyPanel = () => {
     mutationFn: (data: FormValues) => {
       return apiRequest('/api/mass-appraisal/ratio-study', { 
         method: 'POST',
-        data: {
+        body: JSON.stringify({
           studyParameters: data
+        }),
+        headers: {
+          'Content-Type': 'application/json'
         } 
       });
     },
