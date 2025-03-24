@@ -357,6 +357,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/connectors/:name/query/census", asyncHandler(connectorsController.queryCensusData));
   app.get("/api/connectors/:name/demographics", asyncHandler(connectorsController.getDemographicData));
   
+  // Enhanced connector APIs (new simplified endpoints)
+  app.get("/api/connectors/weather/current", asyncHandler(connectorsController.getCurrentWeather));
+  app.get("/api/connectors/weather/climate", asyncHandler(connectorsController.getClimateData));
+  app.get("/api/connectors/weather/flood-risk", asyncHandler(connectorsController.getFloodRiskData));
+  app.get("/api/connectors/census/demographics", asyncHandler(connectorsController.getDemographicData));
+  app.get("/api/connectors", asyncHandler(connectorsController.getAvailableConnectors));
+  
   // Market Data routes
   app.get("/api/market/listings", asyncHandler(marketController.getMarketListings));
   app.get("/api/market/listings/:mlsNumber", asyncHandler(marketController.getMarketListingByMLS));

@@ -1,121 +1,115 @@
-import axios from 'axios';
+/**
+ * Enrichment Service
+ * 
+ * This service handles external data enrichment services for property data
+ * including weather data, climate data, and demographic information.
+ */
+
+import { apiRequest } from '@/lib/queryClient';
 
 /**
- * Service for enriching property data with weather and demographic information
+ * Weather data interface
  */
-export class EnrichmentService {
-  /**
-   * Get current weather for a location
-   * @param location Location string (e.g., "Grandview,WA")
-   */
-  static async getCurrentWeather(location: string) {
-    try {
-      const response = await axios.post(`/api/connectors/weather-data/query/weather`, {
-        location,
-        includeHourly: false,
-        includeDaily: false,
-        includeAlerts: true
-      });
-      
-      return response.data.data?.current;
-    } catch (error) {
-      console.error('Error fetching current weather:', error);
-      throw error;
-    }
-  }
+export interface WeatherData {
+  temperature: number;
+  feelsLike: number;
+  humidity: number;
+  windSpeed: number;
+  weatherDescription: string;
+  weatherCode: number;
+}
 
-  /**
-   * Get weather forecast for a location
-   * @param location Location string (e.g., "Grandview,WA")
-   * @param days Number of days to forecast
-   */
-  static async getWeatherForecast(location: string, days: number = 7) {
-    try {
-      const response = await axios.post(`/api/connectors/weather-data/query/weather`, {
-        location,
-        includeHourly: false,
-        includeDaily: true,
-        days
-      });
-      
-      return response.data.data?.forecast;
-    } catch (error) {
-      console.error('Error fetching weather forecast:', error);
-      throw error;
-    }
-  }
+/**
+ * Monthly climate data interface
+ */
+export interface ClimateData {
+  month: number;
+  temperatureMin: number;
+  temperatureAvg: number;
+  temperatureMax: number;
+  precipitationAvg: number;
+}
 
-  /**
-   * Get climate normals for a location
-   * @param location Location string (e.g., "Grandview,WA")
-   */
-  static async getClimateNormals(location: string) {
-    try {
-      const response = await axios.get(`/api/connectors/weather-data/climate`, {
-        params: { location }
-      });
-      
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching climate normals:', error);
-      throw error;
-    }
-  }
+/**
+ * Demographic data interface
+ */
+export interface DemographicData {
+  geographyId: string;
+  geographyName: string;
+  geographyType: string;
+  year: string;
+  totalPopulation: number;
+  medianAge: number;
+  medianHouseholdIncome: number;
+  perCapitaIncome: number;
+  povertyRate: number;
+  educationHighSchool: number;
+  educationBachelor: number;
+  householdUnits: number;
+  householdSize: number;
+  ownerOccupiedUnits: number;
+  renterOccupiedUnits: number;
+  homeownershipRate: number; // Calculated field
+  medianHomeValue: number;
+  medianGrossRent: number;
+}
 
+/**
+ * Enrichment service class for handling external data sources
+ */
+class EnrichmentService {
   /**
-   * Get demographic data for a location
-   * @param state State FIPS code or name
-   * @param county County FIPS code or name
-   * @param tract Census tract code (optional)
+   * Get current weather data for a location
+   * @param location - City, state or address
+   * @returns Weather data
    */
-  static async getDemographicData(state: string, county?: string, tract?: string) {
-    try {
-      const response = await axios.get(`/api/connectors/census-data/demographics`, {
-        params: { 
-          state, 
-          county, 
-          tract,
-          geographyType: tract ? 'tract' : county ? 'county' : 'state'
-        }
-      });
-      
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching demographic data:', error);
-      throw error;
-    }
+  async getCurrentWeather(location: string): Promise<WeatherData> {
+    return apiRequest(`/api/connectors/weather/current?location=${encodeURIComponent(location)}`);
   }
-
+  
   /**
-   * Get housing data for an area
-   * @param state State FIPS code or name
-   * @param county County FIPS code or name
-   * @param tract Census tract code (optional)
+   * Get climate normals (monthly averages) for a location
+   * @param location - City, state or address
+   * @returns Array of monthly climate data
    */
-  static async getHousingData(state: string, county?: string, tract?: string) {
-    try {
-      const response = await axios.post(`/api/connectors/census-data/query/census`, {
-        dataset: 'acs/acs5/profile',
-        geographyType: tract ? 'tract' : county ? 'county' : 'state',
-        state,
-        county,
-        geographyIds: tract ? [tract] : undefined,
-        variables: [
-          'DP04_0001E', // Total housing units
-          'DP04_0002E', // Occupied housing units
-          'DP04_0003E', // Vacant housing units
-          'DP04_0046PE', // Homeownership rate
-          'DP04_0089E', // Median home value
-          'DP04_0134E' // Median gross rent
-        ]
-      });
-      
-      return response.data.data;
-    } catch (error) {
-      console.error('Error fetching housing data:', error);
-      throw error;
+  async getClimateNormals(location: string): Promise<ClimateData[]> {
+    return apiRequest(`/api/connectors/weather/climate?location=${encodeURIComponent(location)}`);
+  }
+  
+  /**
+   * Get demographic data for a location by FIPS codes
+   * @param state - State FIPS code (e.g., "53" for Washington)
+   * @param county - County FIPS code (optional)
+   * @param tract - Census tract code (optional)
+   * @returns Demographic data for the requested geography
+   */
+  async getDemographicData(
+    state: string, 
+    county?: string, 
+    tract?: string
+  ): Promise<DemographicData[]> {
+    let url = `/api/connectors/census/demographics?state=${encodeURIComponent(state)}`;
+    
+    if (county) {
+      url += `&county=${encodeURIComponent(county)}`;
     }
+    
+    if (tract) {
+      url += `&tract=${encodeURIComponent(tract)}`;
+    }
+    
+    return apiRequest(url);
+  }
+  
+  /**
+   * Get property flood risk data
+   * @param latitude - Property latitude
+   * @param longitude - Property longitude
+   * @returns Flood risk assessment data
+   */
+  async getFloodRiskData(latitude: number, longitude: number): Promise<any> {
+    return apiRequest(`/api/connectors/weather/flood-risk?lat=${latitude}&lon=${longitude}`);
   }
 }
 
-export default EnrichmentService;
+export default new EnrichmentService();
