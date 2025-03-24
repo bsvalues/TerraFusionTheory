@@ -17,6 +17,7 @@ import SentimentMapPage from './pages/SentimentMapPage';
 import SentimentTrendPage from './pages/SentimentTrendPage';
 import PropertyEnrichmentDemo from './pages/PropertyEnrichmentDemo';
 import PropertyValuationDemo from './pages/PropertyValuationDemo';
+import NeighborhoodComparisonPage from './pages/NeighborhoodComparisonPage';
 import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import NotFoundPage from './pages/NotFoundPage';
@@ -62,6 +63,7 @@ const App = () => {
             <Route path="/sentiment-trends" component={SentimentTrendPage} />
             <Route path="/property-enrichment" component={PropertyEnrichmentDemo} />
             <Route path="/property-valuation-demo" component={PropertyValuationDemo} />
+            <Route path="/neighborhood-comparison" component={NeighborhoodComparisonPage} />
             <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
             <Route path="/help" component={HelpCenterPage} />
             <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
