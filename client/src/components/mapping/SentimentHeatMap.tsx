@@ -286,6 +286,9 @@ const SentimentHeatMap: React.FC<SentimentHeatMapProps> = ({
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
             
+            {/* Map Ready Detector */}
+            <MapReadyDetector setMapLoaded={setMapLoaded} />
+            
             {/* Sentiment Heat Map Circles */}
             {sentimentData.map((neighborhood) => {
               if (!neighborhood.geolocation) return null;
