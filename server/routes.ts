@@ -20,7 +20,7 @@ import registerUserRoutes from "./routes/users.routes";
 import registerRecommendationsRoutes from "./routes/recommendations.routes";
 import { registerValuationAgentRoutes } from "./routes/valuation-agent.routes";
 import { registerMicroservicesRoutes } from "./routes/microservices-routes";
-import { microservicesClient } from "./services/microservices-client";
+import microservicesClient from "./services/microservices-client";
 
 // Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';

@@ -1,22 +1,15 @@
 /**
  * Microservices Client
  * 
- * This service provides a unified API client for the FastAPI microservices
- * that power the IntelligentEstate platform.
+ * This service provides a unified API for interacting with the 
+ * FastAPI microservices that power the IntelligentEstate platform.
  */
 
 import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse } from 'axios';
-import { createErrorFromUnknown } from '../errors';
 
-// Define the base URLs for each microservice
-const MICROSERVICE_URLS = {
-  property: process.env.PROPERTY_SERVICE_URL || 'http://localhost:8001',
-  market: process.env.MARKET_SERVICE_URL || 'http://localhost:8002',
-  spatial: process.env.SPATIAL_SERVICE_URL || 'http://localhost:8003',
-  analytics: process.env.ANALYTICS_SERVICE_URL || 'http://localhost:8004'
-};
-
-// Define service-specific interfaces
+/**
+ * Property Service API client interface
+ */
 export interface PropertyService {
   getProperties(params?: any): Promise<any[]>;
   getProperty(id: number): Promise<any>;
@@ -26,6 +19,9 @@ export interface PropertyService {
   getMarketSummary(params?: any): Promise<any>;
 }
 
+/**
+ * Market Service API client interface
+ */
 export interface MarketService {
   getMetrics(params?: any): Promise<any[]>;
   getMetricById(id: number): Promise<any>;
@@ -36,6 +32,9 @@ export interface MarketService {
   getMarketOverview(areaType: string, areaValue: string): Promise<any>;
 }
 
+/**
+ * Spatial Service API client interface
+ */
 export interface SpatialService {
   getSpatialData(params?: any): Promise<any[]>;
   getSpatialDataById(id: number): Promise<any>;
@@ -46,6 +45,9 @@ export interface SpatialService {
   getNeighborhoods(params?: any): Promise<any>;
 }
 
+/**
+ * Analytics Service API client interface
+ */
 export interface AnalyticsService {
   predictPropertyValue(requestData: any): Promise<any>;
   predictMarketTrend(requestData: any): Promise<any>;
@@ -61,46 +63,36 @@ export interface AnalyticsService {
 class BaseService {
   protected client: AxiosInstance;
   protected serviceName: string;
-  
+
   constructor(baseURL: string, serviceName: string) {
-    this.serviceName = serviceName;
     this.client = axios.create({
       baseURL,
-      timeout: 10000, // 10 seconds timeout
+      timeout: 30000, // 30 seconds
       headers: {
-        'Content-Type': 'application/json'
+        'Content-Type': 'application/json',
+        'Accept': 'application/json'
       }
     });
-    
-    // Add request interceptor for logging
-    this.client.interceptors.request.use((config) => {
-      console.log(`[${this.serviceName}] Request: ${config.method?.toUpperCase()} ${config.url}`);
-      return config;
-    });
-    
-    // Add response interceptor for error handling
-    this.client.interceptors.response.use(
-      (response) => {
-        console.log(`[${this.serviceName}] Response: ${response.status} ${response.statusText}`);
-        return response;
-      },
-      (error) => {
-        console.error(`[${this.serviceName}] Error:`, error.message);
-        throw createErrorFromUnknown(error);
-      }
-    );
+    this.serviceName = serviceName;
   }
-  
+
+  /**
+   * Make a request to the microservice
+   */
   protected async request<T>(config: AxiosRequestConfig): Promise<T> {
     try {
       const response: AxiosResponse<T> = await this.client.request(config);
       return response.data;
-    } catch (error) {
-      console.error(`[${this.serviceName}] Request failed:`, error);
-      throw createErrorFromUnknown(error);
+    } catch (error: any) {
+      console.error(`Error in ${this.serviceName} service:`, error.message);
+      if (error.response) {
+        console.error('Response data:', error.response.data);
+        console.error('Response status:', error.response.status);
+      }
+      throw error;
     }
   }
-  
+
   /**
    * Check if the service is healthy
    */
@@ -109,20 +101,20 @@ class BaseService {
       const response = await this.client.get('/health');
       return response.data?.status === 'healthy';
     } catch (error) {
-      console.error(`[${this.serviceName}] Health check failed:`, error);
+      console.error(`${this.serviceName} service is not healthy:`, error);
       return false;
     }
   }
 }
 
 /**
- * Property Service Client
+ * Property Service Client Implementation
  */
 class PropertyServiceClient extends BaseService implements PropertyService {
   constructor() {
-    super(MICROSERVICE_URLS.property, 'PropertyService');
+    super(process.env.PROPERTY_SERVICE_URL || 'http://localhost:8001', 'property');
   }
-  
+
   async getProperties(params?: any): Promise<any[]> {
     return this.request<any[]>({
       method: 'GET',
@@ -130,21 +122,21 @@ class PropertyServiceClient extends BaseService implements PropertyService {
       params
     });
   }
-  
+
   async getProperty(id: number): Promise<any> {
     return this.request<any>({
       method: 'GET',
       url: `/properties/${id}`
     });
   }
-  
+
   async getPropertyValuations(propertyId: number): Promise<any[]> {
     return this.request<any[]>({
       method: 'GET',
-      url: `/valuations/${propertyId}`
+      url: `/properties/${propertyId}/valuations`
     });
   }
-  
+
   async createProperty(propertyData: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
@@ -152,7 +144,7 @@ class PropertyServiceClient extends BaseService implements PropertyService {
       data: propertyData
     });
   }
-  
+
   async createValuation(valuationData: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
@@ -160,7 +152,7 @@ class PropertyServiceClient extends BaseService implements PropertyService {
       data: valuationData
     });
   }
-  
+
   async getMarketSummary(params?: any): Promise<any> {
     return this.request<any>({
       method: 'GET',
@@ -171,13 +163,13 @@ class PropertyServiceClient extends BaseService implements PropertyService {
 }
 
 /**
- * Market Service Client
+ * Market Service Client Implementation
  */
 class MarketServiceClient extends BaseService implements MarketService {
   constructor() {
-    super(MICROSERVICE_URLS.market, 'MarketService');
+    super(process.env.MARKET_SERVICE_URL || 'http://localhost:8002', 'market');
   }
-  
+
   async getMetrics(params?: any): Promise<any[]> {
     return this.request<any[]>({
       method: 'GET',
@@ -185,14 +177,14 @@ class MarketServiceClient extends BaseService implements MarketService {
       params
     });
   }
-  
+
   async getMetricById(id: number): Promise<any> {
     return this.request<any>({
       method: 'GET',
       url: `/metrics/${id}`
     });
   }
-  
+
   async createMetric(metricData: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
@@ -200,7 +192,7 @@ class MarketServiceClient extends BaseService implements MarketService {
       data: metricData
     });
   }
-  
+
   async getPredictions(params?: any): Promise<any[]> {
     return this.request<any[]>({
       method: 'GET',
@@ -208,7 +200,7 @@ class MarketServiceClient extends BaseService implements MarketService {
       params
     });
   }
-  
+
   async createPrediction(predictionData: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
@@ -216,7 +208,7 @@ class MarketServiceClient extends BaseService implements MarketService {
       data: predictionData
     });
   }
-  
+
   async getTrend(metric: string, params: any): Promise<any> {
     return this.request<any>({
       method: 'GET',
@@ -224,24 +216,23 @@ class MarketServiceClient extends BaseService implements MarketService {
       params
     });
   }
-  
+
   async getMarketOverview(areaType: string, areaValue: string): Promise<any> {
     return this.request<any>({
       method: 'GET',
-      url: '/overview',
-      params: { area_type: areaType, area_value: areaValue }
+      url: `/market-overview/${areaType}/${areaValue}`
     });
   }
 }
 
 /**
- * Spatial Service Client
+ * Spatial Service Client Implementation
  */
 class SpatialServiceClient extends BaseService implements SpatialService {
   constructor() {
-    super(MICROSERVICE_URLS.spatial, 'SpatialService');
+    super(process.env.SPATIAL_SERVICE_URL || 'http://localhost:8003', 'spatial');
   }
-  
+
   async getSpatialData(params?: any): Promise<any[]> {
     return this.request<any[]>({
       method: 'GET',
@@ -249,14 +240,14 @@ class SpatialServiceClient extends BaseService implements SpatialService {
       params
     });
   }
-  
+
   async getSpatialDataById(id: number): Promise<any> {
     return this.request<any>({
       method: 'GET',
       url: `/spatial-data/${id}`
     });
   }
-  
+
   async createSpatialData(spatialData: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
@@ -264,15 +255,15 @@ class SpatialServiceClient extends BaseService implements SpatialService {
       data: spatialData
     });
   }
-  
+
   async getPropertiesGeoJSON(params?: any): Promise<any> {
     return this.request<any>({
       method: 'GET',
-      url: '/properties/geojson',
+      url: '/properties-geojson',
       params
     });
   }
-  
+
   async proximitySearch(searchParams: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
@@ -280,7 +271,7 @@ class SpatialServiceClient extends BaseService implements SpatialService {
       data: searchParams
     });
   }
-  
+
   async geocodeAddress(addressData: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
@@ -288,9 +279,9 @@ class SpatialServiceClient extends BaseService implements SpatialService {
       data: addressData
     });
   }
-  
+
   async getNeighborhoods(params?: any): Promise<any> {
-    return this.request<any>({
+    return this.request<any[]>({
       method: 'GET',
       url: '/neighborhoods',
       params
@@ -299,109 +290,78 @@ class SpatialServiceClient extends BaseService implements SpatialService {
 }
 
 /**
- * Analytics Service Client
+ * Analytics Service Client Implementation
  */
 class AnalyticsServiceClient extends BaseService implements AnalyticsService {
   constructor() {
-    super(MICROSERVICE_URLS.analytics, 'AnalyticsService');
+    super(process.env.ANALYTICS_SERVICE_URL || 'http://localhost:8004', 'analytics');
   }
-  
+
   async predictPropertyValue(requestData: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
-      url: '/predict/property-value',
+      url: '/predict-property-value',
       data: requestData
     });
   }
-  
+
   async predictMarketTrend(requestData: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
-      url: '/predict/market-trend',
+      url: '/predict-market-trend',
       data: requestData
     });
   }
-  
+
   async trainModel(requestData: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
-      url: '/models/train',
+      url: '/train-model',
       data: requestData
     });
   }
-  
+
   async getTrainingStatus(jobId: string): Promise<any> {
     return this.request<any>({
       method: 'GET',
-      url: `/models/training-status/${jobId}`
+      url: `/training-status/${jobId}`
     });
   }
-  
+
   async findHotspots(requestData: any): Promise<any[]> {
     return this.request<any[]>({
       method: 'POST',
-      url: '/hotspots',
+      url: '/find-hotspots',
       data: requestData
     });
   }
-  
+
   async analyzeInvestment(requestData: any): Promise<any> {
     return this.request<any>({
       method: 'POST',
-      url: '/investment-analysis',
+      url: '/analyze-investment',
       data: requestData
     });
   }
 }
 
 /**
- * Main Microservices Client that provides access to all microservices
+ * Factory function to create service instances
  */
-export class MicroservicesClient {
-  public readonly property: PropertyService;
-  public readonly market: MarketService;
-  public readonly spatial: SpatialService;
-  public readonly analytics: AnalyticsService;
-  
-  private static instance: MicroservicesClient;
-  
-  private constructor() {
-    this.property = new PropertyServiceClient();
-    this.market = new MarketServiceClient();
-    this.spatial = new SpatialServiceClient();
-    this.analytics = new AnalyticsServiceClient();
-  }
-  
-  /**
-   * Get singleton instance
-   */
-  public static getInstance(): MicroservicesClient {
-    if (!MicroservicesClient.instance) {
-      MicroservicesClient.instance = new MicroservicesClient();
-    }
-    return MicroservicesClient.instance;
-  }
-  
-  /**
-   * Check health of all microservices
-   * @returns Health status for each microservice
-   */
-  async checkHealth(): Promise<Record<string, boolean>> {
-    const [propertyHealth, marketHealth, spatialHealth, analyticsHealth] = await Promise.all([
-      (this.property as PropertyServiceClient).checkHealth().catch(() => false),
-      (this.market as MarketServiceClient).checkHealth().catch(() => false),
-      (this.spatial as SpatialServiceClient).checkHealth().catch(() => false),
-      (this.analytics as AnalyticsServiceClient).checkHealth().catch(() => false)
-    ]);
-    
-    return {
-      property: propertyHealth,
-      market: marketHealth,
-      spatial: spatialHealth,
-      analytics: analyticsHealth
-    };
-  }
+export function createMicroserviceClients() {
+  const propertyService = new PropertyServiceClient();
+  const marketService = new MarketServiceClient();
+  const spatialService = new SpatialServiceClient();
+  const analyticsService = new AnalyticsServiceClient();
+
+  return {
+    propertyService,
+    marketService,
+    spatialService,
+    analyticsService
+  };
 }
 
-// Export singleton instance
-export const microservicesClient = MicroservicesClient.getInstance();
+// Singleton instance
+const microserviceClients = createMicroserviceClients();
+export default microserviceClients;

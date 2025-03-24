@@ -1,138 +1,245 @@
 """
 Microservices Runner
 
-This script starts all the microservices for the IntelligentEstate platform
-using FastAPI and uvicorn.
+This script is a lightweight wrapper around init_and_run.py, making it easier
+to start and stop microservices without remembering command line arguments.
+
+It also includes pre-configured commands for common operations.
 """
 
 import os
 import sys
 import subprocess
-import signal
-import time
-from typing import List, Dict
 import argparse
+from pathlib import Path
 
-# Define the microservices
-MICROSERVICES = {
-    "property": {
-        "module": "property.app",
-        "port": 8001,
-        "description": "Property data and valuations API"
-    },
-    "market": {
-        "module": "market.app",
-        "port": 8002,
-        "description": "Market metrics and analytics API"
-    },
-    "spatial": {
-        "module": "spatial.app",
-        "port": 8003,
-        "description": "Geospatial data and mapping API"
-    },
-    "analytics": {
-        "module": "analytics.app",
-        "port": 8004,
-        "description": "ML and predictive analytics API"
-    }
-}
-
-# Store running processes
-processes: Dict[str, subprocess.Popen] = {}
-
-def signal_handler(sig, frame):
-    """Handle Ctrl+C and terminate all processes gracefully"""
-    print("\nShutting down all microservices...")
-    for name, process in processes.items():
-        print(f"Terminating {name} service...")
-        process.terminate()
-    sys.exit(0)
-
-def start_service(name: str, module: str, port: int) -> subprocess.Popen:
-    """Start a microservice using uvicorn"""
-    # Convert module path to Python import path
-    module_path = module.replace("/", ".")
+def run_command(command):
+    """Run a command and print output"""
+    print(f"Running: {' '.join(command)}")
+    result = subprocess.run(command, capture_output=True, text=True)
     
-    # Build the command
-    cmd = [
-        sys.executable, "-m", "uvicorn",
-        module_path + ":app",
-        "--host", "0.0.0.0",
-        "--port", str(port),
-        "--reload"
+    if result.stdout:
+        print(result.stdout)
+    
+    if result.stderr:
+        print(f"Error: {result.stderr}", file=sys.stderr)
+    
+    return result.returncode
+
+def install_dependencies():
+    """Install required Python dependencies"""
+    packages = [
+        "fastapi", 
+        "uvicorn", 
+        "sqlalchemy", 
+        "psycopg2-binary", 
+        "pandas", 
+        "scikit-learn",
+        "pydantic"
     ]
     
-    # Print the command we're running
-    print(f"Starting {name} service: {' '.join(cmd)}")
+    print("\n1. Installing Python dependencies...")
+    for package in packages:
+        print(f"Installing {package}...")
+        subprocess.run([sys.executable, "-m", "pip", "install", "-U", package], 
+                       capture_output=True)
     
-    # Run the process
-    process = subprocess.Popen(
-        cmd,
-        stdout=subprocess.PIPE,
-        stderr=subprocess.STDOUT,
-        universal_newlines=True,
-        bufsize=1
-    )
-    
-    return process
+    print("All dependencies installed.")
 
-def monitor_processes():
-    """Monitor running processes and restart if they fail"""
-    while True:
-        for name, process in list(processes.items()):
-            # Check if process is still running
-            if process.poll() is not None:
-                # Process has terminated
-                return_code = process.returncode
-                print(f"Process {name} terminated with code {return_code}")
-                
-                # Restart the process
-                print(f"Restarting {name} service...")
-                service_info = MICROSERVICES[name]
-                processes[name] = start_service(name, service_info["module"], service_info["port"])
+def check_database():
+    """Check if the database is accessible"""
+    print("\n2. Checking database connection...")
+    try:
+        # Import here to avoid errors if dependencies aren't installed
+        from microservices.common.db_init import get_db_session
         
-        # Sleep to avoid high CPU usage
-        time.sleep(1)
+        # Get a session and try a simple query
+        session = get_db_session()
+        session.execute("SELECT 1")
+        session.close()
+        
+        print("Database connection successful!")
+        return True
+        
+    except Exception as e:
+        print(f"Database connection failed: {e}")
+        print("\nMake sure PostgreSQL is running and the environment variables are set:")
+        print("  - DATABASE_URL or PGHOST, PGUSER, PGPASSWORD, PGDATABASE, PGPORT")
+        return False
+
+def init_database():
+    """Initialize the database schema and sample data"""
+    print("\n3. Initializing database...")
+    
+    # Use init_and_run.py to initialize the database
+    result = run_command([sys.executable, "microservices/init_and_run.py", "--init-db"])
+    
+    if result == 0:
+        print("Database initialization complete!")
+        return True
+    else:
+        print("Database initialization failed.")
+        return False
+
+def start_all_services():
+    """Start all microservices"""
+    print("\n4. Starting all microservices...")
+    
+    # Use init_and_run.py to start all services
+    result = run_command([sys.executable, "microservices/init_and_run.py", "--start"])
+    
+    if result == 0:
+        print("All microservices started!")
+        return True
+    else:
+        print("Failed to start all microservices.")
+        return False
+
+def start_service(service_name):
+    """Start a specific microservice"""
+    print(f"\nStarting {service_name} microservice...")
+    
+    # Use init_and_run.py to start a specific service
+    result = run_command([
+        sys.executable, 
+        "microservices/init_and_run.py", 
+        "--start", 
+        "--service", 
+        service_name
+    ])
+    
+    if result == 0:
+        print(f"{service_name} microservice started!")
+        return True
+    else:
+        print(f"Failed to start {service_name} microservice.")
+        return False
+
+def stop_all_services():
+    """Stop all microservices"""
+    print("\nStopping all microservices...")
+    
+    # Use init_and_run.py to stop all services
+    result = run_command([sys.executable, "microservices/init_and_run.py", "--stop"])
+    
+    if result == 0:
+        print("All microservices stopped!")
+        return True
+    else:
+        print("Failed to stop all microservices.")
+        return False
+
+def setup_and_start():
+    """Complete setup process and start all services"""
+    print("==== IntelligentEstate Microservices Setup and Start ====")
+    
+    install_dependencies()
+    
+    if not check_database():
+        print("\nDatabase check failed. Do you want to continue with initialization? (y/n)")
+        if input().lower() != 'y':
+            return False
+    
+    if not init_database():
+        print("\nDatabase initialization failed. Cannot continue.")
+        return False
+    
+    if not start_all_services():
+        print("\nFailed to start microservices.")
+        return False
+    
+    print("\n==== Setup Complete ====")
+    print("All microservices are running.")
+    print("API documentation is available at:")
+    print("  - Property API:   http://localhost:8001/docs")
+    print("  - Market API:     http://localhost:8002/docs")
+    print("  - Spatial API:    http://localhost:8003/docs")
+    print("  - Analytics API:  http://localhost:8004/docs")
+    
+    return True
+
+def check_services_status():
+    """Check the status of all services"""
+    print("\nChecking microservices status...")
+    
+    # Use init_and_run.py to check status
+    run_command([sys.executable, "microservices/init_and_run.py", "--status"])
+
+def check_services_health():
+    """Check the health of all services"""
+    print("\nChecking microservices health...")
+    
+    # Use init_and_run.py to check health
+    run_command([sys.executable, "microservices/init_and_run.py", "--health"])
 
 def main():
-    """Main entry point"""
-    parser = argparse.ArgumentParser(description="Run IntelligentEstate microservices")
-    parser.add_argument(
-        "--services", 
-        nargs="+", 
-        choices=list(MICROSERVICES.keys()) + ["all"],
-        default=["all"],
-        help="Specify which services to run (default: all)"
+    """Main entry point for script"""
+    parser = argparse.ArgumentParser(
+        description="IntelligentEstate Microservices Manager",
+        formatter_class=argparse.RawDescriptionHelpFormatter,
+        epilog="""
+Examples:
+  python microservices/run_services.py setup        # Setup and start all services
+  python microservices/run_services.py start        # Start all services
+  python microservices/run_services.py start-one property   # Start property service
+  python microservices/run_services.py stop         # Stop all services
+  python microservices/run_services.py status       # Check status
+  python microservices/run_services.py health       # Check health
+  python microservices/run_services.py init-db      # Initialize database
+        """
     )
     
+    # Available commands
+    commands = parser.add_subparsers(dest="command", help="Command to run")
+    
+    # Setup command
+    commands.add_parser("setup", help="Complete setup and start all services")
+    
+    # Start command
+    commands.add_parser("start", help="Start all services")
+    
+    # Start one service command
+    start_one_cmd = commands.add_parser("start-one", help="Start a specific service")
+    start_one_cmd.add_argument("service", choices=["property", "market", "spatial", "analytics"], 
+                              help="Service to start")
+    
+    # Stop command
+    commands.add_parser("stop", help="Stop all services")
+    
+    # Status command
+    commands.add_parser("status", help="Check status of all services")
+    
+    # Health command
+    commands.add_parser("health", help="Check health of all services")
+    
+    # Init database command
+    commands.add_parser("init-db", help="Initialize database")
+    
+    # Parse arguments
     args = parser.parse_args()
     
-    # Set up signal handler for graceful shutdown
-    signal.signal(signal.SIGINT, signal_handler)
-    signal.signal(signal.SIGTERM, signal_handler)
+    # Handle no command
+    if not args.command:
+        parser.print_help()
+        return
     
-    # Determine which services to run
-    services_to_run = list(MICROSERVICES.keys()) if "all" in args.services else args.services
-    
-    # Start the specified services
-    for name in services_to_run:
-        if name in MICROSERVICES:
-            service_info = MICROSERVICES[name]
-            processes[name] = start_service(name, service_info["module"], service_info["port"])
-    
-    # Print summary
-    print("\nRunning services:")
-    for name in processes:
-        service_info = MICROSERVICES[name]
-        print(f"- {name}: {service_info['description']} (http://localhost:{service_info['port']})")
-    
-    print("\nPress Ctrl+C to stop all services")
-    
-    # Monitor and restart processes if they fail
-    try:
-        monitor_processes()
-    except KeyboardInterrupt:
-        signal_handler(None, None)
+    # Execute the requested command
+    if args.command == "setup":
+        setup_and_start()
+    elif args.command == "start":
+        start_all_services()
+    elif args.command == "start-one":
+        start_service(args.service)
+    elif args.command == "stop":
+        stop_all_services()
+    elif args.command == "status":
+        check_services_status()
+    elif args.command == "health":
+        check_services_health()
+    elif args.command == "init-db":
+        init_database()
+    else:
+        parser.print_help()
 
 if __name__ == "__main__":
     main()
