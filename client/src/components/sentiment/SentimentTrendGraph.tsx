@@ -40,6 +40,14 @@ interface SentimentTrendGraphProps {
   height?: number;
   topic?: SentimentTopic | 'overall';
   showTitle?: boolean;
+  timeRangePast?: number;
+  timeRangeFuture?: number;
+  showConfidenceIntervals?: boolean;
+  showEvents?: boolean;
+  showAnnotations?: boolean;
+  chartType?: 'line' | 'bar' | 'area';
+  displayMode?: 'absolute' | 'relative';
+  propertyType?: string;
 }
 
 // Custom tooltip component for the chart
@@ -85,12 +93,20 @@ export default function SentimentTrendGraph({
   city, 
   height = 320,
   topic = 'overall',
-  showTitle = true
+  showTitle = true,
+  timeRangePast: propTimeRangePast,
+  timeRangeFuture: propTimeRangeFuture,
+  showConfidenceIntervals = true,
+  showEvents = true,
+  showAnnotations: propShowAnnotations,
+  chartType = 'line',
+  displayMode = 'absolute',
+  propertyType = 'all'
 }: SentimentTrendGraphProps) {
-  // Time range state
-  const [timeRangePast, setTimeRangePast] = useState(12); // past months
-  const [timeRangeFuture, setTimeRangeFuture] = useState(6); // future months
-  const [showAnnotations, setShowAnnotations] = useState(false);
+  // Time range state - use props if provided, otherwise use defaults
+  const [timeRangePast, setTimeRangePast] = useState(propTimeRangePast || 12); // past months
+  const [timeRangeFuture, setTimeRangeFuture] = useState(propTimeRangeFuture || 6); // future months
+  const [showAnnotations, setShowAnnotations] = useState(propShowAnnotations !== undefined ? propShowAnnotations : false);
   
   // Memoized data
   const chartData = useMemo(() => {
@@ -382,7 +398,7 @@ export default function SentimentTrendGraph({
               )}
               
               {/* Prediction confidence range */}
-              {predictionData.length > 0 && (
+              {predictionData.length > 0 && showConfidenceIntervals && (
                 <Area 
                   type="monotone" 
                   dataKey="upperBound" 
@@ -392,7 +408,7 @@ export default function SentimentTrendGraph({
                 />
               )}
               
-              {predictionData.length > 0 && (
+              {predictionData.length > 0 && showConfidenceIntervals && (
                 <Area 
                   type="monotone" 
                   dataKey="lowerBound" 
@@ -403,21 +419,39 @@ export default function SentimentTrendGraph({
                 />
               )}
               
-              {/* Historical line */}
-              <Line 
-                type="monotone" 
-                dataKey="score" 
-                stroke="hsl(var(--primary))" 
-                strokeWidth={2}
-                dot={{ fill: 'hsl(var(--primary))', r: 4 }}
-                activeDot={{ r: 6 }}
-                name="Historical"
-                connectNulls
-                data={historicalData}
-              />
+              {/* Historical data visualization based on chart type */}
+              {chartType === 'line' && (
+                <Line 
+                  type="monotone" 
+                  dataKey="score" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name="Historical"
+                  connectNulls
+                  data={historicalData}
+                />
+              )}
               
-              {/* Prediction line */}
-              {predictionData.length > 0 && (
+              {chartType === 'area' && (
+                <Area 
+                  type="monotone" 
+                  dataKey="score" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  fillOpacity={0.2}
+                  fill="hsl(var(--primary))"
+                  dot={{ fill: 'hsl(var(--primary))', r: 3 }}
+                  activeDot={{ r: 6 }}
+                  name="Historical"
+                  connectNulls
+                  data={historicalData}
+                />
+              )}
+              
+              {/* Prediction data visualization based on chart type */}
+              {predictionData.length > 0 && chartType === 'line' && (
                 <Line 
                   type="monotone" 
                   dataKey="score" 
@@ -425,6 +459,23 @@ export default function SentimentTrendGraph({
                   strokeWidth={2}
                   strokeDasharray="5 5"
                   dot={{ fill: 'hsl(var(--primary))', r: 4 }}
+                  activeDot={{ r: 6 }}
+                  name="Prediction" 
+                  connectNulls
+                  data={predictionData}
+                />
+              )}
+              
+              {predictionData.length > 0 && chartType === 'area' && (
+                <Area 
+                  type="monotone" 
+                  dataKey="score" 
+                  stroke="hsl(var(--primary))" 
+                  strokeWidth={2}
+                  strokeDasharray="5 5"
+                  fillOpacity={0.1}
+                  fill="hsl(var(--primary))"
+                  dot={{ fill: 'hsl(var(--primary))', r: 3 }}
                   activeDot={{ r: 6 }}
                   name="Prediction" 
                   connectNulls
