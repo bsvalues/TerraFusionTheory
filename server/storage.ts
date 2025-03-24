@@ -19,6 +19,8 @@ export interface IStorage {
   getUserByUsername(username: string): Promise<User | undefined>;
   getAllUsers(): Promise<User[]>;
   createUser(user: InsertUser): Promise<User>;
+  updateUser(user: User): Promise<User>;
+  deleteUser(id: number): Promise<boolean>;
   
   // Project methods
   getProject(id: number): Promise<Project | undefined>;
@@ -408,6 +410,31 @@ export class MemStorage implements IStorage {
     const user: User = { ...insertUser, id };
     this.users.set(id, user);
     return user;
+  }
+  
+  async updateUser(user: User): Promise<User> {
+    // Get existing user to ensure it exists
+    const existingUser = await this.getUser(user.id);
+    
+    if (!existingUser) {
+      throw new Error(`User with ID ${user.id} not found`);
+    }
+    
+    // Update the user
+    this.users.set(user.id, user);
+    return user;
+  }
+  
+  async deleteUser(id: number): Promise<boolean> {
+    // Get existing user to ensure it exists
+    const existingUser = await this.getUser(id);
+    
+    if (!existingUser) {
+      return false;
+    }
+    
+    // Delete the user
+    return this.users.delete(id);
   }
   
   // Project methods

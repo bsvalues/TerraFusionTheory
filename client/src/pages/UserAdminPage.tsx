@@ -101,8 +101,20 @@ export default function UserAdminPage() {
     if (!editingUserId) return;
     
     try {
-      // For now, we'll just show a success message
-      // In a real app, we would send a PATCH request to update the user
+      // Make a PUT request to update the user
+      const response = await fetch(`/api/users/${editingUserId}`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(values),
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to update user');
+      }
+      
       toast({
         title: "User updated",
         description: `User ${values.username} was updated successfully`,
@@ -116,7 +128,7 @@ export default function UserAdminPage() {
       console.error('Error updating user:', err);
       toast({
         title: "Error",
-        description: "Failed to update user",
+        description: err instanceof Error ? err.message : "Failed to update user",
         variant: "destructive",
       });
     }
@@ -124,8 +136,16 @@ export default function UserAdminPage() {
   
   async function handleDeleteUser(userId: number) {
     try {
-      // For now, we'll just show a success message
-      // In a real app, we would send a DELETE request to delete the user
+      // Make a DELETE request to delete the user
+      const response = await fetch(`/api/users/${userId}`, {
+        method: 'DELETE',
+      });
+      
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || 'Failed to delete user');
+      }
+      
       toast({
         title: "User deleted",
         description: "User was deleted successfully",
@@ -137,7 +157,7 @@ export default function UserAdminPage() {
       console.error('Error deleting user:', err);
       toast({
         title: "Error",
-        description: "Failed to delete user",
+        description: err instanceof Error ? err.message : "Failed to delete user",
         variant: "destructive",
       });
     }
