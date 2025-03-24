@@ -10,6 +10,10 @@ import PropertyValuation from '../components/mass-appraisal/PropertyValuation';
 import QualityControlPanel from '../components/mass-appraisal/QualityControlPanel';
 import RatioStudyPanel from '../components/mass-appraisal/RatioStudyPanel';
 import DepreciationCalculator from '../components/mass-appraisal/DepreciationCalculator';
+import SalesComparisonGrid from '../components/mass-appraisal/SalesComparisonGrid';
+import GISVisualization from '../components/mass-appraisal/GISVisualization';
+import IncomeApproach from '../components/mass-appraisal/IncomeApproach';
+import CostManual from '../components/mass-appraisal/CostManual';
 
 const MassAppraisalPage = () => {
   const [selectedModelId, setSelectedModelId] = useState<string | null>(null);
@@ -53,11 +57,15 @@ const MassAppraisalPage = () => {
       )}
 
       <Tabs defaultValue="models" className="w-full">
-        <TabsList className="grid grid-cols-6 mb-8">
+        <TabsList className="grid grid-cols-10 mb-8">
           <TabsTrigger value="models">Valuation Models</TabsTrigger>
           <TabsTrigger value="property">Property Valuation</TabsTrigger>
+          <TabsTrigger value="sales">Sales Comparison</TabsTrigger>
+          <TabsTrigger value="cost">Cost Manual</TabsTrigger>
+          <TabsTrigger value="income">Income Approach</TabsTrigger>
           <TabsTrigger value="depreciation">Depreciation</TabsTrigger>
-          <TabsTrigger value="reconciliation">Value Reconciliation</TabsTrigger>
+          <TabsTrigger value="gis">GIS Analytics</TabsTrigger>
+          <TabsTrigger value="reconciliation">Reconciliation</TabsTrigger>
           <TabsTrigger value="quality">Quality Control</TabsTrigger>
           <TabsTrigger value="ratio">Ratio Studies</TabsTrigger>
         </TabsList>
@@ -118,6 +126,22 @@ const MassAppraisalPage = () => {
           <QualityControlPanel />
         </TabsContent>
 
+        <TabsContent value="sales">
+          <SalesComparisonGrid />
+        </TabsContent>
+
+        <TabsContent value="cost">
+          <CostManual />
+        </TabsContent>
+        
+        <TabsContent value="income">
+          <IncomeApproach />
+        </TabsContent>
+        
+        <TabsContent value="gis">
+          <GISVisualization />
+        </TabsContent>
+        
         <TabsContent value="ratio">
           <RatioStudyPanel />
         </TabsContent>
