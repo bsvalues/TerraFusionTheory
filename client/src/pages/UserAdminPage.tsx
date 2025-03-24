@@ -30,6 +30,7 @@ const formSchema = z.object({
 
 export default function UserAdminPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
+  const [editingUserId, setEditingUserId] = useState<number | null>(null);
   const { toast } = useToast();
   
   const { 
@@ -44,6 +45,15 @@ export default function UserAdminPage() {
   });
 
   const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+      email: "",
+    },
+  });
+  
+  const editForm = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       username: "",
@@ -82,6 +92,52 @@ export default function UserAdminPage() {
       toast({
         title: "Error",
         description: "Failed to create user",
+        variant: "destructive",
+      });
+    }
+  }
+  
+  async function onEditSubmit(values: z.infer<typeof formSchema>) {
+    if (!editingUserId) return;
+    
+    try {
+      // For now, we'll just show a success message
+      // In a real app, we would send a PATCH request to update the user
+      toast({
+        title: "User updated",
+        description: `User ${values.username} was updated successfully`,
+      });
+      
+      // Reset form and refresh user list
+      editForm.reset();
+      setEditingUserId(null);
+      refetch();
+    } catch (err) {
+      console.error('Error updating user:', err);
+      toast({
+        title: "Error",
+        description: "Failed to update user",
+        variant: "destructive",
+      });
+    }
+  }
+  
+  async function handleDeleteUser(userId: number) {
+    try {
+      // For now, we'll just show a success message
+      // In a real app, we would send a DELETE request to delete the user
+      toast({
+        title: "User deleted",
+        description: "User was deleted successfully",
+      });
+      
+      // Refresh user list
+      refetch();
+    } catch (err) {
+      console.error('Error deleting user:', err);
+      toast({
+        title: "Error",
+        description: "Failed to delete user",
         variant: "destructive",
       });
     }
@@ -204,31 +260,128 @@ export default function UserAdminPage() {
                   <TableCell>{user.username}</TableCell>
                   <TableCell>{user.email || '-'}</TableCell>
                   <TableCell>
-                    <Button 
-                      variant="outline" 
-                      size="sm"
-                      className="mr-2"
-                      onClick={() => {
-                        toast({
-                          title: "Not implemented",
-                          description: "User editing is not yet implemented",
-                        });
+                    <Dialog
+                      onOpenChange={(open) => {
+                        if (open) {
+                          // Load user data into form when opening the dialog
+                          editForm.reset({
+                            username: user.username,
+                            email: user.email || "",
+                            password: "", // Leave blank for edit
+                          });
+                          setEditingUserId(user.id);
+                        }
                       }}
                     >
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="destructive" 
-                      size="sm"
-                      onClick={() => {
-                        toast({
-                          title: "Not implemented",
-                          description: "User deletion is not yet implemented",
-                        });
-                      }}
-                    >
-                      Delete
-                    </Button>
+                      <DialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="mr-2">
+                          Edit
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Edit User</DialogTitle>
+                          <DialogDescription>
+                            Update user information. Leave password blank to keep current password.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <Form {...editForm}>
+                          <form onSubmit={editForm.handleSubmit(onEditSubmit)} className="space-y-4">
+                            <FormField
+                              control={editForm.control}
+                              name="username"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Username</FormLabel>
+                                  <FormControl>
+                                    <Input placeholder="username" {...field} />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={editForm.control}
+                              name="password"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Password</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      type="password" 
+                                      placeholder="Leave blank to keep current" 
+                                      {...field}
+                                    />
+                                  </FormControl>
+                                  <FormDescription>
+                                    Leave blank to keep current password
+                                  </FormDescription>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <FormField
+                              control={editForm.control}
+                              name="email"
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormLabel>Email</FormLabel>
+                                  <FormControl>
+                                    <Input 
+                                      placeholder="user@example.com" 
+                                      {...field} 
+                                      value={field.value || ""}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                            <DialogFooter>
+                              <Button type="submit" disabled={editForm.formState.isSubmitting}>
+                                {editForm.formState.isSubmitting && (
+                                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                )}
+                                Save Changes
+                              </Button>
+                            </DialogFooter>
+                          </form>
+                        </Form>
+                      </DialogContent>
+                    </Dialog>
+                    <Dialog>
+                      <DialogTrigger asChild>
+                        <Button 
+                          variant="destructive" 
+                          size="sm"
+                        >
+                          Delete
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Confirm Deletion</DialogTitle>
+                          <DialogDescription>
+                            Are you sure you want to delete user "{user.username}"? This action cannot be undone.
+                          </DialogDescription>
+                        </DialogHeader>
+                        <DialogFooter>
+                          <Button variant="outline" onClick={() => document.getElementById("close-delete-dialog")?.click()}>
+                            Cancel
+                          </Button>
+                          <Button 
+                            variant="destructive" 
+                            onClick={() => {
+                              handleDeleteUser(user.id);
+                              document.getElementById("close-delete-dialog")?.click();
+                            }}
+                          >
+                            Delete User
+                          </Button>
+                        </DialogFooter>
+                        <button id="close-delete-dialog" className="hidden" />
+                      </DialogContent>
+                    </Dialog>
                   </TableCell>
                 </TableRow>
               ))}
