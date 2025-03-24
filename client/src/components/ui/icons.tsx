@@ -112,7 +112,6 @@ export const Icons = {
   clock: Clock,
   
   // User related
-  settings: Settings,
   user: User,
   users: Users,
   mail: Mail,
@@ -172,7 +171,7 @@ export const Icons = {
   // Custom for our app
   compass: Compass,
   document: FileText,
-  settings: Cog,
+  cog: Cog,
   bot: Bot,
   
   // Comparison icon (custom function)

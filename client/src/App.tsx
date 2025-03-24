@@ -81,6 +81,7 @@ const App = () => {
             
             <TutorialButton position="bottom-right" />
             <AIAssistant />
+            <ComparisonButton position="bottom-right" />
             
             {/* Add the new AI Specialist Chat with fix positioned button in the header */}
             <div className="fixed top-4 right-4 z-40">

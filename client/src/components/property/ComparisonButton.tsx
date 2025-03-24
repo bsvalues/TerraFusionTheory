@@ -7,7 +7,7 @@
 import { useComparison } from '../../context/ComparisonContext';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Icons } from '@/components/ui/icons';
+import { Icons } from '../../components/ui/icons';
 import {
   Popover,
   PopoverContent,

@@ -55,6 +55,7 @@ import integratedPropertyDataService, {
   MarketPhase
 } from '@/services/integrated-property-data.service';
 import { cn } from '@/lib/utils';
+import { useComparison } from '../context/ComparisonContext';
 
 // Mock property images
 const mockPropertyImages = [

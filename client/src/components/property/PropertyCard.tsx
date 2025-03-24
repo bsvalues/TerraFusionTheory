@@ -8,7 +8,7 @@ import { Card, CardContent, CardFooter, CardHeader, CardTitle } from '@/componen
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
-import { Icons } from '@/components/ui/icons';
+import { Icons } from '../../components/ui/icons';
 import { useComparison } from '../../context/ComparisonContext';
 import { useLocation } from 'wouter';
 
