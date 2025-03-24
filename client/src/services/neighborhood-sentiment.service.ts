@@ -22,7 +22,8 @@ export type SentimentTopic =
   | 'development'
   | 'market_trend'
   | 'lifestyle'
-  | 'environment';
+  | 'environment'
+  | string; // Allow for custom topics
 
 // Sentiment score (0-100)
 export interface SentimentScore {
@@ -474,7 +475,11 @@ class NeighborhoodSentimentService {
       case 'market_trend': return 'market trends';
       case 'lifestyle': return 'lifestyle options';
       case 'environment': return 'environmental quality';
-      default: return topic.replace('_', ' ');
+      default: {
+        // For any other topics, convert underscores to spaces
+        const topicStr = String(topic);
+        return topicStr.includes('_') ? topicStr.split('_').join(' ') : topicStr;
+      }
     }
   }
   

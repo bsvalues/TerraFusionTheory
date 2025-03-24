@@ -60,6 +60,7 @@ import {
   CheckCircle2 as LucideCheckCircle2
 } from 'lucide-react';
 import TrendPredictionWidget from './TrendPredictionWidget';
+import NeighborhoodSentimentDashboard from './NeighborhoodSentimentDashboard';
 
 // Types
 interface MarketMetric {
