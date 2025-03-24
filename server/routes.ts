@@ -355,33 +355,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // External data connectors API routes
   app.get("/api/connectors", asyncHandler(connectorsController.getAllConnectors));
-  app.get("/api/connectors/type/:type", asyncHandler(connectorsController.getConnectorsByType));
-  app.get("/api/connectors/:name", asyncHandler(connectorsController.getConnector));
-  app.post("/api/connectors/:name/test", asyncHandler(connectorsController.testConnectorConnection));
-  app.get("/api/connectors/:name/models", asyncHandler(connectorsController.getConnectorModels));
-  app.get("/api/connectors/:name/models/:model", asyncHandler(connectorsController.getConnectorModelSchema));
-  app.post("/api/connectors/:name/query/cama", asyncHandler(connectorsController.queryCAMAData));
-  app.post("/api/connectors/:name/query/gis", asyncHandler(connectorsController.queryGISData));
+  app.get("/api/connectors/available", asyncHandler(connectorsController.getAvailableConnectors));
   
   // Weather connector API routes
-  app.post("/api/connectors/:name/query/weather", asyncHandler(connectorsController.queryWeatherData));
-  app.get("/api/connectors/:name/climate", asyncHandler(connectorsController.getClimateNormals));
-  
-  // Census connector API routes
-  app.post("/api/connectors/:name/query/census", asyncHandler(connectorsController.queryCensusData));
-  app.get("/api/connectors/:name/demographics", asyncHandler(connectorsController.getDemographicData));
-  
-  // Enhanced connector APIs (new simplified endpoints)
   app.get("/api/connectors/weather/current", asyncHandler(connectorsController.getCurrentWeather));
   app.get("/api/connectors/weather/climate", asyncHandler(connectorsController.getClimateData));
   app.get("/api/connectors/weather/flood-risk", asyncHandler(connectorsController.getFloodRiskData));
+  
+  // Census connector API routes
   app.get("/api/connectors/census/demographics", asyncHandler(connectorsController.getDemographicData));
-  app.get("/api/connectors", asyncHandler(connectorsController.getAvailableConnectors));
   
   // Market Data routes
-  app.get("/api/market/listings", asyncHandler(marketController.getMarketListings));
-  app.get("/api/market/listings/:mlsNumber", asyncHandler(marketController.getMarketListingByMLS));
-  app.get("/api/market/stats", asyncHandler(marketController.getMarketStats));
+  app.get("/api/market/snapshot", asyncHandler(marketController.getMarketSnapshot));
+  app.get("/api/market/predict", asyncHandler(marketController.predictMarketMetrics));
+  app.get("/api/market/alerts", asyncHandler(marketController.getMarketAlerts));
+  app.get("/api/market/neighborhood-trends", asyncHandler(marketController.analyzeNeighborhoodTrends));
+  app.get("/api/market/spatial", asyncHandler(marketController.getPropertySpatialRelationships));
+  app.get("/api/market/analysis", asyncHandler(marketController.getDetailedMarketAnalysis));
+  app.get("/api/market/comparison", asyncHandler(marketController.getMarketComparison));
+  app.get("/api/market/investment/:propertyId", asyncHandler(marketController.getInvestmentScore));
 
   // Enhanced Analytics API routes
   app.get("/api/analytics/market/:area?", asyncHandler(analyticsController.getMarketSnapshot));
