@@ -52,7 +52,7 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
           }
         ],
         matchScore: 92,
-        tags: ["Equitably Assessed", "Single Family Residential", "Construction Quality 3"],
+        tags: ["Equitably Assessed", "Single Family Residential", "Construction Quality: Average", "Horizontal Equity Compliant", "Sales Comparison Primary", "Economic Life Remaining: 50-75%"],
         latitude: 46.2529,
         longitude: -119.9021
       },
@@ -85,7 +85,7 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
           }
         ],
         matchScore: 88,
-        tags: ["Market Value Aligned", "Single Family Residential", "Construction Quality 2"],
+        tags: ["Market Value Aligned", "Single Family Residential", "Construction Quality: Good", "Vertical Equity Compliant", "Sales Comparison Primary", "Economic Life Remaining: >75%"],
         latitude: 46.2550,
         longitude: -119.9100
       },
@@ -101,13 +101,13 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
           {
             type: "appraisal",
             title: "Income Capitalization Approach",
-            description: "GRM: 128 derived from 8 rental comps. Monthly rent: $2,650. Cap rate: 6.2%. Direct capitalization with market rents yields $340,000 value estimate.",
+            description: "Direct capitalization method employed. Market rent survey from 8 comparables indicates $2,650/mo PGI. Vacancy & collection loss: 5%. EGI: $30,210. Operating expenses ratio: 38% of EGI. NOI: $18,730. Market-derived cap rate: 6.2% (band of investment method). Value indication via direct capitalization: $302,097. Value via GRM method (derived GRM: 128): $339,200. Reconciled income approach value estimate: $335,000.",
             score: 87
           },
           {
             type: "mass-appraisal",
             title: "CAMA Model Specification",
-            description: "Additive model with log-transformation on price, 23 neighborhood factors. R²: 0.83, RMSE: 5.4%, AIC: 892. Value prediction: $332,500.",
+            description: "Hybrid model with log-transformation on dependent variable, 23 location variables, and response surface modeling. Model fit metrics: R²: 0.83, Adj-R²: 0.81, RMSE: 5.4%, AIC: 892, BIC: 923. Model validated with holdout sample method. Value prediction: $332,500.",
             score: 90
           },
           {
@@ -118,7 +118,7 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
           }
         ],
         matchScore: 85,
-        tags: ["Income Approach Candidate", "Market Value Aligned", "Construction Quality 3"],
+        tags: ["Income Approach Candidate", "Market Value Aligned", "Construction Quality: Average", "Direct Capitalization Applicable", "Gross Rent Multiplier Applicable", "Economic Life Remaining: 50-75%"],
         latitude: 46.2510,
         longitude: -119.9050
       },
@@ -151,7 +151,7 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
           }
         ],
         matchScore: 80,
-        tags: ["Under-assessed", "Construction Quality 1", "Minimal Depreciation"],
+        tags: ["Under-assessed", "Construction Quality: Excellent", "Minimal Depreciation", "Assessment Appeal Candidate", "Cost Approach Primary", "Land-to-Building Ratio: Low"],
         latitude: 46.2600,
         longitude: -119.9000
       },
@@ -184,7 +184,7 @@ export async function getPropertyRecommendations(req: Request, res: Response, st
           }
         ],
         matchScore: 78,
-        tags: ["Needs Reassessment", "Functional Obsolescence", "Substantial Depreciation"],
+        tags: ["Needs Reassessment", "Functional Obsolescence", "Substantial Depreciation", "Construction Quality: Fair", "Physical Deterioration: Incurable", "Economic Life Remaining: 25-50%"],
         latitude: 46.2520,
         longitude: -119.9120
       }
@@ -218,21 +218,52 @@ export async function getPropertyTags(req: Request, res: Response) {
   try {
     // In a real app, this would come from analyzing property data
     const tags = [
+      // Assessment-related tags
       "Equitably Assessed",
       "Market Value Aligned",
       "Under-assessed",
       "Needs Reassessment",
-      "Income Approach Candidate",
+      "Within Statutory Level Tolerance",
+      "Vertical Equity Compliant",
+      "Horizontal Equity Compliant",
+      "Assessment Appeal Candidate",
+      
+      // Property type and quality tags
       "Single Family Residential",
-      "Construction Quality 3",
-      "Construction Quality 2",
-      "Construction Quality 1",
+      "Single Family Resort/Recreational",
+      "Multi-Family Residential",
+      "Construction Quality: Excellent",
+      "Construction Quality: Good",
+      "Construction Quality: Average",
+      "Construction Quality: Fair",
+      "Construction Quality: Low",
+      
+      // Depreciation and obsolescence
       "Minimal Depreciation",
       "Substantial Depreciation",
+      "Physical Deterioration: Curable",
+      "Physical Deterioration: Incurable",
       "Functional Obsolescence",
       "External Obsolescence",
+      "Economic Life Remaining: >75%",
+      "Economic Life Remaining: 50-75%",
+      "Economic Life Remaining: 25-50%",
+      "Economic Life Remaining: <25%",
+      
+      // Valuation approach indicators
+      "Income Approach Candidate",
+      "Direct Capitalization Applicable",
+      "Gross Rent Multiplier Applicable", 
+      "Cost Approach Primary",
+      "Sales Comparison Primary",
+      
+      // Use and zoning
       "Highest & Best Use Conforming",
-      "Non-Conforming Use"
+      "Non-Conforming Use",
+      "Legal Non-Conforming Use",
+      "Transitional Use",
+      "Land-to-Building Ratio: High",
+      "Land-to-Building Ratio: Low"
     ];
     
     return res.status(200).json(tags);
