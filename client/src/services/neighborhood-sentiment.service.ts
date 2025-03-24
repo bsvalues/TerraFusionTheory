@@ -531,6 +531,111 @@ class NeighborhoodSentimentService {
   }
   
   /**
+   * Get historical sentiment data for a neighborhood with a specific topic
+   * This is a simplified version of getNeighborhoodSentimentTrend for the trend graph
+   */
+  getHistoricalSentimentData(
+    city: string, 
+    neighborhoodName: string, 
+    topic: SentimentTopic = 'overall',
+    months: number = 12
+  ): Array<{
+    date: string;
+    score: number;
+    isPrediction: boolean;
+    events?: string[];
+  }> {
+    // Convert from 0-100 scale to 0-10 scale for the trend graph
+    const historicalData = this.generateHistoricalTrendData(
+      neighborhoodName,
+      city,
+      topic,
+      months === 24 ? '2y' : months === 6 ? '6m' : '1y'
+    );
+    
+    // Add some notable events for some data points
+    const events = [
+      'New park development announced',
+      'School renovations completed',
+      'Shopping center opened',
+      'Transit improvements',
+      'Property tax assessment change',
+      'New community center opened',
+      'Neighborhood association formed',
+      'Road construction project started',
+      'New housing development broke ground',
+      'Zoning changes approved'
+    ];
+    
+    // Add events to some random data points (about 20% of points)
+    const dataWithEvents = historicalData.map(point => {
+      const scaledScore = point.score / 10; // Convert to 0-10 scale
+      
+      // Add events to some random points (about 20% of points)
+      const hasEvents = Math.random() < 0.2;
+      
+      return {
+        date: point.date,
+        score: parseFloat(scaledScore.toFixed(1)),
+        isPrediction: false,
+        events: hasEvents ? [events[Math.floor(Math.random() * events.length)]] : undefined
+      };
+    });
+    
+    return dataWithEvents;
+  }
+  
+  /**
+   * Get predicted sentiment data for a neighborhood with a specific topic
+   */
+  getPredictedSentimentData(
+    city: string, 
+    neighborhoodName: string, 
+    topic: SentimentTopic = 'overall',
+    months: number = 6
+  ): Array<{
+    date: string;
+    score: number;
+    isPrediction: boolean;
+    upperBound?: number;
+    lowerBound?: number;
+  }> {
+    // First get the historical data to use as a base
+    const historicalData = this.generateHistoricalTrendData(
+      neighborhoodName,
+      city,
+      topic,
+      '1y'
+    );
+    
+    // Then generate predictions based on the historical data
+    const predictions = this.generatePredictionData(
+      historicalData,
+      topic,
+      neighborhoodName,
+      city,
+      months
+    );
+    
+    // Convert from 0-100 scale to 0-10 scale for the trend graph
+    const scaledPredictions = predictions.map(point => {
+      const scaledScore = point.score / 10;
+      const scaledMin = (point.min || 0) / 10;
+      const scaledMax = (point.max || 0) / 10;
+      
+      return {
+        date: point.date,
+        score: parseFloat(scaledScore.toFixed(1)),
+        lowerBound: parseFloat(scaledMin.toFixed(1)),
+        upperBound: parseFloat(scaledMax.toFixed(1)),
+        isPrediction: true
+      };
+    });
+    
+    return scaledPredictions;
+  }
+
+  /**
    * Get a random neighborhood for a city
    */
   private getRandomNeighborhood(city?: string): string {

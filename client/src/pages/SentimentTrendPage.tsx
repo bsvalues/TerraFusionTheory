@@ -33,8 +33,7 @@ import {
 
 import SentimentTrendGraph from '@/components/sentiment/SentimentTrendGraph';
 import NeighborhoodSentimentWidget from '@/components/sentiment/NeighborhoodSentimentWidget';
-import Page from '@/components/layout/Page';
-import PageHeader from '@/components/layout/PageHeader';
+
 import neighborhoodSentimentService, { SentimentTopic } from '@/services/neighborhood-sentiment.service';
 
 /**
