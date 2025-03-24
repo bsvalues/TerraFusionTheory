@@ -6,7 +6,7 @@
  * factors included.
  */
 
-import { apiRequest } from '@/lib/apiClient';
+import { apiRequest } from '@/lib/queryClient';
 
 // Types from server
 export interface PropertyBaseInfo {

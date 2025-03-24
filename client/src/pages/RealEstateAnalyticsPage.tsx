@@ -60,6 +60,14 @@ const RealEstateAnalyticsPage = () => {
               </button>
             </Link>
             
+            {/* Property Valuation Demo Link */}
+            <Link href="/property-valuation-demo">
+              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium bg-secondary/40">
+                <LucideCalculator className="h-5 w-5 mr-1 text-primary" />
+                <span className="hidden md:inline">Valuation Demo</span>
+              </button>
+            </Link>
+            
             {/* Help Links */}
             <div className="relative group">
               <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary group-hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">

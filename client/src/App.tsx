@@ -61,6 +61,7 @@ const App = () => {
             <Route path="/sentiment-map" component={SentimentMapPage} />
             <Route path="/sentiment-trends" component={SentimentTrendPage} />
             <Route path="/property-enrichment" component={PropertyEnrichmentDemo} />
+            <Route path="/property-valuation-demo" component={PropertyValuationDemo} />
             <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
             <Route path="/help" component={HelpCenterPage} />
             <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
