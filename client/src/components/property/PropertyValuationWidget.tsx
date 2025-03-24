@@ -381,14 +381,42 @@ export function PropertyValuationWidget({
                             <div className="flex items-center cursor-help">
                               <span className="text-xs mr-2">Confidence:</span>
                               {getConfidenceBadge(valuation.confidence)}
-                              <InfoIcon className="ml-1 h-3 w-3 text-muted-foreground" />
+                              <Info className="ml-1 h-3 w-3 text-muted-foreground" />
                             </div>
                           </TooltipTrigger>
-                          <TooltipContent side="bottom" className="w-60 p-3">
-                            <p className="font-semibold text-sm">Confidence Score: {valuation.confidence}%</p>
-                            <p className="text-xs text-muted-foreground mt-1">
-                              {getConfidenceLevel(valuation.confidence).description}
-                            </p>
+                          <TooltipContent side="bottom" className="w-72 p-4">
+                            <div className="space-y-3">
+                              <div>
+                                <p className="font-semibold text-sm">Confidence Score: {valuation.confidence}%</p>
+                                <p className="text-xs text-muted-foreground mt-1">
+                                  {getConfidenceLevel(valuation.confidence).description}
+                                </p>
+                              </div>
+                              
+                              <div className="pt-1">
+                                <div className="flex justify-between text-xs mb-1">
+                                  <span>Low</span>
+                                  <span>Moderate</span>
+                                  <span>High</span>
+                                </div>
+                                <div className="h-2 bg-gray-200 rounded-full overflow-hidden">
+                                  <div 
+                                    className={`h-full ${getConfidenceLevel(valuation.confidence).color}`}
+                                    style={{ width: `${valuation.confidence}%` }}
+                                  />
+                                </div>
+                              </div>
+                              
+                              <div className="text-xs">
+                                <p className="text-muted-foreground">Factors affecting confidence:</p>
+                                <ul className="list-disc list-inside mt-1 space-y-1">
+                                  <li>Number of comparable properties</li>
+                                  <li>Data completeness and quality</li>
+                                  <li>Market volatility</li>
+                                  <li>Uniqueness of property features</li>
+                                </ul>
+                              </div>
+                            </div>
                           </TooltipContent>
                         </Tooltip>
                       </TooltipProvider>
@@ -396,6 +424,41 @@ export function PropertyValuationWidget({
                   </div>
                 </div>
 
+                <div className="mb-6 p-4 border rounded-md">
+                  <h3 className="text-lg font-semibold mb-3">Valuation Confidence</h3>
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">Confidence Score</p>
+                        <p className="text-xs text-muted-foreground">
+                          Based on data quality and property comparability
+                        </p>
+                      </div>
+                      <Badge className={`${getConfidenceLevel(valuation.confidence).color} text-white px-3 py-1`}>
+                        {valuation.confidence}%
+                      </Badge>
+                    </div>
+                    
+                    <div>
+                      <div className="flex justify-between text-xs mb-1">
+                        <span>Low</span>
+                        <span>Moderate</span>
+                        <span>High</span>
+                      </div>
+                      <div className="h-2.5 bg-gray-200 rounded-full overflow-hidden">
+                        <div 
+                          className={`h-full ${getConfidenceLevel(valuation.confidence).color}`}
+                          style={{ width: `${valuation.confidence}%` }}
+                        />
+                      </div>
+                    </div>
+                    
+                    <div className="text-sm">
+                      <p className="text-muted-foreground text-xs">{getConfidenceLevel(valuation.confidence).description}</p>
+                    </div>
+                  </div>
+                </div>
+                
                 <h3 className="text-lg font-semibold mb-4">External Factors Impact</h3>
 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
