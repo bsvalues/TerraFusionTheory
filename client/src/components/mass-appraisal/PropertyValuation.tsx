@@ -129,7 +129,7 @@ const PropertyValuation = ({ models }: PropertyValuationProps) => {
       });
     },
     onSuccess: (data) => {
-      setValuationResult(data);
+      setValuationResult(data as ValuationResult);
       toast({
         title: "Property Valuation Complete",
         description: "The property has been valued successfully.",

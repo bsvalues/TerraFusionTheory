@@ -54,7 +54,7 @@ import {
 } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
-import { AreaChart } from '@/components/ui/area-chart';
+import { AreaChart } from '../../components/ui/area-chart';
 import { Progress } from '@/components/ui/progress';
 
 // Create a mock AreaChart component since we don't have the actual one

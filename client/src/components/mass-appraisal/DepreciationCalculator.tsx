@@ -115,7 +115,7 @@ const DepreciationCalculator = () => {
       });
     },
     onSuccess: (data) => {
-      setDepreciationResult(data);
+      setDepreciationResult(data as DepreciationResult);
       toast({
         title: "Depreciation Analysis Complete",
         description: "Accrued depreciation has been calculated successfully.",
