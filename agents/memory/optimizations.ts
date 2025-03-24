@@ -16,22 +16,36 @@ export async function optimizeVectorMemory() {
     // vectorMemory is already imported from './vector'
     
     // Get initial stats
-    const initialStats = await vectorMemory.getStats();
+    const initialCount = await vectorMemory.count();
+    const initialStats = {
+      totalCount: initialCount,
+      estimatedSize: initialCount * 1536 * 4 // Rough estimate: entries * dimension * 4 bytes per float
+    };
     
     // Step 1: Clean up expired entries
-    const removeExpiredResult = await vectorMemory.removeExpiredEntries();
+    let removeExpiredResult = { count: 0 };
+    if (typeof vectorMemory.removeExpired === 'function') {
+      removeExpiredResult = await vectorMemory.removeExpired();
+    }
     
     // Step 2: Clean up duplicates (if any)
-    const removeDuplicatesResult = await vectorMemory.removeDuplicateEntries();
+    let removeDuplicatesResult = { count: 0 };
+    if (typeof vectorMemory.removeDuplicates === 'function') {
+      removeDuplicatesResult = await vectorMemory.removeDuplicates();
+    }
     
     // Step 3: Compact storage if supported
     let compactionResult = null;
-    if (typeof vectorMemory.compactStorage === 'function') {
-      compactionResult = await vectorMemory.compactStorage();
+    if (typeof vectorMemory.compact === 'function') {
+      compactionResult = await vectorMemory.compact();
     }
     
     // Get final stats
-    const finalStats = await vectorMemory.getStats();
+    const finalCount = await vectorMemory.count();
+    const finalStats = {
+      totalCount: finalCount,
+      estimatedSize: finalCount * 1536 * 4
+    };
     
     return {
       initialCount: initialStats.totalCount,
