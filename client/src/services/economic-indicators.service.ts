@@ -1,968 +1,505 @@
 /**
  * Economic Indicators Service
  * 
- * This service handles fetching and processing economic indicator data
- * for the Local Economic Indicators Dashboard.
+ * This service provides economic data for real estate market analysis,
+ * including employment trends, income statistics, business development,
+ * and other economic indicators at various geographic levels.
  */
 
-import { apiRequest } from '@/lib/queryClient';
+export enum TrendDirection {
+  UP_STRONG = 'up-strong',
+  UP_MODERATE = 'up-moderate',
+  STABLE = 'stable',
+  DOWN_MODERATE = 'down-moderate',
+  DOWN_STRONG = 'down-strong'
+}
 
-// Types for economic indicator data
-export interface EconomicIndicator {
-  id: string;
-  name: string;
+export interface EconomicTrend {
+  direction: TrendDirection;
+  percentChange: number;
   description: string;
-  category: 'employment' | 'income' | 'housing' | 'business' | 'demographic' | 'other';
-  unit: string; // e.g., "percent", "dollars", "number", "index"
-  higherIsBetter: boolean; // Indicates if higher values are considered better
 }
 
-export interface EconomicDataPoint {
-  indicatorId: string;
-  regionId: string;
-  date: string; // ISO date string
-  value: number;
-  change?: number; // Percentage change from previous period
-  trend?: 'up' | 'down' | 'stable';
-  rank?: number; // Rank compared to other regions (if available)
-  percentile?: number; // Percentile compared to other regions (if available)
-  source?: string;
+export interface EmploymentData {
+  unemploymentRate: number;
+  employmentTrend: EconomicTrend;
+  laborForceParticipation: number;
+  majorEmployers: Array<{
+    name: string;
+    sector: string;
+    employees: number;
+  }>;
+  sectorBreakdown: Array<{
+    sector: string;
+    percentage: number;
+    trend: EconomicTrend;
+  }>;
+  jobGrowthRate: number;
 }
 
-export interface EconomicRegion {
-  id: string;
-  name: string;
-  type: 'city' | 'county' | 'metro' | 'state' | 'zip' | 'neighborhood';
-  parentRegion?: string; // ID of parent region
-  state: string;
-  population?: number;
-  boundaries?: GeoJSON.Polygon;
+export interface IncomeData {
+  medianHouseholdIncome: number;
+  incomeTrend: EconomicTrend;
+  perCapitaIncome: number;
+  incomeDistribution: Array<{
+    range: string;
+    percentage: number;
+  }>;
+  povertyRate: number;
+  affordabilityIndex: number; // 0-100 (higher is more affordable)
+  medianHomeValueToIncomeRatio: number;
 }
 
-export interface EconomicTrendData {
-  indicator: EconomicIndicator;
-  region: EconomicRegion;
-  timeframe: 'month' | 'quarter' | 'year' | 'fiveYear' | 'tenYear';
-  data: EconomicDataPoint[];
-  statistics: {
-    min: number;
-    max: number;
-    average: number;
-    median: number;
-    currentValue: number;
-    currentTrend: 'up' | 'down' | 'stable';
-    percentChange: number; // From beginning to end of period
-    forecastValue?: number; // If forecast is available
-    forecastTrend?: 'up' | 'down' | 'stable';
-  };
-  benchmarks?: {
-    national?: number;
-    state?: number;
-    comparable?: number; // Average of comparable regions
-  };
+export interface BusinessData {
+  totalBusinesses: number;
+  businessGrowthRate: number;
+  businessTrend: EconomicTrend;
+  newBusinessFormation: number;
+  businessClosures: number;
+  topGrowingSectors: Array<{
+    sector: string;
+    growthRate: number;
+  }>;
+  retailSalesTrend: EconomicTrend;
 }
 
-export interface CorrelationResult {
-  indicatorX: string; // ID of first indicator
-  indicatorY: string; // ID of second indicator
-  region: string; // ID of region
-  timeframe: 'month' | 'quarter' | 'year' | 'fiveYear' | 'tenYear';
-  correlationCoefficient: number; // -1 to 1
-  significanceLevel: number; // p-value
-  scatterPlotData: Array<{x: number; y: number; date: string}>;
-  regressionLine?: {
-    slope: number;
-    intercept: number;
-    r2: number;
-  };
-  insight: string; // Text explanation of the correlation
+export interface HousingMarketData {
+  constructionPermits: number;
+  constructionTrend: EconomicTrend;
+  vacancyRate: number;
+  rentalMarketStrength: number; // 0-100 (higher is stronger)
+  medianRent: number;
+  rentTrend: EconomicTrend;
+  housingAffordability: number; // 0-100 (higher is more affordable)
+  homeownershipRate: number;
 }
 
-export interface PropertyValueImpact {
-  indicator: string; // ID of economic indicator
-  region: string; // ID of region
-  impact: number; // -1 to 1, where 1 is strong positive impact, -1 is strong negative impact
-  confidenceLevel: 'low' | 'medium' | 'high';
-  lagPeriod?: string; // How long before indicator changes affect property values
-  explanation: string; // Text explanation
-}
-
-export interface EconomicDashboardData {
-  region: EconomicRegion;
-  indicators: {
-    employment: {
-      unemploymentRate: EconomicDataPoint;
-      jobGrowth: EconomicDataPoint;
-      laborForceParticipation: EconomicDataPoint;
-      topIndustries: Array<{
-        name: string;
-        share: number;
-        jobGrowth: number;
-        averageWage: number;
-      }>;
-    };
-    income: {
-      medianHouseholdIncome: EconomicDataPoint;
-      perCapitaIncome: EconomicDataPoint;
-      wageGrowth: EconomicDataPoint;
-      incomeDistribution?: Array<{
-        category: string;
-        percentage: number;
-      }>;
-    };
-    housing: {
-      medianHomePrice: EconomicDataPoint;
-      homeValueGrowth: EconomicDataPoint;
-      affordabilityIndex: EconomicDataPoint;
-      constructionPermits: EconomicDataPoint;
-    };
-    business: {
-      businessGrowth: EconomicDataPoint;
-      newBusinessFormation: EconomicDataPoint;
-      commercialVacancyRate?: EconomicDataPoint;
-      retailSales?: EconomicDataPoint;
-    };
-    demographic: {
-      populationGrowth: EconomicDataPoint;
-      medianAge?: EconomicDataPoint;
-      educationalAttainment?: EconomicDataPoint;
-    };
-  };
-  trends: {
-    employment: EconomicTrendData[];
-    income: EconomicTrendData[];
-    housing: EconomicTrendData[];
-    business: EconomicTrendData[];
-    demographic: EconomicTrendData[];
-  };
-  propertyValueCorrelations: PropertyValueImpact[];
-  regionComparisons: {
-    indicator: string;
-    regions: string[];
-    values: number[];
-    regionNames: string[];
-  }[];
-}
-
-export interface EconomicSearchParams {
-  regionId?: string;
-  regionType?: string;
-  state?: string;
-  indicator?: string;
-  indicatorId?: string; // Used internally in the service
-  category?: string;
-  timeframe?: string;
-  startDate?: string;
-  endDate?: string;
+export interface EconomicIndicators {
+  locationName: string;
+  locationType: 'city' | 'county' | 'zip' | 'metro' | 'state';
+  lastUpdated: string;
+  overallEconomicHealth: number; // 0-100 score
+  economicHealthTrend: EconomicTrend;
+  employment: EmploymentData;
+  income: IncomeData;
+  business: BusinessData;
+  housingMarket: HousingMarketData;
+  dataQuality: number; // 0-100 score for data reliability
 }
 
 class EconomicIndicatorsService {
+  private static instance: EconomicIndicatorsService;
+  private apiUrl: string = '/api/economic-indicators';
+
+  private constructor() {}
+
+  public static getInstance(): EconomicIndicatorsService {
+    if (!EconomicIndicatorsService.instance) {
+      EconomicIndicatorsService.instance = new EconomicIndicatorsService();
+    }
+    return EconomicIndicatorsService.instance;
+  }
+
   /**
-   * Get all available economic indicators
-   * @returns Array of economic indicators
+   * Get economic indicators for a specific location
    */
-  async getIndicators(): Promise<EconomicIndicator[]> {
+  public async getEconomicIndicators(
+    locationCode: string,
+    locationType: 'city' | 'county' | 'zip' | 'metro' | 'state' = 'city'
+  ): Promise<EconomicIndicators> {
     try {
-      // In a production app, this would be an API call:
-      // return await apiRequest.get('/api/economic-indicators');
-      
-      // Demo implementation
-      return [
-        {
-          id: 'unemployment-rate',
-          name: 'Unemployment Rate',
-          description: 'Percentage of labor force that is unemployed and actively seeking employment',
-          category: 'employment',
-          unit: 'percent',
-          higherIsBetter: false
-        },
-        {
-          id: 'job-growth',
-          name: 'Job Growth',
-          description: 'Year-over-year percentage change in total employment',
-          category: 'employment',
-          unit: 'percent',
-          higherIsBetter: true
-        },
-        {
-          id: 'labor-force-participation',
-          name: 'Labor Force Participation',
-          description: 'Percentage of working-age population in the labor force',
-          category: 'employment',
-          unit: 'percent',
-          higherIsBetter: true
-        },
-        {
-          id: 'median-household-income',
-          name: 'Median Household Income',
-          description: 'Median annual income of households in the region',
-          category: 'income',
-          unit: 'dollars',
-          higherIsBetter: true
-        },
-        {
-          id: 'per-capita-income',
-          name: 'Per Capita Income',
-          description: 'Average income per person in the region',
-          category: 'income',
-          unit: 'dollars',
-          higherIsBetter: true
-        },
-        {
-          id: 'wage-growth',
-          name: 'Wage Growth',
-          description: 'Year-over-year percentage change in average wages',
-          category: 'income',
-          unit: 'percent',
-          higherIsBetter: true
-        },
-        {
-          id: 'median-home-price',
-          name: 'Median Home Price',
-          description: 'Median sale price of homes in the region',
-          category: 'housing',
-          unit: 'dollars',
-          higherIsBetter: true
-        },
-        {
-          id: 'home-value-growth',
-          name: 'Home Value Growth',
-          description: 'Year-over-year percentage change in home values',
-          category: 'housing',
-          unit: 'percent',
-          higherIsBetter: true
-        },
-        {
-          id: 'affordability-index',
-          name: 'Housing Affordability Index',
-          description: 'Index measuring housing affordability relative to income (higher means more affordable)',
-          category: 'housing',
-          unit: 'index',
-          higherIsBetter: true
-        },
-        {
-          id: 'construction-permits',
-          name: 'Construction Permits',
-          description: 'Number of new construction permits issued',
-          category: 'housing',
-          unit: 'number',
-          higherIsBetter: true
-        },
-        {
-          id: 'business-growth',
-          name: 'Business Growth',
-          description: 'Year-over-year percentage change in number of businesses',
-          category: 'business',
-          unit: 'percent',
-          higherIsBetter: true
-        },
-        {
-          id: 'new-business-formation',
-          name: 'New Business Formation',
-          description: 'Number of new business licenses issued per 1,000 residents',
-          category: 'business',
-          unit: 'number',
-          higherIsBetter: true
-        },
-        {
-          id: 'population-growth',
-          name: 'Population Growth',
-          description: 'Year-over-year percentage change in population',
-          category: 'demographic',
-          unit: 'percent',
-          higherIsBetter: true
-        }
-      ];
+      // For demo purposes - generate deterministic data based on location code
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          resolve(this.generateEconomicData(locationCode, locationType));
+        }, 800);
+      });
     } catch (error) {
       console.error('Error fetching economic indicators:', error);
-      throw new Error('Failed to fetch economic indicators');
+      throw error;
     }
   }
 
   /**
-   * Get economic regions
-   * @param state Optional state filter
-   * @param type Optional region type filter
-   * @returns Array of economic regions
+   * Get economic comparisons between multiple locations
    */
-  async getRegions(state?: string, type?: string): Promise<EconomicRegion[]> {
+  public async compareEconomicIndicators(
+    locationCodes: string[],
+    locationType: 'city' | 'county' | 'zip' | 'metro' | 'state' = 'city'
+  ): Promise<EconomicIndicators[]> {
     try {
-      // In a production app, this would be an API call:
-      // return await apiRequest.get('/api/economic-regions', { params: { state, type } });
+      const results: EconomicIndicators[] = [];
       
-      // Demo implementation
-      const allRegions = [
-        {
-          id: 'richland-city',
-          name: 'Richland',
-          type: 'city' as const,
-          state: 'WA',
-          population: 58225,
-          boundaries: {
-            type: 'Polygon',
-            coordinates: [[
-              [-119.35, 46.22],
-              [-119.25, 46.22],
-              [-119.25, 46.32],
-              [-119.35, 46.32],
-              [-119.35, 46.22]
-            ]]
-          }
-        },
-        {
-          id: 'grandview-city',
-          name: 'Grandview',
-          type: 'city' as const,
-          state: 'WA',
-          population: 11520,
-          boundaries: {
-            type: 'Polygon',
-            coordinates: [[
-              [-119.95, 46.22],
-              [-119.85, 46.22],
-              [-119.85, 46.28],
-              [-119.95, 46.28],
-              [-119.95, 46.22]
-            ]]
-          }
-        },
-        {
-          id: 'benton-county',
-          name: 'Benton County',
-          type: 'county' as const,
-          state: 'WA',
-          population: 205700,
-          boundaries: {
-            type: 'Polygon',
-            coordinates: [[
-              [-119.6, 46.0],
-              [-118.8, 46.0],
-              [-118.8, 46.5],
-              [-119.6, 46.5],
-              [-119.6, 46.0]
-            ]]
-          }
-        },
-        {
-          id: 'yakima-county',
-          name: 'Yakima County',
-          type: 'county' as const,
-          state: 'WA',
-          population: 256728,
-          boundaries: {
-            type: 'Polygon',
-            coordinates: [[
-              [-120.8, 46.2],
-              [-119.8, 46.2],
-              [-119.8, 46.8],
-              [-120.8, 46.8],
-              [-120.8, 46.2]
-            ]]
-          }
-        },
-        {
-          id: 'tri-cities-metro',
-          name: 'Tri-Cities Metro Area',
-          type: 'metro' as const,
-          parentRegion: 'benton-county',
-          state: 'WA',
-          population: 307150,
-          boundaries: {
-            type: 'Polygon',
-            coordinates: [[
-              [-119.6, 46.1],
-              [-118.9, 46.1],
-              [-118.9, 46.4],
-              [-119.6, 46.4],
-              [-119.6, 46.1]
-            ]]
-          }
-        },
-        {
-          id: 'wa-state',
-          name: 'Washington',
-          type: 'state' as const,
-          state: 'WA',
-          population: 7738692
-        }
-      ];
+      for (const locationCode of locationCodes) {
+        results.push(await this.getEconomicIndicators(locationCode, locationType));
+      }
       
-      // Filter regions if state or type is provided
-      return allRegions.filter(region => {
-        const stateMatch = !state || region.state === state;
-        const typeMatch = !type || region.type === type;
-        return stateMatch && typeMatch;
-      });
+      return results;
     } catch (error) {
-      console.error('Error fetching economic regions:', error);
-      throw new Error('Failed to fetch economic regions');
+      console.error('Error comparing economic indicators:', error);
+      throw error;
     }
   }
 
   /**
-   * Get indicator data for a specific region over time
-   * @param params Search parameters
-   * @returns Trend data for the indicator and region
+   * Get historical economic data for trend analysis
    */
-  async getIndicatorTrend(params: EconomicSearchParams): Promise<EconomicTrendData> {
+  public async getHistoricalEconomicData(
+    locationCode: string, 
+    locationType: 'city' | 'county' | 'zip' | 'metro' | 'state' = 'city',
+    years: number = 5
+  ): Promise<{
+    years: string[];
+    unemploymentRate: number[];
+    medianIncome: number[];
+    businessGrowth: number[];
+    housingPermits: number[];
+    jobGrowth: number[];
+  }> {
     try {
-      // In a production app, this would be an API call:
-      // return await apiRequest.get('/api/economic-trends', { params });
-      
-      // Demo implementation
-      if (!params.indicatorId || !params.regionId) {
-        throw new Error('Indicator ID and Region ID are required');
-      }
-      
-      // Get indicator and region details
-      const indicators = await this.getIndicators();
-      const regions = await this.getRegions();
-      
-      const indicator = indicators.find(i => i.id === params.indicatorId);
-      const region = regions.find(r => r.id === params.regionId);
-      
-      if (!indicator || !region) {
-        throw new Error('Invalid indicator or region ID');
-      }
-      
-      // Generate sample trend data
-      const timeframe = params.timeframe || 'year';
-      
-      // Calculate number of data points based on timeframe
-      let numPoints = 10;
-      if (timeframe === 'month') numPoints = 36; // 3 years of monthly data
-      if (timeframe === 'quarter') numPoints = 20; // 5 years of quarterly data
-      if (timeframe === 'fiveYear') numPoints = 5;
-      if (timeframe === 'tenYear') numPoints = 10;
-      
-      // Generate data points with some randomness but following a trend
-      let trend = 'stable';
-      let baseValue = 0;
-      let volatility = 0.1;
-      
-      // Set base values for different indicators
-      if (indicator.id === 'unemployment-rate') {
-        baseValue = 5.5;
-        volatility = 0.8;
-        trend = region.id === 'richland-city' ? 'down' : 'up';
-      } else if (indicator.id === 'job-growth') {
-        baseValue = 2.2;
-        volatility = 1.5;
-        trend = region.id === 'tri-cities-metro' ? 'up' : 'stable';
-      } else if (indicator.id === 'median-household-income') {
-        baseValue = 70000;
-        volatility = 5000;
-        trend = 'up';
-      } else if (indicator.id === 'per-capita-income') {
-        baseValue = 32000;
-        volatility = 2000;
-        trend = 'up';
-      } else if (indicator.id === 'median-home-price') {
-        baseValue = 350000;
-        volatility = 20000;
-        trend = 'up';
-      } else if (indicator.id === 'home-value-growth') {
-        baseValue = 8;
-        volatility = 3;
-        trend = region.id.includes('richland') ? 'up' : 'stable';
-      } else if (indicator.id === 'affordability-index') {
-        baseValue = 120;
-        volatility = 10;
-        trend = 'down';
-      } else if (indicator.id === 'population-growth') {
-        baseValue = 1.5;
-        volatility = 0.5;
-        trend = region.id.includes('richland') ? 'up' : 'stable';
-      } else {
-        baseValue = 100;
-        volatility = 10;
-      }
-      
-      // Adjust base values for different regions
-      if (region.id.includes('grandview')) {
-        baseValue = baseValue * 0.85;
-      } else if (region.id.includes('yakima')) {
-        baseValue = baseValue * 0.9;
-      } else if (region.id.includes('benton')) {
-        baseValue = baseValue * 1.05;
-      } else if (region.id.includes('tri-cities')) {
-        baseValue = baseValue * 1.1;
-      } else if (region.id.includes('wa-state')) {
-        baseValue = baseValue * 1.15;
-      }
-      
-      // Generate the data points
-      const dataPoints: EconomicDataPoint[] = [];
-      let currentValue = baseValue;
-      
-      for (let i = 0; i < numPoints; i++) {
-        // Calculate date based on timeframe
-        const date = new Date();
-        if (timeframe === 'month') {
-          date.setMonth(date.getMonth() - (numPoints - i - 1));
-        } else if (timeframe === 'quarter') {
-          date.setMonth(date.getMonth() - ((numPoints - i - 1) * 3));
-        } else {
-          date.setFullYear(date.getFullYear() - (numPoints - i - 1));
-        }
-        
-        // Adjust value based on trend
-        let trendFactor = 0;
-        if (trend === 'up') trendFactor = volatility * 0.5;
-        if (trend === 'down') trendFactor = -volatility * 0.5;
-        
-        // Add some random variation
-        const randomFactor = (Math.random() - 0.5) * volatility;
-        
-        // Update current value
-        currentValue = currentValue + trendFactor + randomFactor;
-        
-        // Ensure value doesn't go below 0 for percentage metrics
-        if (indicator.unit === 'percent' && currentValue < 0) {
-          currentValue = Math.abs(randomFactor * 0.5);
-        }
-        
-        // Round to 2 decimal places
-        currentValue = Math.round(currentValue * 100) / 100;
-        
-        // Create data point
-        dataPoints.push({
-          indicatorId: indicator.id,
-          regionId: region.id,
-          date: date.toISOString().substring(0, 10),
-          value: currentValue,
-          change: i > 0 ? ((currentValue / dataPoints[i-1].value) - 1) * 100 : 0,
-          trend: i > 0 ? (currentValue > dataPoints[i-1].value ? 'up' : currentValue < dataPoints[i-1].value ? 'down' : 'stable') : 'stable'
-        });
-      }
-      
-      // Calculate statistics
-      const values = dataPoints.map(dp => dp.value);
-      const min = Math.min(...values);
-      const max = Math.max(...values);
-      const sum = values.reduce((acc, val) => acc + val, 0);
-      const avg = sum / values.length;
-      
-      // Sort values for median
-      const sortedValues = [...values].sort((a, b) => a - b);
-      const median = sortedValues.length % 2 === 0 
-        ? (sortedValues[sortedValues.length / 2 - 1] + sortedValues[sortedValues.length / 2]) / 2
-        : sortedValues[Math.floor(sortedValues.length / 2)];
-      
-      // Calculate percent change from first to last
-      const firstValue = values[0];
-      const lastValue = values[values.length - 1];
-      const percentChange = ((lastValue / firstValue) - 1) * 100;
-      
-      // Determine current trend based on last few values
-      const recentValues = values.slice(-3);
-      let currentTrend: 'up' | 'down' | 'stable' = 'stable';
-      if (recentValues[2] > recentValues[0]) {
-        currentTrend = 'up';
-      } else if (recentValues[2] < recentValues[0]) {
-        currentTrend = 'down';
-      }
-      
-      // Generate forecast value
-      const forecastValue = lastValue * (1 + (Math.random() * 0.1 * (currentTrend === 'up' ? 1 : currentTrend === 'down' ? -1 : 0.5)));
-      const forecastTrend = forecastValue > lastValue ? 'up' : forecastValue < lastValue ? 'down' : 'stable';
-      
-      // Generate benchmarks
-      const nationalBenchmark = lastValue * (0.85 + Math.random() * 0.3);
-      const stateBenchmark = lastValue * (0.9 + Math.random() * 0.2);
-      const comparableBenchmark = lastValue * (0.95 + Math.random() * 0.1);
-      
-      return {
-        indicator,
-        region,
-        timeframe: timeframe as any,
-        data: dataPoints,
-        statistics: {
-          min,
-          max,
-          average: avg,
-          median,
-          currentValue: lastValue,
-          currentTrend,
-          percentChange,
-          forecastValue,
-          forecastTrend
-        },
-        benchmarks: {
-          national: nationalBenchmark,
-          state: stateBenchmark,
-          comparable: comparableBenchmark
-        }
-      };
+      return new Promise((resolve) => {
+        setTimeout(() => {
+          const currentYear = new Date().getFullYear();
+          const yearsArr = Array.from(
+            { length: years }, 
+            (_, i) => (currentYear - years + 1 + i).toString()
+          );
+          
+          // Base values - use locationCode hash for deterministic randomness
+          const hash = this.hashString(locationCode);
+          const baseUnemployment = 3 + (hash % 4); // 3-6%
+          const baseIncome = 40000 + (hash % 40000); // $40k-$80k
+          const baseBusinessGrowth = 1 + (hash % 4); // 1-4%
+          const baseHousingPermits = 50 + (hash % 450); // 50-500
+          const baseJobGrowth = 1 + (hash % 3); // 1-3%
+          
+          // Generate trend data with realistic fluctuations
+          const unemploymentRate = yearsArr.map((year, i) => 
+            Math.max(2, baseUnemployment - (i * 0.3) + (this.deterministicRandom(locationCode + year, -0.8, 0.8)))
+          );
+          
+          const medianIncome = yearsArr.map((year, i) => 
+            Math.round(baseIncome * (1 + (i * 0.03) + (this.deterministicRandom(locationCode + year, -0.01, 0.05))))
+          );
+          
+          const businessGrowth = yearsArr.map((year, i) => 
+            baseBusinessGrowth + (this.deterministicRandom(locationCode + year, -1, 1.5))
+          );
+          
+          const housingPermits = yearsArr.map((year, i) => 
+            Math.round(baseHousingPermits * (1 + (i * 0.04) + (this.deterministicRandom(locationCode + year, -0.2, 0.3))))
+          );
+          
+          const jobGrowth = yearsArr.map((year, i) => 
+            baseJobGrowth + (this.deterministicRandom(locationCode + year, -0.8, 1.2))
+          );
+          
+          resolve({
+            years: yearsArr,
+            unemploymentRate,
+            medianIncome,
+            businessGrowth,
+            housingPermits,
+            jobGrowth
+          });
+        }, 600);
+      });
     } catch (error) {
-      console.error('Error fetching indicator trend:', error);
-      throw new Error('Failed to fetch indicator trend data');
+      console.error('Error fetching historical economic data:', error);
+      throw error;
     }
   }
 
   /**
-   * Get a comprehensive economic dashboard for a region
-   * @param regionId ID of the region to analyze
-   * @param timeframe Timeframe for trend data
-   * @returns Dashboard data for the region
+   * Generate sample economic data for demo purposes
    */
-  async getDashboardData(regionId: string, timeframe: string = 'year'): Promise<EconomicDashboardData> {
-    try {
-      // In a production app, this would be an API call:
-      // return await apiRequest.get(`/api/economic-dashboard/${regionId}`, { params: { timeframe } });
+  private generateEconomicData(
+    locationCode: string, 
+    locationType: 'city' | 'county' | 'zip' | 'metro' | 'state'
+  ): EconomicIndicators {
+    // Use the locationCode to generate deterministic "random" values
+    const hash = this.hashString(locationCode);
+    
+    // Adjust scale based on location type
+    const locationScalar = locationType === 'city' ? 1 :
+                          locationType === 'zip' ? 1.1 :
+                          locationType === 'county' ? 1.2 :
+                          locationType === 'metro' ? 1.4 :
+                          locationType === 'state' ? 1.6 : 1;
+    
+    // Generate base metrics with appropriate ranges
+    const unemploymentBase = 3 + (hash % 4); // 3-6%
+    const unemploymentTrend = this.deterministicRandom(locationCode + 'uetrend', -0.5, 0.5);
+    
+    const incomeBase = 40000 + (hash % 40000); // $40k-$80k
+    const incomeTrend = this.deterministicRandom(locationCode + 'inctrend', 0.5, 4.5);
+    
+    const businessGrowthBase = 1 + (hash % 4); // 1-4%
+    const businessTrend = this.deterministicRandom(locationCode + 'biztrend', -1, 5);
+    
+    const constructionPermitsBase = 50 + (hash % 450); // 50-500
+    const constructionTrend = this.deterministicRandom(locationCode + 'constrtrend', -5, 15);
+    
+    const locationName = this.getLocationName(locationCode, locationType);
+    
+    return {
+      locationName,
+      locationType,
+      lastUpdated: new Date().toISOString(),
+      overallEconomicHealth: 50 + (hash % 40), // 50-90
+      economicHealthTrend: this.getTrendFromPercent(
+        this.deterministicRandom(locationCode + 'ecohealth', -3, 6)
+      ),
       
-      // Demo implementation
-      
-      // Get region details
-      const regions = await this.getRegions();
-      const region = regions.find(r => r.id === regionId);
-      
-      if (!region) {
-        throw new Error('Invalid region ID');
-      }
-      
-      // Get indicator trends for all key indicators
-      const indicators = await this.getIndicators();
-      
-      // Fetch current data points for main indicators
-      const unemploymentTrend = await this.getIndicatorTrend({
-        indicatorId: 'unemployment-rate',
-        regionId,
-        timeframe
-      });
-      
-      const jobGrowthTrend = await this.getIndicatorTrend({
-        indicatorId: 'job-growth',
-        regionId,
-        timeframe
-      });
-      
-      const laborForceTrend = await this.getIndicatorTrend({
-        indicatorId: 'labor-force-participation',
-        regionId,
-        timeframe
-      });
-      
-      const medianIncomeTrend = await this.getIndicatorTrend({
-        indicatorId: 'median-household-income',
-        regionId,
-        timeframe
-      });
-      
-      const perCapitaIncomeTrend = await this.getIndicatorTrend({
-        indicatorId: 'per-capita-income',
-        regionId,
-        timeframe
-      });
-      
-      const wageGrowthTrend = await this.getIndicatorTrend({
-        indicatorId: 'wage-growth',
-        regionId,
-        timeframe
-      });
-      
-      const homeValueTrend = await this.getIndicatorTrend({
-        indicatorId: 'median-home-price',
-        regionId,
-        timeframe
-      });
-      
-      const homeGrowthTrend = await this.getIndicatorTrend({
-        indicatorId: 'home-value-growth',
-        regionId,
-        timeframe
-      });
-      
-      const affordabilityTrend = await this.getIndicatorTrend({
-        indicatorId: 'affordability-index',
-        regionId,
-        timeframe
-      });
-      
-      const constructionTrend = await this.getIndicatorTrend({
-        indicatorId: 'construction-permits',
-        regionId,
-        timeframe
-      });
-      
-      const businessGrowthTrend = await this.getIndicatorTrend({
-        indicatorId: 'business-growth',
-        regionId,
-        timeframe
-      });
-      
-      const newBusinessTrend = await this.getIndicatorTrend({
-        indicatorId: 'new-business-formation',
-        regionId,
-        timeframe
-      });
-      
-      const populationTrend = await this.getIndicatorTrend({
-        indicatorId: 'population-growth',
-        regionId,
-        timeframe
-      });
-      
-      // Generate top industries
-      const topIndustries = [
-        {
-          name: 'Healthcare',
-          share: 18.5,
-          jobGrowth: 5.2,
-          averageWage: 68000
-        },
-        {
-          name: 'Government',
-          share: 16.8,
-          jobGrowth: 1.3,
-          averageWage: 72000
-        },
-        {
-          name: 'Retail',
-          share: 12.3,
-          jobGrowth: -0.5,
-          averageWage: 42000
-        },
-        {
-          name: 'Manufacturing',
-          share: 9.5,
-          jobGrowth: 2.1,
-          averageWage: 65000
-        }
-      ];
-      
-      // Generate income distribution
-      const incomeDistribution = [
-        { category: 'Under $25K', percentage: 14.2 },
-        { category: '$25K-$50K', percentage: 22.5 },
-        { category: '$50K-$75K', percentage: 20.8 },
-        { category: '$75K-$100K', percentage: 18.5 },
-        { category: '$100K-$150K', percentage: 15.6 },
-        { category: 'Over $150K', percentage: 8.4 }
-      ];
-      
-      // Generate property value correlations
-      const propertyValueCorrelations: PropertyValueImpact[] = [
-        {
-          indicator: 'job-growth',
-          region: regionId,
-          impact: 0.82,
-          confidenceLevel: 'high',
-          lagPeriod: '3-6 months',
-          explanation: 'Strong job growth typically precedes home value increases by 3-6 months as housing demand grows.'
-        },
-        {
-          indicator: 'median-household-income',
-          region: regionId,
-          impact: 0.74,
-          confidenceLevel: 'high',
-          lagPeriod: '0-3 months',
-          explanation: 'Rising incomes directly correlate with increasing home values as buyers can afford higher prices.'
-        },
-        {
-          indicator: 'unemployment-rate',
-          region: regionId,
-          impact: -0.65,
-          confidenceLevel: 'medium',
-          lagPeriod: '3-6 months',
-          explanation: 'Higher unemployment negatively impacts home values with a short lag as housing demand decreases.'
-        },
-        {
-          indicator: 'population-growth',
-          region: regionId,
-          impact: 0.58,
-          confidenceLevel: 'medium',
-          lagPeriod: '6-12 months',
-          explanation: 'Population growth typically precedes home value increases by 6-12 months as housing demand rises.'
-        },
-        {
-          indicator: 'new-business-formation',
-          region: regionId,
-          impact: 0.62,
-          confidenceLevel: 'medium',
-          lagPeriod: '6-12 months',
-          explanation: 'New businesses indicate economic vitality and create jobs, leading to increased housing demand.'
-        }
-      ];
-      
-      // Generate region comparisons for key metrics
-      const regionComparisons = [
-        {
-          indicator: 'median-home-price',
-          regions: ['richland-city', 'grandview-city', 'tri-cities-metro', 'wa-state'],
-          regionNames: ['Richland', 'Grandview', 'Tri-Cities Metro', 'Washington State'],
-          values: [350000, 285000, 325000, 450000]
-        },
-        {
-          indicator: 'job-growth',
-          regions: ['richland-city', 'grandview-city', 'tri-cities-metro', 'wa-state'],
-          regionNames: ['Richland', 'Grandview', 'Tri-Cities Metro', 'Washington State'],
-          values: [3.1, 1.8, 2.7, 2.5]
-        },
-        {
-          indicator: 'median-household-income',
-          regions: ['richland-city', 'grandview-city', 'tri-cities-metro', 'wa-state'],
-          regionNames: ['Richland', 'Grandview', 'Tri-Cities Metro', 'Washington State'],
-          values: [78500, 52000, 72000, 82400]
-        }
-      ];
-      
-      return {
-        region,
-        indicators: {
-          employment: {
-            unemploymentRate: unemploymentTrend.data[unemploymentTrend.data.length - 1],
-            jobGrowth: jobGrowthTrend.data[jobGrowthTrend.data.length - 1],
-            laborForceParticipation: laborForceTrend.data[laborForceTrend.data.length - 1],
-            topIndustries
+      employment: {
+        unemploymentRate: unemploymentBase,
+        employmentTrend: this.getTrendFromPercent(unemploymentTrend * -1), // Invert because lower unemployment is positive
+        laborForceParticipation: 60 + (hash % 20), // 60-80%
+        majorEmployers: [
+          {
+            name: this.getEmployerName(locationCode, 0),
+            sector: this.getSectorName(locationCode, 0),
+            employees: Math.round((500 + (hash % 2000)) * locationScalar)
           },
-          income: {
-            medianHouseholdIncome: medianIncomeTrend.data[medianIncomeTrend.data.length - 1],
-            perCapitaIncome: perCapitaIncomeTrend.data[perCapitaIncomeTrend.data.length - 1],
-            wageGrowth: wageGrowthTrend.data[wageGrowthTrend.data.length - 1],
-            incomeDistribution
+          {
+            name: this.getEmployerName(locationCode, 1),
+            sector: this.getSectorName(locationCode, 1),
+            employees: Math.round((400 + (hash % 1500)) * locationScalar)
           },
-          housing: {
-            medianHomePrice: homeValueTrend.data[homeValueTrend.data.length - 1],
-            homeValueGrowth: homeGrowthTrend.data[homeGrowthTrend.data.length - 1],
-            affordabilityIndex: affordabilityTrend.data[affordabilityTrend.data.length - 1],
-            constructionPermits: constructionTrend.data[constructionTrend.data.length - 1]
-          },
-          business: {
-            businessGrowth: businessGrowthTrend.data[businessGrowthTrend.data.length - 1],
-            newBusinessFormation: newBusinessTrend.data[newBusinessTrend.data.length - 1]
-          },
-          demographic: {
-            populationGrowth: populationTrend.data[populationTrend.data.length - 1]
+          {
+            name: this.getEmployerName(locationCode, 2),
+            sector: this.getSectorName(locationCode, 2),
+            employees: Math.round((300 + (hash % 1000)) * locationScalar)
           }
-        },
-        trends: {
-          employment: [unemploymentTrend, jobGrowthTrend, laborForceTrend],
-          income: [medianIncomeTrend, perCapitaIncomeTrend, wageGrowthTrend],
-          housing: [homeValueTrend, homeGrowthTrend, affordabilityTrend, constructionTrend],
-          business: [businessGrowthTrend, newBusinessTrend],
-          demographic: [populationTrend]
-        },
-        propertyValueCorrelations,
-        regionComparisons
-      };
-    } catch (error) {
-      console.error('Error fetching economic dashboard data:', error);
-      throw new Error('Failed to fetch economic dashboard data');
+        ],
+        sectorBreakdown: [
+          {
+            sector: 'Healthcare',
+            percentage: 10 + (hash % 15),
+            trend: this.getTrendFromPercent(this.deterministicRandom(locationCode + 'health', -1, 5))
+          },
+          {
+            sector: 'Retail',
+            percentage: 8 + (hash % 12),
+            trend: this.getTrendFromPercent(this.deterministicRandom(locationCode + 'retail', -3, 2))
+          },
+          {
+            sector: 'Manufacturing',
+            percentage: 5 + (hash % 15),
+            trend: this.getTrendFromPercent(this.deterministicRandom(locationCode + 'manuf', -4, 3))
+          },
+          {
+            sector: 'Education',
+            percentage: 7 + (hash % 10),
+            trend: this.getTrendFromPercent(this.deterministicRandom(locationCode + 'edu', -1, 3))
+          },
+          {
+            sector: 'Technology',
+            percentage: 3 + (hash % 12),
+            trend: this.getTrendFromPercent(this.deterministicRandom(locationCode + 'tech', 0, 7))
+          }
+        ],
+        jobGrowthRate: 1 + this.deterministicRandom(locationCode + 'jobgrowth', -0.5, 3)
+      },
+      
+      income: {
+        medianHouseholdIncome: Math.round(incomeBase * locationScalar),
+        incomeTrend: this.getTrendFromPercent(incomeTrend),
+        perCapitaIncome: Math.round((incomeBase * 0.4) * locationScalar),
+        incomeDistribution: [
+          { range: '<$25K', percentage: 10 + (hash % 15) },
+          { range: '$25K-$50K', percentage: 15 + (hash % 15) },
+          { range: '$50K-$75K', percentage: 20 + (hash % 15) },
+          { range: '$75K-$100K', percentage: 15 + (hash % 15) },
+          { range: '$100K-$150K', percentage: 10 + (hash % 15) },
+          { range: '>$150K', percentage: 5 + (hash % 15) }
+        ],
+        povertyRate: 5 + (hash % 10),
+        affordabilityIndex: 50 + (hash % 40),
+        medianHomeValueToIncomeRatio: 2.5 + this.deterministicRandom(locationCode + 'homeratio', 0, 5)
+      },
+      
+      business: {
+        totalBusinesses: Math.round((500 + (hash % 4500)) * locationScalar),
+        businessGrowthRate: businessGrowthBase,
+        businessTrend: this.getTrendFromPercent(businessTrend),
+        newBusinessFormation: Math.round((20 + (hash % 80)) * locationScalar),
+        businessClosures: Math.round((10 + (hash % 40)) * locationScalar),
+        topGrowingSectors: [
+          { 
+            sector: this.getSectorName(locationCode, 3), 
+            growthRate: 3 + this.deterministicRandom(locationCode + 'sector3', 0, 7) 
+          },
+          { 
+            sector: this.getSectorName(locationCode, 4), 
+            growthRate: 2 + this.deterministicRandom(locationCode + 'sector4', 0, 6) 
+          },
+          { 
+            sector: this.getSectorName(locationCode, 5), 
+            growthRate: 1 + this.deterministicRandom(locationCode + 'sector5', 0, 5) 
+          }
+        ],
+        retailSalesTrend: this.getTrendFromPercent(
+          this.deterministicRandom(locationCode + 'retail', -2, 5)
+        )
+      },
+      
+      housingMarket: {
+        constructionPermits: Math.round(constructionPermitsBase * locationScalar),
+        constructionTrend: this.getTrendFromPercent(constructionTrend),
+        vacancyRate: 3 + this.deterministicRandom(locationCode + 'vacancy', -1, 7),
+        rentalMarketStrength: 50 + (hash % 40),
+        medianRent: Math.round(((800 + (hash % 1200)) * locationScalar)),
+        rentTrend: this.getTrendFromPercent(
+          this.deterministicRandom(locationCode + 'rent', 0, 6)
+        ),
+        housingAffordability: 40 + (hash % 50),
+        homeownershipRate: 55 + (hash % 30)
+      },
+      
+      dataQuality: 70 + (hash % 25) // 70-95
+    };
+  }
+
+  /**
+   * Simple string hash function for deterministic "randomness"
+   */
+  private hashString(str: string): number {
+    let hash = 0;
+    for (let i = 0; i < str.length; i++) {
+      hash = ((hash << 5) - hash) + str.charCodeAt(i);
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    return Math.abs(hash);
+  }
+
+  /**
+   * Generate a deterministic "random" number in a range based on a seed
+   */
+  private deterministicRandom(seed: string, min: number, max: number): number {
+    const hash = this.hashString(seed);
+    return min + (hash % 1000) / 1000 * (max - min);
+  }
+
+  /**
+   * Convert a percentage change to a trend direction
+   */
+  private getTrendFromPercent(percentChange: number): EconomicTrend {
+    let direction: TrendDirection;
+    
+    if (percentChange <= -3) {
+      direction = TrendDirection.DOWN_STRONG;
+    } else if (percentChange < 0) {
+      direction = TrendDirection.DOWN_MODERATE;
+    } else if (percentChange < 1) {
+      direction = TrendDirection.STABLE;
+    } else if (percentChange < 3) {
+      direction = TrendDirection.UP_MODERATE;
+    } else {
+      direction = TrendDirection.UP_STRONG;
+    }
+    
+    let description = '';
+    switch (direction) {
+      case TrendDirection.UP_STRONG:
+        description = 'Strong growth';
+        break;
+      case TrendDirection.UP_MODERATE:
+        description = 'Moderate growth';
+        break;
+      case TrendDirection.STABLE:
+        description = 'Stable';
+        break;
+      case TrendDirection.DOWN_MODERATE:
+        description = 'Moderate decline';
+        break;
+      case TrendDirection.DOWN_STRONG:
+        description = 'Strong decline';
+        break;
+    }
+    
+    return {
+      direction,
+      percentChange: Number(percentChange.toFixed(1)),
+      description
+    };
+  }
+
+  /**
+   * Get a simulated location name
+   */
+  private getLocationName(code: string, type: string): string {
+    const cityNames = ['Grandview', 'Sunnyside', 'Yakima', 'Prosser', 'Zillah', 'Toppenish', 'Richland', 'Pasco', 'Kennewick'];
+    const countyNames = ['Yakima County', 'Benton County', 'Franklin County', 'Grant County', 'Kittitas County'];
+    const zipCodes = ['98930', '98944', '98901', '98901', '98953', '98948', '99352', '99301', '99336'];
+    const metroNames = ['Yakima Metro', 'Tri-Cities Metro', 'Ellensburg Metro', 'Moses Lake Metro'];
+    const stateNames = ['Washington', 'Oregon', 'Idaho', 'California', 'Nevada'];
+    
+    const hash = this.hashString(code);
+    
+    if (type === 'city') {
+      return cityNames[hash % cityNames.length];
+    } else if (type === 'county') {
+      return countyNames[hash % countyNames.length];
+    } else if (type === 'zip') {
+      return zipCodes[hash % zipCodes.length];
+    } else if (type === 'metro') {
+      return metroNames[hash % metroNames.length];
+    } else if (type === 'state') {
+      return stateNames[hash % stateNames.length];
+    } else {
+      return 'Unknown Location';
     }
   }
 
   /**
-   * Get a correlation analysis between two economic indicators
-   * @param indicatorX ID of first indicator
-   * @param indicatorY ID of second indicator
-   * @param regionId ID of the region
-   * @param timeframe Timeframe for trend data
-   * @returns Correlation analysis
+   * Get a simulated employer name
    */
-  async getCorrelationAnalysis(
-    indicatorX: string,
-    indicatorY: string,
-    regionId: string,
-    timeframe: string = 'year'
-  ): Promise<CorrelationResult> {
-    try {
-      // In a production app, this would be an API call:
-      // return await apiRequest.get('/api/economic-correlation', {
-      //   params: { indicatorX, indicatorY, regionId, timeframe }
-      // });
-      
-      // Demo implementation
-      
-      // Get trends for both indicators
-      const trendX = await this.getIndicatorTrend({
-        indicatorId: indicatorX,
-        regionId,
-        timeframe
-      });
-      
-      const trendY = await this.getIndicatorTrend({
-        indicatorId: indicatorY,
-        regionId,
-        timeframe
-      });
-      
-      // Make sure we have the same number of data points
-      const numPoints = Math.min(trendX.data.length, trendY.data.length);
-      const dataX = trendX.data.slice(-numPoints);
-      const dataY = trendY.data.slice(-numPoints);
-      
-      // Create scatter plot data
-      const scatterPlotData = dataX.map((pointX, i) => ({
-        x: pointX.value,
-        y: dataY[i].value,
-        date: pointX.date
-      }));
-      
-      // Calculate correlation coefficient (simplified)
-      const valuesX = dataX.map(d => d.value);
-      const valuesY = dataY.map(d => d.value);
-      
-      const meanX = valuesX.reduce((sum, val) => sum + val, 0) / valuesX.length;
-      const meanY = valuesY.reduce((sum, val) => sum + val, 0) / valuesY.length;
-      
-      let numerator = 0;
-      let denominatorX = 0;
-      let denominatorY = 0;
-      
-      for (let i = 0; i < valuesX.length; i++) {
-        const xDiff = valuesX[i] - meanX;
-        const yDiff = valuesY[i] - meanY;
-        
-        numerator += xDiff * yDiff;
-        denominatorX += xDiff * xDiff;
-        denominatorY += yDiff * yDiff;
-      }
-      
-      const correlation = numerator / (Math.sqrt(denominatorX) * Math.sqrt(denominatorY));
-      
-      // Calculate regression line
-      const slope = numerator / denominatorX;
-      const intercept = meanY - slope * meanX;
-      
-      // Calculate R-squared
-      const predicted = valuesX.map(x => slope * x + intercept);
-      const ssTotal = valuesY.reduce((sum, y) => sum + Math.pow(y - meanY, 2), 0);
-      const ssResidual = valuesY.reduce((sum, y, i) => sum + Math.pow(y - predicted[i], 2), 0);
-      const r2 = 1 - (ssResidual / ssTotal);
-      
-      // Generate insight
-      let insight = '';
-      if (Math.abs(correlation) < 0.3) {
-        insight = `There is a weak correlation between ${trendX.indicator.name} and ${trendY.indicator.name} in ${trendX.region.name}, suggesting these metrics don't significantly influence each other.`;
-      } else if (Math.abs(correlation) < 0.7) {
-        insight = `There is a moderate ${correlation > 0 ? 'positive' : 'negative'} correlation between ${trendX.indicator.name} and ${trendY.indicator.name} in ${trendX.region.name}, indicating some relationship between these metrics.`;
-      } else {
-        insight = `There is a strong ${correlation > 0 ? 'positive' : 'negative'} correlation between ${trendX.indicator.name} and ${trendY.indicator.name} in ${trendX.region.name}, suggesting that changes in one metric are closely related to changes in the other.`;
-      }
-      
-      return {
-        indicatorX,
-        indicatorY,
-        region: regionId,
-        timeframe: timeframe as any,
-        correlationCoefficient: correlation,
-        significanceLevel: 0.05, // p-value (simplified)
-        scatterPlotData,
-        regressionLine: {
-          slope,
-          intercept,
-          r2
-        },
-        insight
-      };
-    } catch (error) {
-      console.error('Error calculating correlation:', error);
-      throw new Error('Failed to calculate correlation analysis');
-    }
+  private getEmployerName(seed: string, index: number): string {
+    const employers = [
+      ['Memorial Hospital', 'Regional Medical Center', 'Community Health Systems', 'St. Mary\'s Hospital', 'Valley Medical Center'],
+      ['School District #123', 'County Public Schools', 'State University', 'Community College', 'Technical Institute'],
+      ['City Government', 'County Administration', 'Public Works Department', 'Parks & Recreation', 'Sheriff\'s Department'],
+      ['First National Bank', 'Community Bank & Trust', 'Pacific Credit Union', 'Valley Financial', 'Mountain Savings'],
+      ['Hometown Foods', 'Valley Grocery', 'Cascade Foods', 'Pacific Agricultural', 'Northwest Farms'],
+      ['Northwest Manufacturing', 'Valley Fabricators', 'Pacific Industries', 'Precision Components', 'Tech Innovations'],
+      ['Regional Distributors', 'Valley Logistics', 'Pacific Transport', 'Northwest Shipping', 'Mountain Warehousing'],
+      ['TechSoft Solutions', 'Digital Innovations', 'Pacific Systems', 'Northwest Technologies', 'Valley IT Services'],
+      ['Valley Retail Group', 'Cascade Shopping Centers', 'Pacific Retail', 'Mountain Stores', 'Northwest Outlets']
+    ];
+    
+    const hash = this.hashString(seed + index.toString());
+    const groupIndex = hash % employers.length;
+    const nameIndex = (hash + index) % employers[groupIndex].length;
+    
+    return employers[groupIndex][nameIndex];
+  }
+
+  /**
+   * Get a simulated business sector
+   */
+  private getSectorName(seed: string, index: number): string {
+    const sectors = [
+      'Healthcare',
+      'Education',
+      'Government',
+      'Financial Services',
+      'Agriculture',
+      'Manufacturing',
+      'Logistics',
+      'Technology',
+      'Retail',
+      'Construction',
+      'Hospitality',
+      'Energy',
+      'Professional Services',
+      'Real Estate'
+    ];
+    
+    const hash = this.hashString(seed + index.toString());
+    return sectors[hash % sectors.length];
   }
 }
 
-// Export singleton instance
-const economicIndicatorsService = new EconomicIndicatorsService();
+export const economicIndicatorsService = EconomicIndicatorsService.getInstance();
 export default economicIndicatorsService;

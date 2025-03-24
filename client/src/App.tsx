@@ -20,6 +20,7 @@ import PropertyEnrichmentDemo from './pages/PropertyEnrichmentDemo';
 import PropertyValuationDemo from './pages/PropertyValuationDemo';
 import NeighborhoodComparisonPage from './pages/NeighborhoodComparisonPage';
 import SchoolAndEconomicAnalysisPage from './pages/SchoolAndEconomicAnalysisPage';
+import EconomicIndicatorsPage from './pages/EconomicIndicatorsPage';
 import PropertyDetailPage from './pages/PropertyDetailPage';
 import PropertyComparisonPage from './pages/PropertyComparisonPage';
 import MarketTrendsPage from './pages/MarketTrendsPage';
@@ -74,6 +75,7 @@ const App = () => {
               <Route path="/property-valuation-demo" component={PropertyValuationDemo} />
               <Route path="/neighborhood-comparison" component={NeighborhoodComparisonPage} />
               <Route path="/school-economic-analysis" component={SchoolAndEconomicAnalysisPage} />
+              <Route path="/economic-indicators" component={EconomicIndicatorsPage} />
               <Route path="/property/:propertyId" component={PropertyDetailPage} />
               <Route path="/property-comparison" component={PropertyComparisonPage} />
               <Route path="/market-trends" component={MarketTrendsPage} />
