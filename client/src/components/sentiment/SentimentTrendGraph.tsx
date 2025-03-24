@@ -62,7 +62,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
           </div>
         )}
         
-        {dataPoint.events && dataPoint.events.length > 0 && (
+        {'events' in dataPoint && dataPoint.events && dataPoint.events.length > 0 && (
           <div className="mt-2 pt-2 border-t border-muted">
             <p className="text-xs font-medium mb-1">Notable Events:</p>
             <ul className="text-xs list-disc pl-4">
@@ -187,7 +187,7 @@ export default function SentimentTrendGraph({
     
     // Significant events
     const significantEvents = chartData
-      .filter(item => item.events && item.events.length > 0)
+      .filter(item => 'events' in item && item.events && item.events.length > 0)
       .slice(0, 2);
     
     // Add insights
@@ -208,9 +208,14 @@ export default function SentimentTrendGraph({
     }
     
     significantEvents.forEach(event => {
+      // Safely check and extract the event
+      const eventText = 'events' in event && event.events && event.events.length > 0 
+        ? event.events[0]
+        : 'Notable event';
+        
       insights.push({
         type: 'event',
-        text: `${format(parseISO(event.date), 'MMM yyyy')}: ${event.events?.[0]}`,
+        text: `${format(parseISO(event.date), 'MMM yyyy')}: ${eventText}`,
         date: event.date
       });
     });
@@ -218,7 +223,7 @@ export default function SentimentTrendGraph({
     if (futureTrend.direction !== 'stable') {
       insights.push({
         type: 'prediction',
-        text: `Predicted to ${futureTrend.direction === 'up' ? 'increase' : 'decrease'} by ${futureTrend.percentage.toFixed(1)}% in next ${timeRangeFuture} months`
+        text: `Predicted to ${futureTrend.direction === 'up' ? 'increase' : 'decrease'} by ${futureTrend.percentage?.toFixed(1) || '0.0'}% in next ${timeRangeFuture} months`
       });
     }
     
