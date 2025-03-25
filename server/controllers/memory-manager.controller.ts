@@ -21,10 +21,17 @@ let memoryOptimizationUtils: any = null;
 // Format bytes to human readable form
 function formatBytes(bytes: number): string {
   if (bytes === 0) return '0 Bytes';
+  
+  // Handle negative values
+  const isNegative = bytes < 0;
+  const absBytes = Math.abs(bytes);
+  
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  const i = Math.floor(Math.log(absBytes) / Math.log(k));
+  
+  const formatted = parseFloat((absBytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  return isNegative ? '-' + formatted : formatted;
 }
 
 // Get detailed memory stats
