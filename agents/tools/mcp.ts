@@ -268,6 +268,351 @@ async function getRelevantContext(
 }
 
 /**
+ * Extract key context elements from enhanced prompts
+ * This function parses the enhanced prompt to extract context elements
+ * that can be used in the hybrid response generation.
+ */
+function extractContextElements(enhancedPrompt: string): Record<string, any> | null {
+  try {
+    // Extract content between context markers
+    const contextRegex = /RELEVANT (?:CONTEXT|DATA POINTS|TRENDS|FACTORS|GUIDELINES|DATA|MARKET CONTEXT):(.*?)(?=\n\n|$)/s;
+    const match = enhancedPrompt.match(contextRegex);
+    
+    if (!match || !match[1]) {
+      return null;
+    }
+    
+    const contextBlock = match[1].trim();
+    
+    // If we have context information, extract useful elements
+    const elements: Record<string, any> = {};
+    
+    // Extract numerical values (prices, percentages, statistics)
+    const numericValues = extractNumericValues(contextBlock);
+    if (numericValues && Object.keys(numericValues).length > 0) {
+      elements.numerics = numericValues;
+    }
+    
+    // Extract factual statements
+    const factStatements = extractFactualStatements(contextBlock);
+    if (factStatements && factStatements.length > 0) {
+      elements.facts = factStatements;
+    }
+    
+    // Extract geographic references
+    const locations = extractLocationReferences(contextBlock);
+    if (locations && locations.length > 0) {
+      elements.locations = locations;
+    }
+    
+    // Extract time-based references
+    const timeReferences = extractTimeReferences(contextBlock);
+    if (timeReferences && Object.keys(timeReferences).length > 0) {
+      elements.timeframes = timeReferences;
+    }
+    
+    return Object.keys(elements).length > 0 ? elements : null;
+  } catch (error) {
+    console.error('[MCP Tool] Error extracting context elements:', error);
+    return null;
+  }
+}
+
+/**
+ * Extract numeric values from context block
+ */
+function extractNumericValues(text: string): Record<string, number> | null {
+  const numericValues: Record<string, number> = {};
+  
+  // Extract percentages
+  const percentageMatches = text.match(/(\d+\.?\d*)%/g);
+  if (percentageMatches) {
+    // Try to associate percentages with keywords
+    const percentageContexts = text.match(/(\w+(?:\s+\w+){0,3})\s+(\d+\.?\d*)%/g);
+    if (percentageContexts) {
+      percentageContexts.forEach(context => {
+        const parts = context.match(/(\w+(?:\s+\w+){0,3})\s+(\d+\.?\d*)%/);
+        if (parts && parts.length >= 3) {
+          const key = parts[1].toLowerCase().trim();
+          const value = parseFloat(parts[2]);
+          numericValues[`${key}_pct`] = value;
+        }
+      });
+    }
+  }
+  
+  // Extract dollar amounts
+  const dollarMatches = text.match(/\$(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)/g);
+  if (dollarMatches) {
+    // Try to associate dollar amounts with contexts
+    const dollarContexts = text.match(/(\w+(?:\s+\w+){0,3})\s+\$(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)/g);
+    if (dollarContexts) {
+      dollarContexts.forEach(context => {
+        const parts = context.match(/(\w+(?:\s+\w+){0,3})\s+\$(\d{1,3}(?:,\d{3})*(?:\.\d+)?|\d+(?:\.\d+)?)/);
+        if (parts && parts.length >= 3) {
+          const key = parts[1].toLowerCase().trim();
+          // Remove commas before parsing
+          const valueStr = parts[2].replace(/,/g, '');
+          const value = parseFloat(valueStr);
+          numericValues[`${key}_dollars`] = value;
+        }
+      });
+    }
+  }
+  
+  // Extract numeric ranges
+  const rangeMatches = text.match(/(\d+\.?\d*)\s*(?:to|-)\s*(\d+\.?\d*)/g);
+  if (rangeMatches) {
+    rangeMatches.forEach((match, index) => {
+      const parts = match.match(/(\d+\.?\d*)\s*(?:to|-)\s*(\d+\.?\d*)/);
+      if (parts && parts.length >= 3) {
+        numericValues[`range_${index}_min`] = parseFloat(parts[1]);
+        numericValues[`range_${index}_max`] = parseFloat(parts[2]);
+      }
+    });
+  }
+  
+  return Object.keys(numericValues).length > 0 ? numericValues : null;
+}
+
+/**
+ * Extract factual statements from context block
+ */
+function extractFactualStatements(text: string): string[] {
+  // Split by sentence boundaries
+  const sentences = text.split(/(?<=[.!?])\s+/);
+  
+  // Filter for sentences that are likely factual statements
+  return sentences
+    .filter(sentence => {
+      // Must be a reasonable length and not a question
+      const isReasonableLength = sentence.length > 10 && sentence.length < 200;
+      const isNotQuestion = !sentence.trim().endsWith('?');
+      
+      // Should contain indicators of factual content
+      const containsNumber = /\d/.test(sentence);
+      const containsPropertyTerm = /(propert|hous|real estate|market|valu|price|home|lot|sale)/i.test(sentence);
+      
+      return isReasonableLength && isNotQuestion && (containsNumber || containsPropertyTerm);
+    })
+    .map(sentence => sentence.trim())
+    // Limit to avoid overwhelming responses
+    .slice(0, 5);
+}
+
+/**
+ * Extract geographical references from context block
+ */
+function extractLocationReferences(text: string): string[] {
+  const locationReferences = new Set<string>();
+  
+  // Common locations and neighborhoods
+  const locationPatterns = [
+    /\b(Grandview|Yakima County|Yakima Valley)\b/g,
+    /\b([A-Z][a-z]+ (Heights|Hills|Gardens|Park|Village|District|Area))\b/g,
+    /\b(downtown|uptown|midtown|westside|eastside|northside|southside)\b/gi,
+    /\b(neighborhood|community|district|zone|region|area|county|city)\b/gi
+  ];
+  
+  locationPatterns.forEach(pattern => {
+    const matches = text.match(pattern);
+    if (matches) {
+      matches.forEach(match => locationReferences.add(match));
+    }
+  });
+  
+  return Array.from(locationReferences).slice(0, 3); // Limit to top 3
+}
+
+/**
+ * Extract time-based references from context block
+ */
+function extractTimeReferences(text: string): Record<string, string> {
+  const timeReferences: Record<string, string> = {};
+  
+  // Year references
+  const yearMatches = text.match(/\b(20\d{2})\b/g);
+  if (yearMatches && yearMatches.length > 0) {
+    timeReferences.years = yearMatches.join(', ');
+  }
+  
+  // Month or quarter references
+  const periodMatches = text.match(/\b(January|February|March|April|May|June|July|August|September|October|November|December|Q[1-4])\b/g);
+  if (periodMatches && periodMatches.length > 0) {
+    timeReferences.periods = periodMatches.join(', ');
+  }
+  
+  // Timeframe references (last X months/years, etc.)
+  const timeframeMatches = text.match(/\b(past|last|previous|recent)\s+(\d+)\s+(day|week|month|quarter|year)s?\b/gi);
+  if (timeframeMatches && timeframeMatches.length > 0) {
+    timeReferences.timeframes = timeframeMatches.join(', ');
+  }
+  
+  return Object.keys(timeReferences).length > 0 ? timeReferences : null;
+}
+
+/**
+ * Generate a hybrid response that combines dynamic generation with factual context
+ * This allows for responses that are both contextually relevant and factually accurate
+ */
+function generateHybridResponse(
+  baseResponse: string, 
+  contextElements: Record<string, any>,
+  enhancedPrompt: string
+): string {
+  try {
+    // If no context elements, return the base response
+    if (!contextElements) {
+      return baseResponse;
+    }
+    
+    // Extract topic from the prompt to guide enhancement
+    const promptLower = enhancedPrompt.toLowerCase();
+    
+    // Determine the primary subject of the query
+    const isMarketQuery = /(market|trend|forecast|outlook|appreciation)/i.test(promptLower);
+    const isPropertyQuery = /(property|home|house|valuation|appraisal)/i.test(promptLower);
+    const isInvestmentQuery = /(investment|return|roi|profit|yield)/i.test(promptLower);
+    const isPricingQuery = /(price|cost|value|worth)/i.test(promptLower);
+    
+    // Create a hybrid response by enhancing the base response with factual elements
+    let hybridResponse = baseResponse;
+    
+    // Add specific factual enhancements based on query type
+    if (contextElements.facts && contextElements.facts.length > 0) {
+      // Select relevant facts based on query type
+      const relevantFacts = contextElements.facts.filter((fact: string) => {
+        if (isMarketQuery && /(market|trend|growth|appreciation|inventory|demand|supply)/i.test(fact)) {
+          return true;
+        }
+        if (isPropertyQuery && /(property|home|house|bedroom|bathroom|square foot|lot|feature)/i.test(fact)) {
+          return true;
+        }
+        if (isInvestmentQuery && /(return|investment|profit|yield|equity|cashflow|cap rate)/i.test(fact)) {
+          return true;
+        }
+        if (isPricingQuery && /(price|value|cost|estimate|appraisal|assessment)/i.test(fact)) {
+          return true;
+        }
+        return false;
+      });
+      
+      // Insert the most relevant fact naturally into the response
+      if (relevantFacts.length > 0) {
+        // Find a good position to insert the fact - ideally at a paragraph break
+        const paragraphs = hybridResponse.split('\n\n');
+        
+        if (paragraphs.length > 1) {
+          // Add the most relevant fact after the first paragraph
+          const factToAdd = relevantFacts[0];
+          
+          // Check if the fact is already included in the response
+          if (!hybridResponse.includes(factToAdd)) {
+            const transitionPhrases = [
+              "Importantly, ", 
+              "It's worth noting that ", 
+              "According to recent data, ", 
+              "Specifically, ", 
+              "To add context, "
+            ];
+            
+            // Use a transition phrase to smoothly incorporate the fact
+            const transition = transitionPhrases[Math.floor(Math.random() * transitionPhrases.length)];
+            paragraphs.splice(1, 0, transition + factToAdd);
+            
+            hybridResponse = paragraphs.join('\n\n');
+          }
+        }
+      }
+    }
+    
+    // Add specific numeric data if available and relevant
+    if (contextElements.numerics) {
+      // For market queries, emphasize growth percentages and trends
+      if (isMarketQuery && (
+        contextElements.numerics.growth_pct || 
+        contextElements.numerics.appreciation_pct ||
+        contextElements.numerics.increase_pct
+      )) {
+        const growthValue = contextElements.numerics.growth_pct || 
+                           contextElements.numerics.appreciation_pct || 
+                           contextElements.numerics.increase_pct;
+        
+        // Only add if the specific value isn't already in the response
+        const growthPattern = new RegExp(`${growthValue}%`);
+        if (growthValue && !growthPattern.test(hybridResponse)) {
+          hybridResponse = hybridResponse.replace(
+            /(market has been|market is|appreciation|growth|increased by)/i,
+            `$1 approximately ${growthValue}%`
+          );
+        }
+      }
+      
+      // For pricing queries, emphasize dollar amounts
+      if (isPricingQuery && Object.keys(contextElements.numerics).some(k => k.endsWith('_dollars'))) {
+        // Find price-related numeric values
+        const priceKeys = Object.keys(contextElements.numerics).filter(k => k.endsWith('_dollars'));
+        if (priceKeys.length > 0) {
+          const priceKey = priceKeys[0];
+          const priceValue = contextElements.numerics[priceKey];
+          
+          // Format the price value correctly
+          const formattedPrice = new Intl.NumberFormat('en-US', { 
+            style: 'currency', 
+            currency: 'USD',
+            maximumFractionDigits: 0 
+          }).format(priceValue);
+          
+          // Only add if this specific value isn't already in the response
+          if (!hybridResponse.includes(formattedPrice)) {
+            hybridResponse = hybridResponse.replace(
+              /(average price|median price|typical price|average value|median value|homes are valued at)/i,
+              `$1 ${formattedPrice}`
+            );
+          }
+        }
+      }
+    }
+    
+    // Add location specificity if available
+    if (contextElements.locations && contextElements.locations.length > 0) {
+      const primaryLocation = contextElements.locations[0];
+      
+      // Only add if this specific location isn't prominent in the response
+      const locationMentionCount = (hybridResponse.match(new RegExp(primaryLocation, 'gi')) || []).length;
+      
+      if (locationMentionCount < 2) {
+        // Add location context in a natural way
+        hybridResponse = hybridResponse.replace(
+          /(In the market|For properties|Homes in|The neighborhood)/i,
+          `$1 in ${primaryLocation}`
+        );
+      }
+    }
+    
+    // Add time specificity if available
+    if (contextElements.timeframes && contextElements.timeframes.years) {
+      const yearReference = contextElements.timeframes.years.split(',')[0].trim();
+      
+      // Only add if this specific year isn't already in the response
+      if (!hybridResponse.includes(yearReference)) {
+        // Add year reference naturally
+        hybridResponse = hybridResponse.replace(
+          /(recent data|current trend|market condition|as of|based on)/i,
+          `$1 from ${yearReference}`
+        );
+      }
+    }
+    
+    return hybridResponse;
+  } catch (error) {
+    console.error('[MCP Tool] Error generating hybrid response:', error);
+    // Fall back to the base response if there's an error
+    return baseResponse;
+  }
+}
+
+/**
  * Integrate context with prompt based on integration strategy
  * Enhanced to provide more nuanced context integration based on query type
  */
