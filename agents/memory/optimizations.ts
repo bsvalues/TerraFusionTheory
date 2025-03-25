@@ -15,11 +15,16 @@ import { LogCategory, LogLevel } from '../../shared/schema';
 function formatBytes(bytes: number, decimals: number = 2): string {
   if (bytes === 0) return '0 Bytes';
   
+  // Handle negative values
+  const isNegative = bytes < 0;
+  const absBytes = Math.abs(bytes);
+  
   const k = 1024;
   const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
-  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  const i = Math.floor(Math.log(absBytes) / Math.log(k));
   
-  return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i];
+  const formatted = parseFloat((absBytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i];
+  return isNegative ? '-' + formatted : formatted;
 }
 
 /**
