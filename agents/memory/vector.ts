@@ -12,6 +12,19 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 /**
+ * Helper function to format bytes to human-readable format
+ */
+function formatBytes(bytes: number, decimals: number = 2): string {
+  if (bytes === 0) return '0 Bytes';
+  
+  const k = 1024;
+  const sizes = ['Bytes', 'KB', 'MB', 'GB', 'TB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(decimals)) + ' ' + sizes[i];
+}
+
+/**
  * Memory entry with vector embeddings
  */
 export interface MemoryEntry {
@@ -438,6 +451,194 @@ class EnhancedVectorStore {
         currentSize: this.entries.size
       });
     }
+  }
+  
+  /**
+   * Remove expired entries from the vector store
+   * Public method accessible by memory optimizations
+   * @returns Statistics about the operation
+   */
+  async removeExpired(): Promise<{ count: number }> {
+    const initialSize = this.entries.size;
+    await this.cleanExpiredEntries();
+    
+    const removedCount = initialSize - this.entries.size;
+    
+    this.logActivity('Executed explicit removeExpired operation', LogLevel.INFO, {
+      removedCount,
+      currentSize: this.entries.size
+    });
+    
+    return { count: removedCount };
+  }
+  
+  /**
+   * Remove duplicate or highly similar entries from the vector store
+   * @param similarityThreshold Cosine similarity threshold for considering entries as duplicates (default: 0.95)
+   * @returns Statistics about the operation
+   */
+  async removeDuplicates(similarityThreshold: number = 0.95): Promise<{ count: number }> {
+    let removedCount = 0;
+    const entriesArray = Array.from(this.entries.values());
+    
+    // Sort by importance and creation date to prefer keeping important and newer entries
+    entriesArray.sort((a, b) => {
+      // First compare by importance (higher importance first)
+      const importanceDiff = (b.metadata.importance || 0.5) - (a.metadata.importance || 0.5);
+      if (Math.abs(importanceDiff) > 0.1) return importanceDiff;
+      
+      // Then compare by creation date (newer first)
+      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+    });
+    
+    // Set to track IDs that have been processed
+    const processedIds = new Set<string>();
+    
+    // Find and remove duplicates
+    for (let i = 0; i < entriesArray.length; i++) {
+      const entry = entriesArray[i];
+      
+      // Skip if this entry has been marked as processed (removed)
+      if (processedIds.has(entry.id)) continue;
+      
+      // Mark this entry as processed
+      processedIds.add(entry.id);
+      
+      // Check for duplicates
+      for (let j = i + 1; j < entriesArray.length; j++) {
+        const otherEntry = entriesArray[j];
+        
+        // Skip if already processed
+        if (processedIds.has(otherEntry.id)) continue;
+        
+        // Check if content is similar
+        if (this.calculateCosineSimilarity(entry.embedding || [], otherEntry.embedding || []) > similarityThreshold) {
+          // Remove the duplicate entry
+          this.entries.delete(otherEntry.id);
+          this.removeEntryFromIndexes(otherEntry.id, otherEntry);
+          processedIds.add(otherEntry.id);
+          removedCount++;
+        }
+      }
+    }
+    
+    if (removedCount > 0) {
+      this.dirty = true;
+      this.logActivity('Removed duplicate memory entries', LogLevel.INFO, {
+        removedCount,
+        threshold: similarityThreshold,
+        currentSize: this.entries.size
+      });
+    }
+    
+    return { count: removedCount };
+  }
+  
+  /**
+   * Compact the vector store to reduce memory usage
+   * This performs several optimization steps to reduce memory footprint
+   * @returns Statistics about the optimization
+   */
+  async compact(): Promise<{ beforeSize: number; afterSize: number; reduction: number }> {
+    const initialSize = this.entries.size;
+    const memoryEstimate = initialSize * this.dimensions * 4; // 4 bytes per float
+    
+    // 1. Deep clean the entries to remove unused fields and minimize memory usage
+    for (const [id, entry] of this.entries.entries()) {
+      // Create a more memory-efficient copy of the entry
+      const optimizedEntry: MemoryEntry = {
+        id: entry.id,
+        text: entry.text,
+        embedding: entry.embedding,
+        metadata: {
+          source: entry.metadata.source,
+          timestamp: entry.metadata.timestamp,
+          // Only include other metadata fields if they're actually set
+          ...(entry.metadata.agentId ? { agentId: entry.metadata.agentId } : {}),
+          ...(entry.metadata.category ? { category: entry.metadata.category } : {}),
+          ...(entry.metadata.tags && entry.metadata.tags.length > 0 ? { tags: entry.metadata.tags } : {}),
+          ...(entry.metadata.importance !== undefined ? { importance: entry.metadata.importance } : {}),
+          ...(entry.metadata.confidence !== undefined ? { confidence: entry.metadata.confidence } : {}),
+          ...(entry.metadata.expiresAt ? { expiresAt: entry.metadata.expiresAt } : {})
+        },
+        createdAt: entry.createdAt,
+        updatedAt: entry.updatedAt
+      };
+      
+      // Replace with the optimized entry
+      this.entries.set(id, optimizedEntry);
+    }
+    
+    // 2. Trigger a more aggressive eviction for entries that aren't actively used
+    if (this.entries.size > this.maxEntries * 0.8) {
+      // Evict more entries than usual (15% instead of 5%)
+      const evictionCount = Math.max(1, Math.floor(this.maxEntries * 0.15));
+      
+      // Get lowest-scoring entries
+      const scoredEntries = Array.from(this.entries.entries()).map(([id, entry]) => {
+        const ageInDays = (Date.now() - new Date(entry.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
+        // More aggressive scoring formula with higher age penalty
+        const score = (entry.metadata.importance || 0.5) * (entry.metadata.confidence || 1.0) / (1 + ageInDays / 15);
+        return { id, score };
+      });
+      
+      // Sort by score (ascending)
+      scoredEntries.sort((a, b) => a.score - b.score);
+      
+      // Evict the lowest-scoring entries
+      for (let i = 0; i < evictionCount && i < scoredEntries.length; i++) {
+        const { id } = scoredEntries[i];
+        const entry = this.entries.get(id);
+        
+        if (entry) {
+          this.removeEntryFromIndexes(id, entry);
+          this.entries.delete(id);
+        }
+      }
+    }
+    
+    // Calculate memory reduction
+    const finalSize = this.entries.size;
+    const finalMemoryEstimate = finalSize * this.dimensions * 4;
+    const reduction = memoryEstimate - finalMemoryEstimate;
+    
+    this.logActivity('Compacted vector memory store', LogLevel.INFO, {
+      initialSize,
+      finalSize,
+      memoryReduction: `${(reduction / (1024 * 1024)).toFixed(2)} MB`
+    });
+    
+    return {
+      beforeSize: memoryEstimate,
+      afterSize: finalMemoryEstimate,
+      reduction
+    };
+  }
+  
+  /**
+   * Calculate cosine similarity between two vectors
+   */
+  private calculateCosineSimilarity(vec1: number[], vec2: number[]): number {
+    if (!vec1 || !vec2 || vec1.length !== vec2.length || vec1.length === 0) {
+      return 0;
+    }
+    
+    let dotProduct = 0;
+    let mag1 = 0;
+    let mag2 = 0;
+    
+    for (let i = 0; i < vec1.length; i++) {
+      dotProduct += vec1[i] * vec2[i];
+      mag1 += vec1[i] * vec1[i];
+      mag2 += vec2[i] * vec2[i];
+    }
+    
+    mag1 = Math.sqrt(mag1);
+    mag2 = Math.sqrt(mag2);
+    
+    if (mag1 === 0 || mag2 === 0) return 0;
+    
+    return dotProduct / (mag1 * mag2);
   }
   
   /**

@@ -109,28 +109,48 @@ async function runMemoryOptimization() {
     const initialMemory = process.memoryUsage();
     console.log('[MemoryManager] Running scheduled memory optimization');
     
-    // Step 1: Clean up old logs (older than 7 days)
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    // Check if memory usage is high (above 90%)
+    const memoryUsagePercent = Math.round((initialMemory.heapUsed / initialMemory.heapTotal) * 100);
+    const isHighMemoryUsage = memoryUsagePercent > 90;
+    
+    // Step 1: Clean up old logs - use more aggressive time threshold when memory is high
+    const logCleanupDays = isHighMemoryUsage ? 3 : 7; // 3 days when memory is high, 7 days normally
+    const oldLogsDate = new Date();
+    oldLogsDate.setDate(oldLogsDate.getDate() - logCleanupDays);
     
     const logStats = await storage.getLogStats();
-    const deletedLogs = await storage.clearLogs({ olderThan: sevenDaysAgo });
+    const deletedLogs = await storage.clearLogs({ olderThan: oldLogsDate });
     
-    // Step 2: Run vector memory optimization if available
+    // Step 2: Run vector memory optimization with more aggressive settings if memory usage is high
     let vectorMemoryResult = null;
     if (memoryOptimizationUtils?.optimizeVectorMemory) {
       try {
-        vectorMemoryResult = await memoryOptimizationUtils.optimizeVectorMemory();
+        // Run optimizeAllMemory instead of just optimizeVectorMemory for more comprehensive cleanup
+        if (isHighMemoryUsage && memoryOptimizationUtils.optimizeAllMemory) {
+          console.log('[MemoryManager] Running aggressive memory optimization due to high usage');
+          vectorMemoryResult = await memoryOptimizationUtils.optimizeAllMemory();
+        } else {
+          vectorMemoryResult = await memoryOptimizationUtils.optimizeVectorMemory();
+        }
       } catch (err) {
         console.error('[MemoryManager] Vector memory optimization failed:', err);
       }
     }
     
-    // Step 3: Try to run garbage collection if available
+    // Step 3: Try to run garbage collection if available (multiple times if memory usage is high)
     let gcResult;
     if (global.gc) {
       try {
-        global.gc();
+        // Run GC multiple times when memory usage is high
+        if (isHighMemoryUsage) {
+          for (let i = 0; i < 3; i++) {
+            global.gc();
+            // Small delay between GC runs
+            await new Promise(resolve => setTimeout(resolve, 100));
+          }
+        } else {
+          global.gc();
+        }
         gcResult = true;
       } catch (err) {
         gcResult = { error: err.message };
