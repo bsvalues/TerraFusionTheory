@@ -105,18 +105,43 @@ export default function SystemMonitorPage() {
     refetchInterval: 10000 // Refetch every 10 seconds
   });
   
+  // Backup query for memory stats (alternate endpoint)
+  const { data: backupMemoryStats } = useQuery({
+    queryKey: ['/api/system/memory-stats'],
+    refetchInterval: 10000, // Refetch every 10 seconds
+    // Only run this query if the primary one fails
+    enabled: !!error,
+  });
+  
+  // Use backup data if primary fails
+  const effectiveMemoryStats = memoryStats || backupMemoryStats;
+  
   // Query to fetch system health
-  const { data: systemHealth } = useQuery({
+  const { data: systemHealth, error: systemHealthError } = useQuery({
     queryKey: ['/api/system/health'],
     refetchInterval: 10000 // Refetch every 10 seconds
   });
+  
+  // Backup query for system health (from memory manager controller)
+  const { data: backupSystemHealth } = useQuery({
+    queryKey: ['/api/system/health-backup'],
+    refetchInterval: 10000, // Refetch every 10 seconds
+    // Only run this query if the primary one fails
+    enabled: !!systemHealthError,
+  });
+  
+  // Use backup data if primary fails
+  const effectiveSystemHealth = systemHealth || backupSystemHealth;
   
   // Mutation to trigger memory optimization
   const optimizeMutation = useMutation({
     mutationFn: () => apiRequest<OptimizationResult>('/api/memory/optimize', { method: 'POST' }),
     onSuccess: () => {
+      // Invalidate both primary and backup queries
       queryClient.invalidateQueries({ queryKey: ['/api/memory/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/system/memory-stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/system/health'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/system/health-backup'] });
     }
   });
   
@@ -124,14 +149,17 @@ export default function SystemMonitorPage() {
   const enhancedOptimizeMutation = useMutation({
     mutationFn: () => apiRequest<OptimizationResult>('/api/system/enhanced-cleanup-memory', { method: 'POST' }),
     onSuccess: () => {
+      // Invalidate both primary and backup queries
       queryClient.invalidateQueries({ queryKey: ['/api/memory/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/system/memory-stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/system/health'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/system/health-backup'] });
     }
   });
   
   // Calculate memory usage percentage
-  const memoryPercentage = memoryStats 
-    ? Math.round((memoryStats.memoryUsage.heapUsed / memoryStats.memoryUsage.heapTotal) * 100) 
+  const memoryPercentage = effectiveMemoryStats 
+    ? Math.round((effectiveMemoryStats.memoryUsage.heapUsed / effectiveMemoryStats.memoryUsage.heapTotal) * 100) 
     : 0;
   
   // Function to determine memory status color
@@ -172,7 +200,14 @@ export default function SystemMonitorPage() {
         <div className="flex space-x-2">
           <Button 
             variant="outline" 
-            onClick={() => refetch()}
+            onClick={() => {
+              // Invalidate both primary and backup queries
+              queryClient.invalidateQueries({ queryKey: ['/api/memory/stats'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/system/memory-stats'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/system/health'] });
+              queryClient.invalidateQueries({ queryKey: ['/api/system/health-backup'] });
+              refetch();
+            }}
             disabled={isLoading}
           >
             <RefreshCw className="h-4 w-4 mr-2" />
@@ -208,10 +243,10 @@ export default function SystemMonitorPage() {
           <CardContent>
             <div className="flex items-center justify-between space-y-1">
               <span className="text-2xl font-bold">
-                {memoryStats?.memoryUsage.formatted.heapUsed || 'Loading...'}
+                {effectiveMemoryStats?.memoryUsage.formatted.heapUsed || 'Loading...'}
               </span>
               <span className="text-muted-foreground">
-                of {memoryStats?.memoryUsage.formatted.heapTotal || '0 MB'}
+                of {effectiveMemoryStats?.memoryUsage.formatted.heapTotal || '0 MB'}
               </span>
             </div>
             <Progress 
@@ -233,7 +268,7 @@ export default function SystemMonitorPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {memoryStats?.memoryUsage.formatted.rss || 'Loading...'}
+              {effectiveMemoryStats?.memoryUsage.formatted.rss || 'Loading...'}
             </div>
             <p className="text-xs text-muted-foreground mt-2">
               Resident Set Size includes all memory used
@@ -250,10 +285,10 @@ export default function SystemMonitorPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">
-              {memoryStats?.vectorMemory?.count || 0} entries
+              {effectiveMemoryStats?.vectorMemory?.count || 0} entries
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              Approx. size: {memoryStats?.vectorMemory?.approximate_size || 'N/A'}
+              Approx. size: {effectiveMemoryStats?.vectorMemory?.approximate_size || 'N/A'}
             </p>
           </CardContent>
         </Card>
@@ -280,7 +315,7 @@ export default function SystemMonitorPage() {
             <CardHeader>
               <CardTitle>Memory Usage Details</CardTitle>
               <CardDescription>
-                Last updated: {memoryStats ? formatDate(memoryStats.timestamp) : 'N/A'}
+                Last updated: {effectiveMemoryStats ? formatDate(effectiveMemoryStats.timestamp) : 'N/A'}
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -293,32 +328,32 @@ export default function SystemMonitorPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {memoryStats && (
+                  {effectiveMemoryStats && (
                     <>
                       <TableRow>
                         <TableCell>Heap Used</TableCell>
-                        <TableCell>{memoryStats.memoryUsage.heapUsed}</TableCell>
-                        <TableCell>{memoryStats.memoryUsage.formatted.heapUsed}</TableCell>
+                        <TableCell>{effectiveMemoryStats.memoryUsage.heapUsed}</TableCell>
+                        <TableCell>{effectiveMemoryStats.memoryUsage.formatted.heapUsed}</TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell>Heap Total</TableCell>
-                        <TableCell>{memoryStats.memoryUsage.heapTotal}</TableCell>
-                        <TableCell>{memoryStats.memoryUsage.formatted.heapTotal}</TableCell>
+                        <TableCell>{effectiveMemoryStats.memoryUsage.heapTotal}</TableCell>
+                        <TableCell>{effectiveMemoryStats.memoryUsage.formatted.heapTotal}</TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell>RSS</TableCell>
-                        <TableCell>{memoryStats.memoryUsage.rss}</TableCell>
-                        <TableCell>{memoryStats.memoryUsage.formatted.rss}</TableCell>
+                        <TableCell>{effectiveMemoryStats.memoryUsage.rss}</TableCell>
+                        <TableCell>{effectiveMemoryStats.memoryUsage.formatted.rss}</TableCell>
                       </TableRow>
                       <TableRow>
                         <TableCell>External</TableCell>
-                        <TableCell>{memoryStats.memoryUsage.external}</TableCell>
-                        <TableCell>{memoryStats.memoryUsage.formatted.external}</TableCell>
+                        <TableCell>{effectiveMemoryStats.memoryUsage.external}</TableCell>
+                        <TableCell>{effectiveMemoryStats.memoryUsage.formatted.external}</TableCell>
                       </TableRow>
-                      {memoryStats.memoryUsage.arrayBuffers !== undefined && (
+                      {effectiveMemoryStats.memoryUsage.arrayBuffers !== undefined && (
                         <TableRow>
                           <TableCell>Array Buffers</TableCell>
-                          <TableCell>{memoryStats.memoryUsage.arrayBuffers}</TableCell>
+                          <TableCell>{effectiveMemoryStats.memoryUsage.arrayBuffers}</TableCell>
                           <TableCell>-</TableCell>
                         </TableRow>
                       )}
@@ -329,7 +364,7 @@ export default function SystemMonitorPage() {
             </CardContent>
           </Card>
           
-          {memoryStats?.vectorMemory && (
+          {effectiveMemoryStats?.vectorMemory && (
             <Card>
               <CardHeader>
                 <CardTitle>Vector Memory</CardTitle>
@@ -341,11 +376,11 @@ export default function SystemMonitorPage() {
                 <div className="grid grid-cols-2 gap-4">
                   <div>
                     <h3 className="text-sm font-medium mb-1">Total Entries</h3>
-                    <p className="text-2xl font-bold">{memoryStats.vectorMemory.count}</p>
+                    <p className="text-2xl font-bold">{effectiveMemoryStats.vectorMemory.count}</p>
                   </div>
                   <div>
                     <h3 className="text-sm font-medium mb-1">Approximate Size</h3>
-                    <p className="text-2xl font-bold">{memoryStats.vectorMemory.approximate_size}</p>
+                    <p className="text-2xl font-bold">{effectiveMemoryStats.vectorMemory.approximate_size}</p>
                   </div>
                 </div>
               </CardContent>
@@ -358,16 +393,16 @@ export default function SystemMonitorPage() {
             <CardHeader>
               <CardTitle>Logs Summary</CardTitle>
               <CardDescription>
-                Total log entries: {memoryStats?.logs?.totalCount || 0}
+                Total log entries: {effectiveMemoryStats?.logs?.totalCount || 0}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h3 className="text-sm font-medium mb-2">Logs by Level</h3>
-                  {memoryStats?.logs?.countByLevel && (
+                  {effectiveMemoryStats?.logs?.countByLevel && (
                     <div className="space-y-2">
-                      {Object.entries(memoryStats.logs.countByLevel).map(([level, count]) => (
+                      {Object.entries(effectiveMemoryStats.logs.countByLevel).map(([level, count]) => (
                         <div key={level} className="flex justify-between items-center">
                           <div className="flex items-center">
                             <Badge variant={getLogLevelVariant(level.toLowerCase())}>
@@ -382,9 +417,9 @@ export default function SystemMonitorPage() {
                 </div>
                 <div>
                   <h3 className="text-sm font-medium mb-2">Logs by Category</h3>
-                  {memoryStats?.logs?.countByCategory && (
+                  {effectiveMemoryStats?.logs?.countByCategory && (
                     <div className="space-y-2">
-                      {Object.entries(memoryStats.logs.countByCategory).map(([category, count]) => (
+                      {Object.entries(effectiveMemoryStats.logs.countByCategory).map(([category, count]) => (
                         <div key={category} className="flex justify-between items-center">
                           <Badge variant="outline">{category}</Badge>
                           <span>{count}</span>
@@ -419,11 +454,11 @@ export default function SystemMonitorPage() {
                   </Button>
                 </div>
                 
-                {memoryStats?.logs?.recentErrors && memoryStats.logs.recentErrors.length > 0 ? (
+                {effectiveMemoryStats?.logs?.recentErrors && effectiveMemoryStats.logs.recentErrors.length > 0 ? (
                   <div className="space-y-2">
                     {(showAllErrors 
-                      ? memoryStats.logs.recentErrors 
-                      : memoryStats.logs.recentErrors.slice(0, 3)
+                      ? effectiveMemoryStats.logs.recentErrors 
+                      : effectiveMemoryStats.logs.recentErrors.slice(0, 3)
                     ).map((error: any, index) => (
                       <Alert key={index} variant="destructive">
                         <AlertTitle>{error.message}</AlertTitle>
@@ -472,7 +507,14 @@ export default function SystemMonitorPage() {
                   </Button>
                   <Button 
                     variant="outline" 
-                    onClick={() => refetch()}
+                    onClick={() => {
+                      // Invalidate both primary and backup queries
+                      queryClient.invalidateQueries({ queryKey: ['/api/memory/stats'] });
+                      queryClient.invalidateQueries({ queryKey: ['/api/system/memory-stats'] });
+                      queryClient.invalidateQueries({ queryKey: ['/api/system/health'] });
+                      queryClient.invalidateQueries({ queryKey: ['/api/system/health-backup'] });
+                      refetch();
+                    }}
                     disabled={isLoading}
                     className="w-full"
                   >

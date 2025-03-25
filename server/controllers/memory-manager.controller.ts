@@ -321,6 +321,32 @@ export async function getMemoryStatsHandler(req: Request, res: Response, next: N
 }
 
 /**
+ * Get system memory statistics - alternative endpoint used by the system monitor
+ */
+export async function getSystemMemoryStatsHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    // This is the same as getMemoryStatsHandler, just exposed at a different URL
+    // Get basic memory stats
+    const memStats = getMemoryStats();
+    
+    // Get vector memory stats if available
+    const vectorMemory = await getVectorMemoryStats();
+    
+    // Get log statistics
+    const logStats = await storage.getLogStats();
+    
+    // Return combined stats
+    res.json({
+      ...memStats,
+      vectorMemory,
+      logs: logStats,
+    });
+  } catch (error) {
+    next(createErrorFromUnknown(error, 'Failed to get system memory statistics'));
+  }
+}
+
+/**
  * Run memory optimization
  */
 export async function optimizeMemoryHandler(req: Request, res: Response, next: NextFunction) {
@@ -450,5 +476,72 @@ export async function getSystemHealthHandler(req: Request, res: Response, next: 
     });
   } catch (error) {
     next(createErrorFromUnknown(error, 'Failed to get system health'));
+  }
+}
+
+/**
+ * Backup system health endpoint that provides simplified system health data
+ * This serves as a fallback when the primary endpoint fails
+ */
+export async function getSystemHealthBackupHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    // Get current memory usage
+    const memoryUsage = process.memoryUsage();
+    const usedMemoryMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
+    const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
+    const memoryPercentage = Math.round((usedMemoryMB / totalMemoryMB) * 100);
+    
+    // Get uptime information
+    const uptime = process.uptime();
+    const uptimeHours = Math.floor(uptime / 3600);
+    const uptimeMinutes = Math.floor((uptime % 3600) / 60);
+    const formattedUptime = `${uptimeHours}h ${uptimeMinutes}m`;
+    
+    // Try to get log statistics
+    let logStats;
+    try {
+      logStats = await storage.getLogStats();
+    } catch (err) {
+      console.error('Could not fetch log stats for backup health endpoint', err);
+      logStats = {
+        totalCount: 0,
+        countByLevel: {},
+        countByCategory: {},
+        recentErrors: []
+      };
+    }
+    
+    // Assemble health data
+    const healthData = {
+      status: 'online (backup)',
+      uptime: {
+        seconds: uptime,
+        formatted: formattedUptime
+      },
+      memory: {
+        used: usedMemoryMB,
+        total: totalMemoryMB,
+        percentage: memoryPercentage,
+        rss: Math.round(memoryUsage.rss / 1024 / 1024),
+        external: Math.round(memoryUsage.external / 1024 / 1024)
+      },
+      logs: {
+        totalCount: logStats.totalCount,
+        countByLevel: logStats.countByLevel,
+        countByCategory: logStats.countByCategory,
+        recentErrorCount: logStats.recentErrors?.length || 0
+      },
+      timestamp: new Date().toISOString()
+    };
+    
+    res.json(healthData);
+  } catch (error) {
+    console.error("Error generating backup system health data:", error);
+    // Provide minimalist response if everything fails
+    res.json({ 
+      status: 'degraded',
+      error: "Limited health data available",
+      timestamp: new Date().toISOString()
+    });
   }
 }

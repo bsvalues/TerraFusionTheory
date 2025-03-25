@@ -367,6 +367,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.get("/api/memory/stats", asyncHandler(memoryManagerController.getMemoryStatsHandler));
   app.post("/api/memory/optimize", asyncHandler(memoryManagerController.optimizeMemoryHandler)); 
   app.get("/api/system/health", asyncHandler(memoryManagerController.getSystemHealthHandler));
+  app.get("/api/system/memory-stats", asyncHandler(memoryManagerController.getSystemMemoryStatsHandler)); // Added new endpoint
   
   // Update the project messages route to use the new AI controller
   app.post("/api/v2/projects/:id/messages", async (req, res, next) => {
@@ -610,66 +611,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   }));
 
-  // System health endpoint for monitoring
-  app.get("/api/system/health", asyncHandler(async (req, res) => {
-    try {
-      // Get current memory usage
-      const memoryUsage = process.memoryUsage();
-      const usedMemoryMB = Math.round(memoryUsage.heapUsed / 1024 / 1024);
-      const totalMemoryMB = Math.round(memoryUsage.heapTotal / 1024 / 1024);
-      const memoryPercentage = Math.round((usedMemoryMB / totalMemoryMB) * 100);
-      
-      // Get uptime information
-      const uptime = process.uptime();
-      const uptimeHours = Math.floor(uptime / 3600);
-      const uptimeMinutes = Math.floor((uptime % 3600) / 60);
-      const formattedUptime = `${uptimeHours}h ${uptimeMinutes}m`;
-      
-      // Get log statistics
-      const logStats = await storage.getLogStats();
-      
-      // Get number of active connectors
-      const connectors = connectorsController.getAllConnectors;
-      
-      // Assemble health data
-      const healthData = {
-        status: 'online',
-        uptime: {
-          seconds: uptime,
-          formatted: formattedUptime
-        },
-        memory: {
-          used: usedMemoryMB,
-          total: totalMemoryMB,
-          percentage: memoryPercentage,
-          rss: Math.round(memoryUsage.rss / 1024 / 1024),
-          external: Math.round(memoryUsage.external / 1024 / 1024)
-        },
-        logs: {
-          totalCount: logStats.totalCount,
-          countByLevel: logStats.countByLevel,
-          countByCategory: logStats.countByCategory,
-          recentErrorCount: logStats.recentErrors.length
-        },
-        timestamp: new Date().toISOString()
-      };
-      
-      res.json(healthData);
-    } catch (error) {
-      console.error("Error generating system health data:", error);
-      res.status(500).json({ 
-        status: 'error',
-        error: "Failed to generate system health data",
-        timestamp: new Date().toISOString()
-      });
-    }
-  }));
+  // System health endpoint for monitoring (main endpoint)
+  app.get("/api/system/health", asyncHandler(memoryManagerController.getSystemHealthHandler));
+  
+  // Backup system health endpoint (simplified fallback)
+  app.get("/api/system/health-backup", asyncHandler(memoryManagerController.getSystemHealthBackupHandler));
   
   // System memory cleanup endpoint
   app.post("/api/system/cleanup-memory", asyncHandler(memoryManagerController.optimizeMemoryHandler));
   
   // Enhanced system memory cleanup endpoint
   app.post("/api/system/enhanced-cleanup-memory", asyncHandler(memoryManagerController.enhancedOptimizeMemoryHandler));
+  
+  // System memory stats endpoint
+  app.get("/api/system/memory-stats", asyncHandler(memoryManagerController.getSystemMemoryStatsHandler));
   
   // System monitoring test endpoint
   app.post("/api/system/test-alert", asyncHandler(async (req, res) => {
