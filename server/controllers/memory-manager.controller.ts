@@ -87,8 +87,8 @@ async function loadMemoryUtils() {
       // Use direct import path instead of __dirname which isn't available in ESM
       vectorMemoryUtils = await import('../../agents/memory/vector.ts');
       console.log('[MemoryManager] Successfully loaded vector memory module');
-    } catch (err) {
-      console.warn('[MemoryManager] Vector memory module not available:', err.message);
+    } catch (err: unknown) {
+      console.warn('[MemoryManager] Vector memory module not available:', err instanceof Error ? err.message : 'Unknown error');
     }
 
     // Try to import memory optimization utilities
@@ -96,8 +96,8 @@ async function loadMemoryUtils() {
       // Use direct import path for optimization utils
       memoryOptimizationUtils = await import('../../agents/memory/optimizations.ts');
       console.log('[MemoryManager] Successfully loaded memory optimization tools');
-    } catch (err) {
-      console.warn('[MemoryManager] Memory optimization tools not available:', err.message);
+    } catch (err: unknown) {
+      console.warn('[MemoryManager] Memory optimization tools not available:', err instanceof Error ? err.message : 'Unknown error');
     }
 
     // Schedule periodic memory optimization 
@@ -169,8 +169,8 @@ async function runMemoryOptimization() {
             global.gc();
           }
           gcResult = true;
-        } catch (err) {
-          gcResult = { error: err.message };
+        } catch (err: unknown) {
+          gcResult = { error: err instanceof Error ? err.message : 'Unknown error' };
         }
       } else {
         gcResult = { available: false };
@@ -276,12 +276,14 @@ async function runMemoryOptimization() {
         ...optimizationResult
       }
     };
-  } catch (error) {
+  } catch (error: unknown) {
     console.error('[MemoryManager] Optimization error:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error during memory optimization';
+    const errorStack = error instanceof Error && process.env.NODE_ENV !== 'production' ? error.stack : undefined;
     return {
       status: 'error',
-      message: error.message || 'Unknown error during memory optimization',
-      error: process.env.NODE_ENV !== 'production' ? error.stack : undefined
+      message: errorMessage,
+      error: errorStack
     };
   }
 }
@@ -310,7 +312,7 @@ export async function getMemoryStatsHandler(req: Request, res: Response, next: N
     const logStats = await storage.getLogStats();
     
     // Return combined stats
-    res.json({
+    return res.json({
       ...memStats,
       vectorMemory,
       logs: logStats,
@@ -336,7 +338,7 @@ export async function getSystemMemoryStatsHandler(req: Request, res: Response, n
     const logStats = await storage.getLogStats();
     
     // Return combined stats
-    res.json({
+    return res.json({
       ...memStats,
       vectorMemory,
       logs: logStats,
@@ -352,7 +354,7 @@ export async function getSystemMemoryStatsHandler(req: Request, res: Response, n
 export async function optimizeMemoryHandler(req: Request, res: Response, next: NextFunction) {
   try {
     const result = await runMemoryOptimization();
-    res.json(result);
+    return res.json(result);
   } catch (error) {
     next(createErrorFromUnknown(error, 'Memory optimization failed'));
   }
@@ -389,7 +391,7 @@ export async function enhancedOptimizeMemoryHandler(req: Request, res: Response,
       : 0;
     
     // Create success response
-    res.json({
+    return res.json({
       status: 'success',
       message: `Enhanced memory optimization completed: ${formatBytes(heapReduction)} freed (${percentReduction}%)`,
       optimization: {
@@ -447,7 +449,7 @@ export async function getSystemHealthHandler(req: Request, res: Response, next: 
     // Get scheduler info
     const schedulerStats = scheduler.getStatus();
     
-    res.json({
+    return res.json({
       status: 'ok',
       cpu: {
         model: cpuModel,
@@ -501,8 +503,8 @@ export async function getSystemHealthBackupHandler(req: Request, res: Response, 
     let logStats;
     try {
       logStats = await storage.getLogStats();
-    } catch (err) {
-      console.error('Could not fetch log stats for backup health endpoint', err);
+    } catch (err: unknown) {
+      console.error('Could not fetch log stats for backup health endpoint', err instanceof Error ? err.message : 'Unknown error');
       logStats = {
         totalCount: 0,
         countByLevel: {},
@@ -534,11 +536,11 @@ export async function getSystemHealthBackupHandler(req: Request, res: Response, 
       timestamp: new Date().toISOString()
     };
     
-    res.json(healthData);
+    return res.json(healthData);
   } catch (error) {
     console.error("Error generating backup system health data:", error);
     // Provide minimalist response if everything fails
-    res.json({ 
+    return res.json({ 
       status: 'degraded',
       error: "Limited health data available",
       timestamp: new Date().toISOString()
