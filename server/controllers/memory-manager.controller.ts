@@ -113,53 +113,140 @@ async function runMemoryOptimization() {
     const memoryUsagePercent = Math.round((initialMemory.heapUsed / initialMemory.heapTotal) * 100);
     const isHighMemoryUsage = memoryUsagePercent > 90;
     
-    // Step 1: Clean up old logs - use more aggressive time threshold when memory is high
-    const logCleanupDays = isHighMemoryUsage ? 3 : 7; // 3 days when memory is high, 7 days normally
-    const oldLogsDate = new Date();
-    oldLogsDate.setDate(oldLogsDate.getDate() - logCleanupDays);
-    
-    const logStats = await storage.getLogStats();
-    const deletedLogs = await storage.clearLogs({ olderThan: oldLogsDate });
-    
-    // Step 2: Run vector memory optimization with more aggressive settings if memory usage is high
-    let vectorMemoryResult = null;
-    if (memoryOptimizationUtils?.optimizeVectorMemory) {
+    // Use optimizeAllMemory from optimizations.ts if available - this provides better optimization
+    // with database log cleanup and other enhancements
+    let optimizationResult;
+    if (memoryOptimizationUtils?.optimizeAllMemory) {
       try {
-        // Run optimizeAllMemory instead of just optimizeVectorMemory for more comprehensive cleanup
-        if (isHighMemoryUsage && memoryOptimizationUtils.optimizeAllMemory) {
-          console.log('[MemoryManager] Running aggressive memory optimization due to high usage');
-          vectorMemoryResult = await memoryOptimizationUtils.optimizeAllMemory();
-        } else {
+        console.log('[MemoryManager] Running comprehensive memory optimization with enhanced tools');
+        optimizationResult = await memoryOptimizationUtils.optimizeAllMemory();
+      } catch (err) {
+        console.error('[MemoryManager] Enhanced memory optimization failed:', err);
+        // Fall back to basic optimization
+        optimizationResult = null;
+      }
+    }
+    
+    // If the enhanced optimization failed or isn't available, fall back to basic optimization
+    if (!optimizationResult) {
+      // Step 1: Clean up old logs - use more aggressive time threshold when memory is high
+      const logCleanupDays = isHighMemoryUsage ? 3 : 7; // 3 days when memory is high, 7 days normally
+      const oldLogsDate = new Date();
+      oldLogsDate.setDate(oldLogsDate.getDate() - logCleanupDays);
+      
+      const logStats = await storage.getLogStats();
+      const deletedLogs = await storage.clearLogs({ olderThan: oldLogsDate });
+      
+      // Step 2: Run vector memory optimization with more aggressive settings if memory usage is high
+      let vectorMemoryResult = null;
+      if (memoryOptimizationUtils?.optimizeVectorMemory) {
+        try {
           vectorMemoryResult = await memoryOptimizationUtils.optimizeVectorMemory();
+        } catch (err) {
+          console.error('[MemoryManager] Vector memory optimization failed:', err);
         }
-      } catch (err) {
-        console.error('[MemoryManager] Vector memory optimization failed:', err);
       }
-    }
-    
-    // Step 3: Try to run garbage collection if available (multiple times if memory usage is high)
-    let gcResult;
-    if (global.gc) {
-      try {
-        // Run GC multiple times when memory usage is high
-        if (isHighMemoryUsage) {
-          for (let i = 0; i < 3; i++) {
+      
+      // Step 3: Try to run garbage collection if available (multiple times if memory usage is high)
+      let gcResult;
+      if (global.gc) {
+        try {
+          // Run GC multiple times when memory usage is high
+          if (isHighMemoryUsage) {
+            for (let i = 0; i < 3; i++) {
+              global.gc();
+              // Small delay between GC runs
+              await new Promise(resolve => setTimeout(resolve, 100));
+            }
+          } else {
             global.gc();
-            // Small delay between GC runs
-            await new Promise(resolve => setTimeout(resolve, 100));
           }
-        } else {
-          global.gc();
+          gcResult = true;
+        } catch (err) {
+          gcResult = { error: err.message };
         }
-        gcResult = true;
-      } catch (err) {
-        gcResult = { error: err.message };
+      } else {
+        gcResult = { available: false };
       }
+      
+      // Measure final memory state
+      const finalMemory = process.memoryUsage();
+      
+      // Calculate improvements
+      const heapReduction = initialMemory.heapUsed - finalMemory.heapUsed;
+      const rssReduction = initialMemory.rss - finalMemory.rss;
+      const percentReduction = initialMemory.heapUsed > 0 
+        ? Math.round((heapReduction / initialMemory.heapUsed) * 100) 
+        : 0;
+      
+      // Create standard result object
+      optimizationResult = {
+        vectorMemory: vectorMemoryResult,
+        logsCleaned: {
+          initialCount: logStats.totalCount,
+          removed: deletedLogs
+        },
+        gcPerformed: gcResult !== null,
+        gcResult,
+        currentMemoryUsage: {
+          heapUsed: formatBytes(finalMemory.heapUsed),
+          rss: formatBytes(finalMemory.rss),
+          raw: finalMemory
+        }
+      };
+      
+      // Add a log entry for the optimization
+      await storage.createLog({
+        timestamp: new Date(),
+        level: LogLevel.INFO,
+        category: LogCategory.SYSTEM,
+        message: `Memory optimization completed: ${formatBytes(heapReduction)} freed (${percentReduction}%)`,
+        details: { 
+          initialMemory: { 
+            heapUsed: formatBytes(initialMemory.heapUsed),
+            rss: formatBytes(initialMemory.rss)
+          },
+          finalMemory: {
+            heapUsed: formatBytes(finalMemory.heapUsed),
+            rss: formatBytes(finalMemory.rss)
+          },
+          logsCleaned: deletedLogs,
+          vectorMemoryOptimized: vectorMemoryResult !== null
+        },
+        source: 'MemoryManager',
+        userId: null,
+        projectId: null,
+        sessionId: null,
+        duration: null,
+        statusCode: null,
+        endpoint: null,
+        tags: ["memory-optimization"]
+      });
     } else {
-      gcResult = { available: false };
+      // Log successful enhanced optimization
+      await storage.createLog({
+        timestamp: new Date(),
+        level: LogLevel.INFO,
+        category: LogCategory.SYSTEM,
+        message: `Enhanced memory optimization completed`,
+        details: { 
+          logsCleanupCount: optimizationResult.logsCleaned?.removedCount || 0,
+          vectorMemoryOptimized: true,
+          vectorMemoryResults: optimizationResult.vectorMemory,
+          gcPerformed: optimizationResult.gcPerformed
+        },
+        source: 'MemoryManager',
+        userId: null,
+        projectId: null,
+        sessionId: null,
+        duration: null,
+        statusCode: null,
+        endpoint: null,
+        tags: ["memory-optimization", "enhanced"]
+      });
     }
     
-    // Measure final memory state
+    // Measure final memory state for comparison
     const finalMemory = process.memoryUsage();
     
     // Calculate improvements
@@ -168,34 +255,6 @@ async function runMemoryOptimization() {
     const percentReduction = initialMemory.heapUsed > 0 
       ? Math.round((heapReduction / initialMemory.heapUsed) * 100) 
       : 0;
-    
-    // Add a log entry for the optimization
-    await storage.createLog({
-      timestamp: new Date(),
-      level: LogLevel.INFO,
-      category: LogCategory.SYSTEM,
-      message: `Memory optimization completed: ${formatBytes(heapReduction)} freed (${percentReduction}%)`,
-      details: { 
-        initialMemory: { 
-          heapUsed: formatBytes(initialMemory.heapUsed),
-          rss: formatBytes(initialMemory.rss)
-        },
-        finalMemory: {
-          heapUsed: formatBytes(finalMemory.heapUsed),
-          rss: formatBytes(finalMemory.rss)
-        },
-        logsCleaned: deletedLogs,
-        vectorMemoryOptimized: vectorMemoryResult !== null
-      },
-      source: 'MemoryManager',
-      userId: null,
-      projectId: null,
-      sessionId: null,
-      duration: null,
-      statusCode: null,
-      endpoint: null,
-      tags: ["memory-optimization"]
-    });
     
     return {
       status: 'success',
@@ -207,12 +266,7 @@ async function runMemoryOptimization() {
           rssReduction: formatBytes(rssReduction),
           percentReduction: `${percentReduction}%`
         },
-        vectorMemory: vectorMemoryResult,
-        logsCleaned: {
-          countBefore: logStats.totalCount,
-          deleted: deletedLogs
-        },
-        gcRun: gcResult
+        ...optimizationResult
       }
     };
   } catch (error) {
@@ -268,6 +322,65 @@ export async function optimizeMemoryHandler(req: Request, res: Response, next: N
     res.json(result);
   } catch (error) {
     next(createErrorFromUnknown(error, 'Memory optimization failed'));
+  }
+}
+
+/**
+ * Run enhanced memory optimization with database cleanup
+ */
+export async function enhancedOptimizeMemoryHandler(req: Request, res: Response, next: NextFunction) {
+  try {
+    if (!memoryOptimizationUtils?.optimizeAllMemory) {
+      return res.status(404).json({
+        status: 'error',
+        message: 'Enhanced memory optimization is not available'
+      });
+    }
+    
+    console.log('[MemoryManager] Running enhanced memory optimization via API');
+    
+    // Get initial memory stats for comparison
+    const initialMemory = process.memoryUsage();
+    
+    // Run enhanced optimization
+    const optimizationResult = await memoryOptimizationUtils.optimizeAllMemory();
+    
+    // Get final memory stats
+    const finalMemory = process.memoryUsage();
+    
+    // Calculate improvements
+    const heapReduction = initialMemory.heapUsed - finalMemory.heapUsed;
+    const rssReduction = initialMemory.rss - finalMemory.rss;
+    const percentReduction = initialMemory.heapUsed > 0 
+      ? Math.round((heapReduction / initialMemory.heapUsed) * 100) 
+      : 0;
+    
+    // Create success response
+    res.json({
+      status: 'success',
+      message: `Enhanced memory optimization completed: ${formatBytes(heapReduction)} freed (${percentReduction}%)`,
+      optimization: {
+        initialMemory: {
+          heapUsed: formatBytes(initialMemory.heapUsed),
+          rss: formatBytes(initialMemory.rss),
+          raw: initialMemory
+        },
+        finalMemory: {
+          heapUsed: formatBytes(finalMemory.heapUsed),
+          rss: formatBytes(finalMemory.rss),
+          raw: finalMemory
+        },
+        improvements: {
+          heapReduction: formatBytes(heapReduction),
+          rssReduction: formatBytes(rssReduction),
+          percentReduction: `${percentReduction}%`,
+          actualReduction: heapReduction
+        },
+        details: optimizationResult
+      }
+    });
+  } catch (error) {
+    next(createErrorFromUnknown(error, 'Enhanced memory optimization failed'));
   }
 }
 

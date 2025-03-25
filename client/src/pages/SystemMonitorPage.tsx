@@ -41,7 +41,7 @@ interface MemoryStats {
   timestamp: string;
 }
 
-interface OptimizationResult {
+interface StandardOptimizationResult {
   status: string;
   optimizations: {
     initialMemory: {
@@ -68,6 +68,33 @@ interface OptimizationResult {
   };
 }
 
+interface EnhancedOptimizationResult {
+  status: string;
+  message: string;
+  optimization: {
+    initialMemory: {
+      heapUsed: string;
+      rss: string;
+      raw: any;
+    };
+    finalMemory: {
+      heapUsed: string;
+      rss: string;
+      raw: any;
+    };
+    improvements: {
+      heapReduction: string;
+      rssReduction: string;
+      percentReduction: string;
+      actualReduction: number;
+    };
+    details: any;
+  };
+}
+
+// Combined type for both standard and enhanced results
+type OptimizationResult = StandardOptimizationResult | EnhancedOptimizationResult;
+
 export default function SystemMonitorPage() {
   const [activeTab, setActiveTab] = useState('memory');
   const [showAllErrors, setShowAllErrors] = useState(false);
@@ -87,6 +114,15 @@ export default function SystemMonitorPage() {
   // Mutation to trigger memory optimization
   const optimizeMutation = useMutation({
     mutationFn: () => apiRequest<OptimizationResult>('/api/memory/optimize', { method: 'POST' }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['/api/memory/stats'] });
+      queryClient.invalidateQueries({ queryKey: ['/api/system/health'] });
+    }
+  });
+  
+  // Mutation to trigger enhanced memory optimization
+  const enhancedOptimizeMutation = useMutation({
+    mutationFn: () => apiRequest<OptimizationResult>('/api/system/enhanced-cleanup-memory', { method: 'POST' }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['/api/memory/stats'] });
       queryClient.invalidateQueries({ queryKey: ['/api/system/health'] });
@@ -426,13 +462,13 @@ export default function SystemMonitorPage() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
                   <Button 
                     onClick={() => optimizeMutation.mutate()} 
-                    disabled={optimizeMutation.isPending}
+                    disabled={optimizeMutation.isPending || enhancedOptimizeMutation.isPending}
                     className="w-full"
                   >
-                    {optimizeMutation.isPending ? 'Optimizing...' : 'Run Memory Optimization'}
+                    {optimizeMutation.isPending ? 'Optimizing...' : 'Standard Optimization'}
                   </Button>
                   <Button 
                     variant="outline" 
@@ -445,35 +481,68 @@ export default function SystemMonitorPage() {
                   </Button>
                 </div>
                 
-                {optimizeMutation.data && (
+                <div className="mb-4">
+                  <Button 
+                    onClick={() => enhancedOptimizeMutation.mutate()} 
+                    disabled={optimizeMutation.isPending || enhancedOptimizeMutation.isPending}
+                    className="w-full bg-amber-600 hover:bg-amber-700"
+                  >
+                    {enhancedOptimizeMutation.isPending ? 'Performing Deep Cleanup...' : 'Enhanced Memory Cleanup (includes database)'}
+                  </Button>
+                  <p className="text-xs text-muted-foreground mt-1 text-center">
+                    Use when memory usage is critically high (&gt;95%). Cleans up database logs and vector memory.
+                  </p>
+                </div>
+                
+                {(optimizeMutation.data || enhancedOptimizeMutation.data) && (
                   <div className="mt-4 border rounded-lg p-4">
                     <h3 className="font-medium mb-2">Last Optimization Results</h3>
+                    <div className="flex justify-between items-center mb-2">
+                      <p className="text-xs text-muted-foreground">
+                        {enhancedOptimizeMutation.data ? 'Enhanced optimization' : 'Standard optimization'}
+                      </p>
+                    </div>
                     <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                       <div>
                         <p className="text-sm font-medium">Memory Reduction</p>
                         <p className="text-xl font-bold">
-                          {optimizeMutation.data.optimizations.improvements.heapReduction}
+                          {enhancedOptimizeMutation.data 
+                            ? enhancedOptimizeMutation.data.optimization.improvements.heapReduction
+                            : optimizeMutation.data?.optimizations.improvements.heapReduction}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          {optimizeMutation.data.optimizations.improvements.percentReduction} reduction
+                          {enhancedOptimizeMutation.data 
+                            ? enhancedOptimizeMutation.data.optimization.improvements.percentReduction
+                            : optimizeMutation.data?.optimizations.improvements.percentReduction} reduction
                         </p>
                       </div>
                       <div>
                         <p className="text-sm font-medium">Logs Cleaned</p>
                         <p className="text-xl font-bold">
-                          {optimizeMutation.data.optimizations.logsCleaned?.deleted || 0}
+                          {enhancedOptimizeMutation.data 
+                            ? enhancedOptimizeMutation.data.optimization.logsCleaned?.deleted || 0
+                            : optimizeMutation.data?.optimizations.logsCleaned?.deleted || 0}
                         </p>
                         <p className="text-xs text-muted-foreground">
-                          out of {optimizeMutation.data.optimizations.logsCleaned?.countBefore || 0} old logs
+                          out of {enhancedOptimizeMutation.data 
+                            ? enhancedOptimizeMutation.data.optimization.logsCleaned?.countBefore || 0
+                            : optimizeMutation.data?.optimizations.logsCleaned?.countBefore || 0} old logs
                         </p>
                       </div>
                       <div>
                         <p className="text-sm font-medium">Vector Memory</p>
                         <p className="text-sm">
-                          {optimizeMutation.data.optimizations.vectorMemory ? 
-                            (typeof optimizeMutation.data.optimizations.vectorMemory === 'object' ? 
-                              'Optimized' : 'Not optimized') : 
-                            'No action taken'}
+                          {enhancedOptimizeMutation.data 
+                            ? (enhancedOptimizeMutation.data.optimization.vectorMemory 
+                                ? (typeof enhancedOptimizeMutation.data.optimization.vectorMemory === 'object' 
+                                    ? 'Optimized' 
+                                    : 'Not optimized')
+                                : 'No action taken')
+                            : (optimizeMutation.data?.optimizations.vectorMemory 
+                                ? (typeof optimizeMutation.data.optimizations.vectorMemory === 'object'
+                                    ? 'Optimized'
+                                    : 'Not optimized')
+                                : 'No action taken')}
                         </p>
                       </div>
                     </div>
@@ -483,11 +552,15 @@ export default function SystemMonitorPage() {
                       <div className="grid grid-cols-2 gap-2 mt-1">
                         <div className="text-xs">
                           <span className="text-muted-foreground">Before: </span>
-                          {Math.round(optimizeMutation.data.optimizations.initialMemory.heapUsed / 1024 / 1024)} MB
+                          {enhancedOptimizeMutation.data 
+                            ? Math.round(enhancedOptimizeMutation.data.optimization.initialMemory.heapUsed / 1024 / 1024)
+                            : Math.round(optimizeMutation.data?.optimizations.initialMemory.heapUsed / 1024 / 1024)} MB
                         </div>
                         <div className="text-xs">
                           <span className="text-muted-foreground">After: </span>
-                          {Math.round(optimizeMutation.data.optimizations.finalMemory.heapUsed / 1024 / 1024)} MB
+                          {enhancedOptimizeMutation.data 
+                            ? Math.round(enhancedOptimizeMutation.data.optimization.finalMemory.heapUsed / 1024 / 1024)
+                            : Math.round(optimizeMutation.data?.optimizations.finalMemory.heapUsed / 1024 / 1024)} MB
                         </div>
                       </div>
                     </div>

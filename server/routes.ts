@@ -662,6 +662,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // System memory cleanup endpoint
   app.post("/api/system/cleanup-memory", asyncHandler(memoryManagerController.optimizeMemoryHandler));
   
+  // Enhanced system memory cleanup endpoint
+  app.post("/api/system/enhanced-cleanup-memory", asyncHandler(memoryManagerController.enhancedOptimizeMemoryHandler));
+  
   // System monitoring test endpoint
   app.post("/api/system/test-alert", asyncHandler(async (req, res) => {
     try {
