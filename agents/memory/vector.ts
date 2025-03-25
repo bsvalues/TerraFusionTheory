@@ -570,15 +570,16 @@ class EnhancedVectorStore {
     }
     
     // 2. Trigger a more aggressive eviction for entries that aren't actively used
-    if (this.entries.size > this.maxEntries * 0.8) {
-      // Evict more entries than usual (15% instead of 5%)
-      const evictionCount = Math.max(1, Math.floor(this.maxEntries * 0.15));
+    // Lowered threshold from 0.8 to 0.5 to allow for cleanup even with few entries
+    if (this.entries.size > this.maxEntries * 0.5 || this.entries.size > 15) {
+      // Evict more entries than usual (20% instead of 15%)
+      const evictionCount = Math.max(2, Math.floor(this.maxEntries * 0.2));
       
       // Get lowest-scoring entries
       const scoredEntries = Array.from(this.entries.entries()).map(([id, entry]) => {
         const ageInDays = (Date.now() - new Date(entry.updatedAt).getTime()) / (1000 * 60 * 60 * 24);
         // More aggressive scoring formula with higher age penalty
-        const score = (entry.metadata.importance || 0.5) * (entry.metadata.confidence || 1.0) / (1 + ageInDays / 15);
+        const score = (entry.metadata.importance || 0.5) * (entry.metadata.confidence || 1.0) / (1 + ageInDays / 10);
         return { id, score };
       });
       

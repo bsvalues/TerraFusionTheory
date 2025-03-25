@@ -48,11 +48,12 @@ export async function optimizeVectorMemory() {
       removeExpiredResult = await vectorMemory.removeExpired();
     }
     
-    // Step 2: Clean up duplicates (if any) with more aggressive threshold
-    // when there are a lot of entries (> 100)
+    // Step 2: Clean up duplicates with a more aggressive threshold
+    // Lowered thresholds to work with fewer total entries (>15 instead of >100)
     let removeDuplicatesResult = { count: 0 };
     if (typeof vectorMemory.removeDuplicates === 'function') {
-      const similarityThreshold = initialCount > 100 ? 0.92 : 0.95;
+      // More aggressive similarity threshold even with fewer entries
+      const similarityThreshold = initialCount > 15 ? 0.90 : 0.95;
       removeDuplicatesResult = await vectorMemory.removeDuplicates(similarityThreshold);
     }
     
@@ -62,15 +63,16 @@ export async function optimizeVectorMemory() {
       compactionResult = await vectorMemory.compact();
     }
     
-    // Step 4: Perform a more aggressive pruning if we still have a lot of entries
+    // Step 4: Perform a more aggressive pruning even with fewer entries
     const midwayCount = await vectorMemory.count();
-    if (midwayCount > 100 && initialCount - midwayCount < 10) {
-      // If we've removed fewer than 10 entries and still have > 100, be more aggressive
-      console.log('[MemoryOptimizer] Performing aggressive cleanup due to high entry count');
+    // Lowered threshold from 100 to 15 to match our current environment
+    if (midwayCount > 15 && initialCount - midwayCount < 5) {
+      // If we've removed fewer than 5 entries and still have > 15, be more aggressive
+      console.log('[MemoryOptimizer] Performing aggressive cleanup with lower thresholds');
       
       if (typeof vectorMemory.removeDuplicates === 'function') {
-        // Use a more aggressive similarity threshold
-        const aggressiveResult = await vectorMemory.removeDuplicates(0.85);
+        // Even more aggressive similarity threshold
+        const aggressiveResult = await vectorMemory.removeDuplicates(0.80);
         removeDuplicatesResult.count += aggressiveResult.count;
       }
     }
@@ -333,14 +335,58 @@ export async function optimizeAllMemory() {
   // Clean up database logs
   const logsCleanupResult = await cleanupDatabaseLogs();
   
-  // Force garbage collection if available
+  // Force garbage collection if available - multiple attempts for better memory reclamation
   let gcResult = null;
   if (global.gc) {
     try {
+      // Run garbage collection multiple times with small delays between runs
+      // This can help free up more memory, especially with complex object graphs
+      console.log('[MemoryOptimizer] Running multiple garbage collection passes');
+      
+      // First GC pass
       global.gc();
-      gcResult = true;
+      
+      // Wait a moment to let finalizers run
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Second GC pass - may collect objects that were waiting on finalizers
+      global.gc();
+      
+      // Wait again
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      // Final GC pass
+      global.gc();
+      
+      gcResult = { 
+        success: true,
+        passes: 3
+      };
     } catch (err) {
       gcResult = { error: err.message };
+    }
+  } else {
+    // If no explicit GC available, try to trigger implicit GC via memory pressure
+    console.log('[MemoryOptimizer] No explicit GC available, trying alternative memory pressure approach');
+    try {
+      // Create and release large temporary arrays to trigger implicit GC
+      const tempArrays = [];
+      for (let i = 0; i < 5; i++) {
+        tempArrays.push(new Array(1000000).fill(0));
+      }
+      // Clear the reference
+      tempArrays.length = 0;
+      
+      gcResult = {
+        success: true,
+        method: 'implicit'
+      };
+    } catch (err) {
+      gcResult = { 
+        success: false,
+        error: 'Failed to trigger implicit GC',
+        message: err.message
+      };
     }
   }
   

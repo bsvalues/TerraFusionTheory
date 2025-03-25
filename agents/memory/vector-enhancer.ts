@@ -133,35 +133,73 @@ export class VectorMemoryEnhancer {
     entriesBefore: number;
     entriesAfter: number;
     memoryReduction: number;
+    redundantEntriesRemoved?: number;
   }> {
     try {
       // Get all entries
       const entries = await vectorMemory.getAllEntries();
       const entriesBefore = entries.length;
       
-      // Skip if under limit
-      if (entries.length <= this.config.maxEntries) {
+      // Step 1: First try to remove redundant entries
+      console.log('[VectorMemoryEnhancer] Checking for redundant entries...');
+      const redundantEntries = await this.identifyRedundantEntries();
+      
+      // Remove redundant entries first as a priority
+      let redundantRemoved = 0;
+      if (redundantEntries.length > 0) {
+        console.log(`[VectorMemoryEnhancer] Found ${redundantEntries.length} redundant entries to remove`);
+        
+        for (const id of redundantEntries) {
+          try {
+            // Delete the entry
+            const deleted = await vectorMemory.deleteEntry(id);
+            if (deleted) {
+              redundantRemoved++;
+              
+              // Also remove from tracking maps
+              this.accessCounts.delete(id);
+              this.lastAccessed.delete(id);
+            }
+          } catch (error) {
+            console.error(`[VectorMemoryEnhancer] Failed to delete redundant entry ${id}:`, error);
+          }
+        }
+        
+        console.log(`[VectorMemoryEnhancer] Successfully removed ${redundantRemoved} redundant entries`);
+      }
+      
+      // Get updated entry count after removing redundant entries
+      const entriesAfterRedundantRemoval = await vectorMemory.count();
+      
+      // Skip if under limit after removing redundant entries
+      if (entriesAfterRedundantRemoval <= this.config.maxEntries) {
         return { 
           entriesBefore,
-          entriesAfter: entriesBefore,
-          memoryReduction: 0
+          entriesAfter: entriesAfterRedundantRemoval,
+          memoryReduction: entriesBefore - entriesAfterRedundantRemoval,
+          redundantEntriesRemoved: redundantRemoved
         };
       }
       
-      // Calculate pruning amount
-      const entriesToRemove = entries.length - this.config.maxEntries;
+      // Step 2: If still over limit, continue with regular scoring-based pruning
+      // Calculate pruning amount (accounting for already removed redundant entries)
+      const entriesToRemove = entriesAfterRedundantRemoval - this.config.maxEntries;
       
-      // Skip if nothing to remove
+      // Skip if nothing more to remove
       if (entriesToRemove <= 0) {
         return { 
           entriesBefore,
-          entriesAfter: entriesBefore,
-          memoryReduction: 0
+          entriesAfter: entriesAfterRedundantRemoval,
+          memoryReduction: entriesBefore - entriesAfterRedundantRemoval,
+          redundantEntriesRemoved: redundantRemoved
         };
       }
       
+      // Get updated entries after redundant removal
+      const remainingEntries = await vectorMemory.getAllEntries();
+      
       // Calculate scores for each entry
-      const scoredEntries = entries.map(entry => {
+      const scoredEntries = remainingEntries.map(entry => {
         const accessCount = this.accessCounts.get(entry.id) || 0;
         const lastAccessed = this.lastAccessed.get(entry.id) || 0;
         
@@ -186,35 +224,44 @@ export class VectorMemoryEnhancer {
         .slice(0, entriesToRemove)
         .map(item => item.id);
       
-      // Remove entries
+      // Remove entries based on score
+      let scoreBasedRemoved = 0;
       for (const id of idsToRemove) {
-        // Since we don't have direct access to a delete method,
-        // we'll instead log the ID for handling in a separate process
-        console.log(`[VectorMemoryEnhancer] Marked entry ${id} for removal`);
-        
-        // In a real implementation, we'd have proper access to the delete method
-        // For now, we'll skip the actual deletion since we don't have access to it
-        
-        // Also clean up tracking maps
-        this.accessCounts.delete(id);
-        this.lastAccessed.delete(id);
+        try {
+          console.log(`[VectorMemoryEnhancer] Removing low-scoring entry ${id}`);
+          
+          // Actually remove the entry from vector memory
+          const deleted = await vectorMemory.deleteEntry(id);
+          if (deleted) {
+            scoreBasedRemoved++;
+            
+            // Clean up tracking maps
+            this.accessCounts.delete(id);
+            this.lastAccessed.delete(id);
+          }
+        } catch (error) {
+          console.error(`[VectorMemoryEnhancer] Failed to remove entry ${id}:`, error);
+        }
       }
       
-      // Calculate memory stats
+      // Calculate final memory stats
       const entriesAfter = await vectorMemory.count();
-      const memoryReduction = entriesToRemove;
+      const memoryReduction = entriesBefore - entriesAfter;
       
       // Log the optimization
       await logMemoryOptimization('memory_pruned', {
         entriesBefore,
         entriesAfter,
-        entriesRemoved: entriesToRemove
+        redundantRemoved,
+        scoreBasedRemoved,
+        totalRemoved: memoryReduction
       }, LogLevel.INFO);
       
       return {
         entriesBefore,
         entriesAfter,
-        memoryReduction
+        memoryReduction,
+        redundantEntriesRemoved: redundantRemoved
       };
     } catch (error) {
       console.error('Error optimizing memory:', error);
@@ -224,7 +271,8 @@ export class VectorMemoryEnhancer {
       return {
         entriesBefore: count,
         entriesAfter: count,
-        memoryReduction: 0
+        memoryReduction: 0,
+        redundantEntriesRemoved: 0
       };
     }
   }
@@ -267,18 +315,17 @@ export class VectorMemoryEnhancer {
         // Update entry if optimized
         if (byteSaving > 0) {
           try {
-            // Try to update with what's available - in a real implementation
-            // we would use vectorMemory.updateEntry(id, updates)
-            console.log(`[VectorMemoryEnhancer] Would update entry ${entry.id} (savings: ${byteSaving} bytes)`);
+            // Actually update the entry with optimized data
+            console.log(`[VectorMemoryEnhancer] Updating entry ${entry.id} (savings: ${byteSaving} bytes)`);
             
-            // Mock implementation - in production we'd use:
-            // await vectorMemory.updateEntry(entry.id, {
-            //   text: optimized.text,
-            //   embedding: optimized.embedding,
-            //   metadata: optimized.metadata
-            // });
+            // Update the entry with optimized version
+            await vectorMemory.updateEntry(entry.id, {
+              text: optimized.text,
+              embedding: optimized.embedding,
+              metadata: optimized.metadata
+            });
           } catch (error) {
-            console.warn(`Could not update entry ${entry.id}, will try again in next cycle`);
+            console.warn(`Could not update entry ${entry.id}: ${error.message}`);
           }
         }
       }
@@ -332,6 +379,107 @@ export class VectorMemoryEnhancer {
     }, 15 * 60 * 1000); // 15 minutes
   }
   
+  /**
+   * Identify and remove redundant or duplicate entries
+   * Returns a list of entry IDs that were identified as redundant
+   */
+  public async identifyRedundantEntries(): Promise<string[]> {
+    try {
+      // Get all entries
+      const entries = await vectorMemory.getAllEntries();
+      
+      // Skip if too few entries
+      if (entries.length < 5) {  // Need at least a few entries to find duplicates
+        return [];
+      }
+      
+      // Map to track highly similar entries by textual content
+      const similarityGroups: Record<string, string[]> = {};
+      const redundantIds: string[] = [];
+      
+      // Group entries by content similarity
+      for (const entry of entries) {
+        // Skip entries with importance > 0.8 (preserve important entries)
+        if ((entry.metadata?.importance || 0) > 0.8) {
+          continue;
+        }
+        
+        // Create a simple hash of the entry content for grouping
+        const contentHash = this.simpleHash(entry.text);
+        
+        if (!similarityGroups[contentHash]) {
+          similarityGroups[contentHash] = [];
+        }
+        
+        // Add to appropriate group
+        similarityGroups[contentHash].push(entry.id);
+      }
+      
+      // For each group with multiple entries, mark all but the newest for removal
+      for (const hash in similarityGroups) {
+        const group = similarityGroups[hash];
+        
+        // If we have more than one entry with similar content
+        if (group.length > 1) {
+          // Get full entries to determine which to keep
+          const fullEntries = await Promise.all(
+            group.map(id => vectorMemory.findById(id))
+          );
+          
+          // Remove nulls (entries that might have been deleted)
+          const validEntries = fullEntries.filter(entry => entry !== null) as MemoryEntry[];
+          
+          // Sort by created date (descending = newest first)
+          validEntries.sort((a, b) => 
+            new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
+          );
+          
+          // Keep the newest entry, mark others as redundant
+          // Skip the first one (newest, which we'll keep)
+          for (let i = 1; i < validEntries.length; i++) {
+            redundantIds.push(validEntries[i].id);
+          }
+        }
+      }
+      
+      // Log the identified redundant entries
+      await logMemoryOptimization('redundant_entries_identified', {
+        totalEntries: entries.length,
+        redundantEntries: redundantIds.length,
+        redundantIds
+      }, LogLevel.INFO);
+      
+      return redundantIds;
+    } catch (error) {
+      console.error('Error identifying redundant entries:', error);
+      return [];
+    }
+  }
+  
+  /**
+   * Create a simple hash for content similarity grouping
+   */
+  private simpleHash(text: string): string {
+    // Normalize text
+    const normalized = text
+      .toLowerCase()
+      .replace(/[^\w\s]/g, '')  // Remove punctuation
+      .replace(/\s+/g, ' ')     // Normalize whitespace
+      .trim();
+    
+    // Take the first 100 characters as a simple hash
+    const shortText = normalized.substring(0, 100);
+    
+    // Generate a more unique hash from the shortened text
+    let hash = 0;
+    for (let i = 0; i < shortText.length; i++) {
+      hash = ((hash << 5) - hash) + shortText.charCodeAt(i);
+      hash = hash & hash; // Convert to 32bit integer
+    }
+    
+    return hash.toString(16);
+  }
+    
   /**
    * Clean up resources
    */
