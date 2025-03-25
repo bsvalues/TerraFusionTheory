@@ -283,9 +283,12 @@ class EnhancedVectorStore {
     }
     
     // Log the addition
+    const textStr = typeof text === 'string' ? text : String(text || '');
+    const textPreview = textStr.length > 50 ? textStr.substring(0, 50) + '...' : textStr;
+    
     this.logActivity('Added memory entry', LogLevel.DEBUG, {
       id,
-      textPreview: text.substring(0, 50) + (text.length > 50 ? '...' : ''),
+      textPreview,
       metadata: {
         source: metadata.source,
         category: metadata.category,
@@ -897,12 +900,16 @@ class EnhancedVectorStore {
     // Extract entries with improved pre-filtering using indexes
     let candidateEntries = this.getFilteredEntries(options?.filter);
     
+    // Ensure query is a string
+    const queryStr = typeof query === 'string' ? query : String(query || '');
+    const queryPreview = queryStr.length > 50 ? queryStr.substring(0, 50) + '...' : queryStr;
+    
     // Enhanced logging for debugging empty results
-    console.log(`[VectorMemory] Search query: "${query.substring(0, 50)}..." with ${candidateEntries.length} candidate entries`);
+    console.log(`[VectorMemory] Search query: "${queryPreview}" with ${candidateEntries.length} candidate entries`);
     if (candidateEntries.length === 0) {
       console.log(`[VectorMemory] WARNING: No candidate entries found for search. Check filter settings or add entries.`);
       this.logActivity('Empty candidate set for search', LogLevel.WARNING, {
-        query: query.substring(0, 50) + (query.length > 50 ? '...' : ''),
+        query: queryPreview,
         filter: options?.filter
       });
       return [];
@@ -912,7 +919,10 @@ class EnhancedVectorStore {
     if (candidateEntries.length > 0) {
       console.log(`[VectorMemory] First ${Math.min(3, candidateEntries.length)} candidate entries:`);
       candidateEntries.slice(0, 3).forEach((entry, i) => {
-        console.log(`[VectorMemory] Candidate ${i+1}: ${entry.text.substring(0, 100)}... (has embedding: ${!!entry.embedding})`);
+        // Ensure entry text is a string
+        const entryTextStr = typeof entry.text === 'string' ? entry.text : String(entry.text || '');
+        const entryPreview = entryTextStr.length > 100 ? entryTextStr.substring(0, 100) + '...' : entryTextStr;
+        console.log(`[VectorMemory] Candidate ${i+1}: ${entryPreview} (has embedding: ${!!entry.embedding})`);
       });
     }
     
@@ -1015,14 +1025,18 @@ class EnhancedVectorStore {
     
     // Log details about final results
     if (limitedResults.length > 0) {
-      console.log(`[VectorMemory] Top result score: ${limitedResults[0].score.toFixed(4)}, text: "${
-        limitedResults[0].entry.text.substring(0, 100)}..."`);
+      // Ensure entry text is a string
+      const entryText = limitedResults[0].entry.text;
+      const entryTextStr = typeof entryText === 'string' ? entryText : String(entryText || '');
+      const entryPreview = entryTextStr.length > 100 ? entryTextStr.substring(0, 100) + '...' : entryTextStr;
+      
+      console.log(`[VectorMemory] Top result score: ${limitedResults[0].score.toFixed(4)}, text: "${entryPreview}"`);
     } else {
       console.log(`[VectorMemory] WARNING: No results above threshold (${threshold}). Consider lowering threshold.`);
     }
     
     this.logActivity('Performed enhanced vector search', LogLevel.DEBUG, {
-      query: query.substring(0, 50) + (query.length > 50 ? '...' : ''),
+      query: queryPreview,
       resultCount: limitedResults.length,
       totalCandidates: candidateEntries.length,
       matchType: options?.hybridSearch?.enabled ? 'hybrid' : 'semantic',

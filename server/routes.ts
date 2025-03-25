@@ -10,6 +10,7 @@ import * as agentController from "./controllers/agent.controller";
 import * as propertyValuationController from "./controllers/property-valuation.controller";
 import * as massAppraisalController from "./controllers/mass-appraisal.controller";
 import * as mcpController from "./controllers/mcp.controller";
+import * as enhancedMcpController from "./controllers/enhanced-mcp.controller";
 import * as memoryManagerController from "./controllers/memory-manager.controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
@@ -356,6 +357,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // MCP (Model Control Protocol) routes
   app.post("/api/mcp/execute", asyncHandler(mcpController.executeMCP));
+  
+  // Enhanced MCP routes with improved context handling and hybrid generation
+  app.post("/api/mcp/enhanced", asyncHandler(enhancedMcpController.executeEnhancedMCP));
+  app.post("/api/mcp/context", asyncHandler(enhancedMcpController.getContextForPrompt));
+  app.get("/api/mcp/stats", asyncHandler(enhancedMcpController.getMCPStats));
   
   // Memory Manager routes
   app.get("/api/memory/stats", asyncHandler(memoryManagerController.getMemoryStatsHandler));

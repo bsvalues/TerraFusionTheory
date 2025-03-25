@@ -49,9 +49,14 @@ export async function executeMCP(req: Request, res: Response) {
 
     // For demonstration purposes, we'll just mock the response
     // In a production environment, this would make an actual API call to a model provider
+    
+    // Ensure prompt is a string
+    const promptStr = typeof prompt === 'string' ? prompt : String(prompt || '');
+    const promptExcerpt = promptStr.length > 50 ? promptStr.substring(0, 50) + '...' : promptStr;
+    
     const response = {
       result: `This is a simulated response from the MCP tool using model ${model}.
-Your prompt was: "${prompt.substring(0, 50)}${prompt.length > 50 ? '...' : ''}"
+Your prompt was: "${promptExcerpt}"
 The response is generated with temperature=${temperature}.
 
 MCP processing included:
@@ -62,9 +67,9 @@ MCP processing included:
 This is a placeholder response. In a production environment, this would be the 
 actual response from an AI model with the requested parameters and tools.`,
       usage: {
-        promptTokens: Math.floor(prompt.length / 4),
+        promptTokens: Math.floor(promptStr.length / 4),
         completionTokens: 150,
-        totalTokens: Math.floor(prompt.length / 4) + 150
+        totalTokens: Math.floor(promptStr.length / 4) + 150
       },
       metadata: {
         model,

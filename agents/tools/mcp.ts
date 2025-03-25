@@ -212,11 +212,17 @@ async function getRelevantContext(
       }
     };
     
+    // Ensure query is a string
+    const queryStr = typeof query === 'string' ? query : String(query || '');
+    
     // Truncate long queries for memory efficiency
-    const truncatedQuery = query.length > 100 ? query.substring(0, 100) : query;
+    const truncatedQuery = queryStr.length > 100 ? queryStr.substring(0, 100) : queryStr;
+    
+    // Create a preview of the truncated query
+    const queryPreview = truncatedQuery.length > 30 ? truncatedQuery.substring(0, 30) + '...' : truncatedQuery;
     
     // Search vector memory with log message
-    const logMessage = `[VectorMemory] Search query: "${truncatedQuery.substring(0, 30)}${truncatedQuery.length > 30 ? '...' : ''}"`;
+    const logMessage = `[VectorMemory] Search query: "${queryPreview}"`;
     console.log(logMessage);
     
     // Perform the actual search
@@ -711,7 +717,13 @@ function generateModelResponse(prompt: string, systemMessage: string, model: str
   // For now, we'll generate context-aware responses
 
   // Create a cache key based on prompt, system message and model
-  const cacheKey = `${model}:${prompt}:${systemMessage}`.substring(0, 100);
+  // Ensure all values are strings before creating the cache key
+  const modelStr = typeof model === 'string' ? model : String(model || '');
+  const promptStr = typeof prompt === 'string' ? prompt : String(prompt || '');
+  const systemMessageStr = typeof systemMessage === 'string' ? systemMessage : String(systemMessage || '');
+  
+  // Generate a cache key with a safe length limit
+  const cacheKey = `${modelStr}:${promptStr}:${systemMessageStr}`.substring(0, 100);
   const promptEmbedding = createEmbedding(prompt);
   
   // For advanced demo or vectorized memory testing, don't use hardcoded patterns
@@ -814,7 +826,12 @@ function generateModelResponse(prompt: string, systemMessage: string, model: str
   // Create a unique seed from the prompt to ensure consistent but varied responses
   // Include a hash of prompt + primary topic + question type to create more diversity
   const createResponseSeed = (prompt: string): string => {
-    const basePrompt = prompt.substring(0, Math.min(prompt.length, 50));
+    // Ensure prompt is a string
+    const promptStr = typeof prompt === 'string' ? prompt : String(prompt || '');
+    
+    // Safely get base prompt with length limit
+    const basePrompt = promptStr.length > 0 ? promptStr.substring(0, Math.min(promptStr.length, 50)) : '';
+    
     const topicSeed = primaryTopic + (hasStrongSecondaryTopic ? secondaryTopic : '');
     const typeSeed = (isHowTo ? 'howto' : '') + 
                     (isComparison ? 'compare' : '') + 
@@ -1130,7 +1147,8 @@ export function registerMCPTool(): Tool {
 
         // Create a memory-efficient cache key if caching is enabled
         const cacheKey = cache ? 
-          `${model}:${prompt.substring(0, 30)}:${temperature}` : 
+          // Ensure prompt is a string and create a safe substring
+          `${model}:${typeof prompt === 'string' ? prompt.substring(0, 30) : String(prompt || '').substring(0, 30)}:${temperature}` : 
           null; // Shorter key to reduce memory usage
         
         // Check cache for existing response with memory-efficient implementation
@@ -1140,7 +1158,9 @@ export function registerMCPTool(): Tool {
           // If cache entry hasn't expired
           if (cachedResult && (Date.now() - cachedResult.timestamp) < CACHE_EXPIRATION) {
             // Use shorter log message to reduce memory
-            console.log(`[MCP] Cache hit: ${prompt.length > 20 ? prompt.substring(0, 20) + '...' : prompt}`);
+            // Ensure prompt is a string before substring operation
+            const promptStr = typeof prompt === 'string' ? prompt : String(prompt || '');
+            console.log(`[MCP] Cache hit: ${promptStr.length > 20 ? promptStr.substring(0, 20) + '...' : promptStr}`);
             
             // Minimal logging with only essential information
             await logMCPActivity('Cache hit', LogLevel.INFO, {
@@ -1172,25 +1192,33 @@ export function registerMCPTool(): Tool {
         // Log MCP call - memory-efficient logging
         console.log(`[MCP] Executing: ${model}`);
         // Reduce log verbosity by truncating prompt to just 40 chars
-        console.log(`[MCP] Prompt: ${prompt.substring(0, 40)}${prompt.length > 40 ? '...' : ''}`);
+        // Ensure prompt is a string before logging
+        const promptForLog = typeof prompt === 'string' ? prompt : String(prompt || '');
+        console.log(`[MCP] Prompt: ${promptForLog.substring(0, 40)}${promptForLog.length > 40 ? '...' : ''}`);
         
         // Track if we're using enhanced context for metadata
         let usedMemoryContext = false;
         let memorySourcesUsed: string[] = [];
-        let enhancedPrompt = prompt;
+        // Ensure enhancedPrompt is a string
+        let enhancedPrompt = typeof prompt === 'string' ? prompt : String(prompt || '');
         
         // If vector memory enhancement is enabled, retrieve relevant context
         if (use_vector_memory) {
           try {
             // Use memory_query if provided, otherwise use the prompt
-            const queryForMemory = memory_query || prompt;
+            // Ensure we have a valid string for the memory query
+            const queryForMemory = typeof memory_query === 'string' ? memory_query : 
+                                  (typeof prompt === 'string' ? prompt : String(prompt || ''));
             
             // Get relevant context from vector memory
             const { context, sources } = await getRelevantContext(queryForMemory, memory_options);
             
             if (context) {
               // Integrate context with prompt
-              enhancedPrompt = integrateContext(prompt, context, context_integration as string);
+              // Ensure we're working with string values for context integration
+              const safePrompt = typeof prompt === 'string' ? prompt : String(prompt || '');
+              const safeContext = typeof context === 'string' ? context : String(context || '');
+              enhancedPrompt = integrateContext(safePrompt, safeContext, context_integration as string);
               usedMemoryContext = true;
               memorySourcesUsed = sources;
               
@@ -1217,7 +1245,9 @@ export function registerMCPTool(): Tool {
         const contextElements = usedMemoryContext ? extractContextElements(enhancedPrompt) : null;
         
         // First generate a base response using our standard approach
-        const baseResponse = generateModelResponse(enhancedPrompt, system_message, model);
+        // Ensure system_message is a string
+        const safeSystemMessage = typeof system_message === 'string' ? system_message : String(system_message || '');
+        const baseResponse = generateModelResponse(enhancedPrompt, safeSystemMessage, model);
         
         // If we have relevant context from vector memory, use a hybrid approach
         // to incorporate specific factual details into the response
