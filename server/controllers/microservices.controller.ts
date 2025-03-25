@@ -8,7 +8,34 @@
 import { spawn, type ChildProcess } from 'child_process';
 import path from 'path';
 import { LogCategory, LogLevel } from '../../shared/schema';
-import logger from '../utils/logger';
+import { storage } from '../storage';
+
+// Simple logger function since we can't import the logger module yet
+function log(level: LogLevel, category: LogCategory, message: string, details?: any): void {
+  console.log(`[${level.toUpperCase()}] [${category}]: ${message}`);
+  if (details) {
+    console.log(details);
+  }
+  
+  // Also log to storage
+  storage.createLog({
+    level,
+    category,
+    message,
+    details: details ? (typeof details === 'string' ? details : JSON.stringify(details)) : undefined,
+    source: 'microservices-controller',
+    timestamp: new Date(),
+    projectId: null,
+    userId: null,
+    sessionId: null,
+    duration: null,
+    statusCode: null,
+    endpoint: null,
+    tags: ['microservices', 'system']
+  }).catch(err => {
+    console.error('Failed to store log:', err);
+  });
+}
 
 // Track microservices processes
 const microservices: Record<string, ChildProcess | null> = {
@@ -34,9 +61,9 @@ export async function startMicroservices(): Promise<void> {
     });
     
     await Promise.all(servicePromises);
-    logger.log(LogLevel.INFO, LogCategory.SYSTEM, 'All microservices started successfully');
+    log(LogLevel.INFO, LogCategory.SYSTEM, 'All microservices started successfully');
   } catch (error) {
-    logger.log(LogLevel.ERROR, LogCategory.SYSTEM, `Failed to start microservices: ${error instanceof Error ? error.message : String(error)}`);
+    log(LogLevel.ERROR, LogCategory.SYSTEM, `Failed to start microservices: ${error instanceof Error ? error.message : String(error)}`);
     throw error;
   }
 }
@@ -54,21 +81,21 @@ async function initMicroservicesDatabase(): Promise<void> {
     
     initProcess.stdout.on('data', (data) => {
       output += data.toString();
-      logger.log(LogLevel.DEBUG, LogCategory.DATABASE, `[DB Init] ${data.toString().trim()}`);
+      log(LogLevel.DEBUG, LogCategory.DATABASE, `[DB Init] ${data.toString().trim()}`);
     });
     
     initProcess.stderr.on('data', (data) => {
       output += data.toString();
-      logger.log(LogLevel.WARNING, LogCategory.DATABASE, `[DB Init Error] ${data.toString().trim()}`);
+      log(LogLevel.WARNING, LogCategory.DATABASE, `[DB Init Error] ${data.toString().trim()}`);
     });
     
     initProcess.on('close', (code) => {
       if (code === 0) {
-        logger.log(LogLevel.INFO, LogCategory.DATABASE, 'Microservices database initialized successfully');
+        log(LogLevel.INFO, LogCategory.DATABASE, 'Microservices database initialized successfully');
         resolve();
       } else {
         const errorMsg = `Database initialization failed with exit code ${code}. Output: ${output}`;
-        logger.log(LogLevel.ERROR, LogCategory.DATABASE, errorMsg);
+        log(LogLevel.ERROR, LogCategory.DATABASE, errorMsg);
         reject(new Error(errorMsg));
       }
     });
@@ -84,12 +111,12 @@ async function startMicroservice(serviceName: string): Promise<void> {
   return new Promise((resolve, reject) => {
     // If service is already running, resolve immediately
     if (microservices[serviceName] !== null && !microservices[serviceName]?.killed) {
-      logger.log(LogLevel.INFO, LogCategory.SYSTEM, `Microservice ${serviceName} is already running`);
+      log(LogLevel.INFO, LogCategory.SYSTEM, `Microservice ${serviceName} is already running`);
       return resolve();
     }
     
     // Start the service
-    logger.log(LogLevel.INFO, LogCategory.SYSTEM, `Starting ${serviceName} microservice...`);
+    log(LogLevel.INFO, LogCategory.SYSTEM, `Starting ${serviceName} microservice...`);
     
     // Build the command to run with init_and_run.py
     const scriptPath = path.join(process.cwd(), 'microservices/init_and_run.py');
@@ -106,12 +133,12 @@ async function startMicroservice(serviceName: string): Promise<void> {
     
     // Track standard output and error
     serviceProcess.stdout.on('data', (data) => {
-      logger.log(LogLevel.DEBUG, LogCategory.SYSTEM, `[${serviceName}] ${data.toString().trim()}`);
+      log(LogLevel.DEBUG, LogCategory.SYSTEM, `[${serviceName}] ${data.toString().trim()}`);
     });
     
     serviceProcess.stderr.on('data', (data) => {
       const errorMsg = data.toString().trim();
-      logger.log(LogLevel.WARNING, LogCategory.SYSTEM, `[${serviceName} Error] ${errorMsg}`);
+      log(LogLevel.WARNING, LogCategory.SYSTEM, `[${serviceName} Error] ${errorMsg}`);
       // Don't reject on stderr, as some legitimate messages go to stderr
     });
     
@@ -119,14 +146,14 @@ async function startMicroservice(serviceName: string): Promise<void> {
     serviceProcess.on('exit', (code, signal) => {
       if (code !== 0 && code !== null) {
         const errorMsg = `Microservice ${serviceName} exited with code ${code}`;
-        logger.log(LogLevel.ERROR, LogCategory.SYSTEM, errorMsg);
+        log(LogLevel.ERROR, LogCategory.SYSTEM, errorMsg);
         microservices[serviceName] = null;
         // Don't reject here, as we might be shutting down intentionally
       } else if (signal) {
-        logger.log(LogLevel.WARNING, LogCategory.SYSTEM, `Microservice ${serviceName} was terminated by signal ${signal}`);
+        log(LogLevel.WARNING, LogCategory.SYSTEM, `Microservice ${serviceName} was terminated by signal ${signal}`);
         microservices[serviceName] = null;
       } else {
-        logger.log(LogLevel.INFO, LogCategory.SYSTEM, `Microservice ${serviceName} exited gracefully`);
+        log(LogLevel.INFO, LogCategory.SYSTEM, `Microservice ${serviceName} exited gracefully`);
         microservices[serviceName] = null;
       }
     });
@@ -135,10 +162,10 @@ async function startMicroservice(serviceName: string): Promise<void> {
     setTimeout(() => {
       if (serviceProcess.killed) {
         const errorMsg = `Microservice ${serviceName} failed to start`;
-        logger.log(LogLevel.ERROR, LogCategory.SYSTEM, errorMsg);
+        log(LogLevel.ERROR, LogCategory.SYSTEM, errorMsg);
         reject(new Error(errorMsg));
       } else {
-        logger.log(LogLevel.INFO, LogCategory.SYSTEM, `Microservice ${serviceName} started`);
+        log(LogLevel.INFO, LogCategory.SYSTEM, `Microservice ${serviceName} started`);
         resolve();
       }
     }, 3000); // Wait 3 seconds before considering it successfully started
@@ -155,7 +182,7 @@ export async function stopMicroservices(): Promise<void> {
   });
   
   await Promise.all(stopPromises);
-  logger.log(LogLevel.INFO, LogCategory.SYSTEM, 'All microservices stopped');
+  log(LogLevel.INFO, LogCategory.SYSTEM, 'All microservices stopped');
 }
 
 /**
@@ -168,7 +195,7 @@ async function stopMicroservice(serviceName: string): Promise<void> {
     const process = microservices[serviceName];
     
     if (!process || process.killed) {
-      logger.log(LogLevel.INFO, LogCategory.SYSTEM, `Microservice ${serviceName} is not running`);
+      log(LogLevel.INFO, LogCategory.SYSTEM, `Microservice ${serviceName} is not running`);
       microservices[serviceName] = null;
       return resolve();
     }
@@ -181,9 +208,9 @@ async function stopMicroservice(serviceName: string): Promise<void> {
       if (!process.killed) {
         // Force kill if it didn't shut down gracefully
         process.kill('SIGKILL');
-        logger.log(LogLevel.WARNING, LogCategory.SYSTEM, `Microservice ${serviceName} was force killed`);
+        log(LogLevel.WARNING, LogCategory.SYSTEM, `Microservice ${serviceName} was force killed`);
       } else {
-        logger.log(LogLevel.INFO, LogCategory.SYSTEM, `Microservice ${serviceName} was stopped gracefully`);
+        log(LogLevel.INFO, LogCategory.SYSTEM, `Microservice ${serviceName} was stopped gracefully`);
       }
       
       microservices[serviceName] = null;
@@ -215,6 +242,6 @@ export function getMicroservicesStatus(): Record<string, string> {
  * This should be called when the Express app is shutting down
  */
 export async function handleAppShutdown(): Promise<void> {
-  logger.log(LogLevel.INFO, LogCategory.SYSTEM, 'Shutting down microservices...');
+  log(LogLevel.INFO, LogCategory.SYSTEM, 'Shutting down microservices...');
   await stopMicroservices();
 }

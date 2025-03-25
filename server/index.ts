@@ -8,6 +8,7 @@ import { LogCategory, LogLevel } from "@shared/schema";
 import { scheduler } from "./services/scheduler.service";
 import { initializeConnectors } from "./services/connectors";
 import { initializeAgentSystem } from "../agents";
+import { startMicroservices, stopMicroservices } from "./controllers/microservices.controller";
 
 // Declare session data type
 declare module 'express-session' {
@@ -150,7 +151,14 @@ app.use((req, res, next) => {
           
           // Initialize agent system
           return initializeAgentSystem()
-            .then(() => log('Agent system initialized'))
+            .then(() => {
+              log('Agent system initialized');
+              
+              // Start microservices
+              return startMicroservices()
+                .then(() => log('Microservices started successfully'))
+                .catch(err => console.error('Failed to start microservices:', err));
+            })
             .catch(err => console.error('Failed to initialize agent system:', err));
         })
         .catch(err => console.error('Failed to initialize connectors:', err));
@@ -161,6 +169,15 @@ app.use((req, res, next) => {
       log('Shutting down server...');
       scheduler.stop();
       cleanupRoutes();
+      
+      // Stop microservices
+      try {
+        await stopMicroservices();
+        log('Microservices stopped successfully');
+      } catch (error) {
+        console.error('Error stopping microservices:', error);
+      }
+      
       server.close();
       process.exit(0);
     };
