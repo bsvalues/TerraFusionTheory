@@ -1,5 +1,6 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
+import { WebSocketServer, WebSocket } from 'ws';
 import { storage } from "./storage";
 import * as openaiController from "./controllers/openai.controller";
 import * as aiController from "./controllers/ai.controller";
@@ -653,7 +654,70 @@ export async function registerRoutes(app: Express): Promise<Server> {
   }));
 
   const httpServer = createServer(app);
-
+  
+  // Initialize WebSocket server for agent activity streaming
+  const wss = new WebSocketServer({ server: httpServer, path: '/ws' });
+  
+  // Store connected clients
+  const clients = new Set<WebSocket>();
+  
+  // WebSocket connection handler
+  wss.on('connection', (ws) => {
+    console.log('[WebSocket] Client connected');
+    
+    // Add client to the set
+    clients.add(ws);
+    
+    // Send a welcome message
+    ws.send(JSON.stringify({
+      type: 'connection',
+      message: 'Connected to IntelligentEstate agent activity stream',
+      timestamp: new Date().toISOString()
+    }));
+    
+    // Handle messages from clients
+    ws.on('message', (message) => {
+      try {
+        const data = JSON.parse(message.toString());
+        console.log('[WebSocket] Received message:', data);
+        
+        // Handle client messages if needed
+      } catch (error) {
+        console.error('[WebSocket] Error processing message:', error);
+      }
+    });
+    
+    // Handle client disconnection
+    ws.on('close', () => {
+      console.log('[WebSocket] Client disconnected');
+      clients.delete(ws);
+    });
+    
+    // Handle errors
+    ws.on('error', (error) => {
+      console.error('[WebSocket] Error:', error);
+      clients.delete(ws);
+    });
+  });
+  
+  // Export function to broadcast agent events to all connected clients
+  (global as any).broadcastAgentEvent = (event: any) => {
+    const eventData = JSON.stringify({
+      ...event,
+      timestamp: event.timestamp || new Date().toISOString()
+    });
+    
+    console.log(`[WebSocket] Broadcasting event to ${clients.size} clients`);
+    
+    clients.forEach((client) => {
+      if (client.readyState === WebSocket.OPEN) {
+        client.send(eventData);
+      }
+    });
+  };
+  
+  console.log('[WebSocket] Agent activity WebSocket server initialized at path: /ws');
+  
   return httpServer;
 }
 
@@ -667,4 +731,7 @@ export function cleanupRoutes() {
     stopMemoryMonitoring(memoryMonitorTimer);
     memoryMonitorTimer = null;
   }
+  
+  // Clean up WebSocket server resources if needed
+  console.log('[WebSocket] Shutting down WebSocket server');
 }
