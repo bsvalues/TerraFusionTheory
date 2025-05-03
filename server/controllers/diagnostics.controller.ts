@@ -11,7 +11,7 @@ export const getConnectorStatuses = async (req: Request, res: Response, next: Ne
   try {
     const connectors = connectorFactory.getAllConnectors();
     
-    // Test connection for each connector
+    // Test connection for each connector with timeout protection
     const statuses = await Promise.all(
       connectors.map(async (connector) => {
         const name = connector.getName();
@@ -20,7 +20,16 @@ export const getConnectorStatuses = async (req: Request, res: Response, next: Ne
         let error = null;
         
         try {
-          status = await connector.testConnection();
+          // Add a timeout of 5 seconds for each connector test
+          const timeoutPromise = new Promise<boolean>((_, reject) => {
+            setTimeout(() => reject(new Error('Connection test timed out after 5 seconds')), 5000);
+          });
+          
+          // Race the connector test against the timeout
+          status = await Promise.race([
+            connector.testConnection(),
+            timeoutPromise
+          ]);
         } catch (err) {
           error = err instanceof Error ? err.message : 'Unknown error';
         }
@@ -85,14 +94,39 @@ export const testConnector = async (req: Request, res: Response, next: NextFunct
     let data = null;
     
     try {
-      // First test the connection
-      status = await connector.testConnection();
+      // Add a timeout of 5 seconds for the connection test
+      const testConnectionWithTimeout = async () => {
+        const timeoutPromise = new Promise<boolean>((_, reject) => {
+          setTimeout(() => reject(new Error('Connection test timed out after 5 seconds')), 5000);
+        });
+        
+        return Promise.race([
+          connector.testConnection(),
+          timeoutPromise
+        ]);
+      };
       
-      // If connection successful, try to fetch some sample data
+      // First test the connection with timeout
+      status = await testConnectionWithTimeout();
+      
+      // If connection successful, try to fetch some sample data with timeout
       if (status) {
         // The query parameters will vary by connector type
         const query = getQueryForConnectorType(connector.getType());
-        const result = await connector.fetchData(query);
+        
+        // Add a timeout for data fetching as well
+        const fetchDataWithTimeout = async () => {
+          const timeoutPromise = new Promise<any>((_, reject) => {
+            setTimeout(() => reject(new Error('Data fetch timed out after 8 seconds')), 8000);
+          });
+          
+          return Promise.race([
+            connector.fetchData(query),
+            timeoutPromise
+          ]);
+        };
+        
+        const result = await fetchDataWithTimeout();
         data = {
           count: result.data ? result.data.length : 0,
           sample: result.data ? result.data.slice(0, 1) : null,
@@ -249,15 +283,39 @@ async function refreshConnectorData(): Promise<void> {
           tags: ['refresh', 'data', connector.getType(), name]
         });
         
-        // Test the connection first
-        const connectionOk = await connector.testConnection();
+        // Test the connection first with timeout
+        const testConnectionWithTimeout = async () => {
+          const timeoutPromise = new Promise<boolean>((_, reject) => {
+            setTimeout(() => reject(new Error('Connection test timed out after 5 seconds')), 5000);
+          });
+          
+          return Promise.race([
+            connector.testConnection(),
+            timeoutPromise
+          ]);
+        };
+        
+        const connectionOk = await testConnectionWithTimeout();
+        
         if (!connectionOk) {
           throw new Error(`Connection test failed for connector: ${name}`);
         }
         
-        // Fetch data using appropriate query for the connector type
+        // Fetch data using appropriate query for the connector type with timeout
         const query = getQueryForConnectorType(connector.getType());
-        const result = await connector.fetchData(query);
+        
+        const fetchDataWithTimeout = async () => {
+          const timeoutPromise = new Promise<any>((_, reject) => {
+            setTimeout(() => reject(new Error('Data fetch timed out after 8 seconds')), 8000);
+          });
+          
+          return Promise.race([
+            connector.fetchData(query),
+            timeoutPromise
+          ]);
+        };
+        
+        const result = await fetchDataWithTimeout();
         
         // Log successful refresh
         await storage.createLog({
