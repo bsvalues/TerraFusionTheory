@@ -117,13 +117,13 @@ export default function ParcelDetailsPage() {
     assessorParcelNumber: property.assessorParcelNumber,
     taxYear: property.taxYear,
     neighborhood: property.neighborhood,
-    occupant: 'Vacant', // Default
+    occupant: 'Vacant' as 'Vacant' | 'Owner' | 'Tenant', // Explicitly type to match enum
     siteArea: property.lotSize,
     siteZoning: property.zoning,
     generalDescription: {
       units: 1,
       stories: property.stories || 1,
-      type: 'Detached',
+      type: 'Detached' as 'Detached' | 'Attached' | 'S-Detached' | 'S-Attached' | 'MF',
       yearBuilt: property.yearBuilt
     },
     bedrooms: property.bedrooms,

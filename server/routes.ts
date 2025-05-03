@@ -22,7 +22,9 @@ import registerUserRoutes from "./routes/users.routes";
 import registerRecommendationsRoutes from "./routes/recommendations.routes";
 import { registerValuationAgentRoutes } from "./routes/valuation-agent.routes";
 import { registerMicroservicesRoutes } from "./routes/microservices-routes";
+import { registerTerraFusionRoutes } from "./routes/terrafusion-routes";
 import microservicesClient from "./services/microservices-client";
+import { registerTestRoutes } from "./utils/terrafusion-test";
 
 // Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';
@@ -78,6 +80,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register microservices integration routes
   registerMicroservicesRoutes(app);
+  
+  // Register TerraFusion routes
+  registerTerraFusionRoutes(app);
+  
+  // Register TerraFusion test routes
+  registerTestRoutes(app);
   
   // API routes - prefix all routes with /api
   

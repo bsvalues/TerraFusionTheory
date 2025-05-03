@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>TerraFusion WebSocket Test</title>
+  <style>
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+      line-height: 1.5;
+      max-width: 800px;
+      margin: 0 auto;
+      padding: 2rem;
+    }
+    h1 {
+      margin-bottom: 2rem;
+    }
+    .card {
+      border: 1px solid #e2e8f0;
+      border-radius: 0.5rem;
+      padding: 1.5rem;
+      margin-bottom: 1rem;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    }
+    .log-area {
+      background-color: #f8f9fa;
+      border-radius: 0.5rem;
+      padding: 1rem;
+      height: 300px;
+      overflow-y: auto;
+      margin-bottom: 1rem;
+      font-family: monospace;
+      white-space: pre-wrap;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+    }
+    button {
+      background-color: #4f46e5;
+      color: white;
+      border: none;
+      border-radius: 0.25rem;
+      padding: 0.5rem 1rem;
+      cursor: pointer;
+      font-weight: 600;
+    }
+    button:hover {
+      background-color: #4338ca;
+    }
+    button:disabled {
+      background-color: #a5a5a5;
+      cursor: not-allowed;
+    }
+    input {
+      border: 1px solid #e2e8f0;
+      border-radius: 0.25rem;
+      padding: 0.5rem;
+    }
+    .status {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .status-indicator {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      margin-right: 0.5rem;
+    }
+    .connected {
+      background-color: #10b981;
+    }
+    .disconnected {
+      background-color: #ef4444;
+    }
+    .connecting {
+      background-color: #f59e0b;
+    }
+    .activity {
+      border-left: 4px solid #4f46e5;
+      padding: 0.5rem 1rem;
+      margin-bottom: 0.5rem;
+      background-color: #f8fafc;
+    }
+    .activity.info {
+      border-left-color: #3b82f6;
+    }
+    .activity.warning {
+      border-left-color: #f59e0b;
+    }
+    .activity.success {
+      border-left-color: #10b981;
+    }
+    .activity.calculation {
+      border-left-color: #8b5cf6;
+    }
+    .time {
+      color: #64748b;
+      font-size: 0.8rem;
+    }
+    .message {
+      font-weight: 600;
+    }
+    .details {
+      color: #64748b;
+      font-size: 0.9rem;
+    }
+  </style>
+</head>
+<body>
+  <h1>TerraFusion WebSocket Test</h1>
+  
+  <div class="card">
+    <div class="status">
+      <div class="status-indicator disconnected" id="status-indicator"></div>
+      <span id="status-text">Disconnected</span>
+    </div>
+    
+    <div class="controls">
+      <button id="connect-btn">Connect</button>
+      <button id="disconnect-btn" disabled>Disconnect</button>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>Send Test Events</h2>
+    <div class="controls">
+      <input type="text" id="property-id" placeholder="Property ID" value="12345">
+      <input type="number" id="event-count" placeholder="Number of events" value="3" min="1" max="10">
+      <button id="send-events-btn" disabled>Send Test Events</button>
+    </div>
+  </div>
+  
+  <div class="card">
+    <h2>WebSocket Log</h2>
+    <div class="log-area" id="log"></div>
+    <button id="clear-log-btn">Clear Log</button>
+  </div>
+  
+  <div class="card">
+    <h2>Agent Activities</h2>
+    <div id="activities"></div>
+  </div>
+  
+  <script>
+    // DOM Elements
+    const statusIndicator = document.getElementById('status-indicator');
+    const statusText = document.getElementById('status-text');
+    const connectBtn = document.getElementById('connect-btn');
+    const disconnectBtn = document.getElementById('disconnect-btn');
+    const sendEventsBtn = document.getElementById('send-events-btn');
+    const propertyIdInput = document.getElementById('property-id');
+    const eventCountInput = document.getElementById('event-count');
+    const logArea = document.getElementById('log');
+    const clearLogBtn = document.getElementById('clear-log-btn');
+    const activitiesContainer = document.getElementById('activities');
+    
+    // WebSocket connection
+    let socket = null;
+    
+    // Connect to WebSocket
+    function connect() {
+      try {
+        // Update UI state
+        statusIndicator.className = 'status-indicator connecting';
+        statusText.textContent = 'Connecting...';
+        connectBtn.disabled = true;
+        disconnectBtn.disabled = true;
+        sendEventsBtn.disabled = true;
+        
+        // Create WebSocket connection
+        const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+        const host = window.location.host;
+        const wsUrl = `${protocol}//${host}/ws`;
+        
+        log(`Connecting to WebSocket: ${wsUrl}`);
+        socket = new WebSocket(wsUrl);
+        
+        // Connection opened
+        socket.addEventListener('open', (event) => {
+          log('WebSocket connection established');
+          statusIndicator.className = 'status-indicator connected';
+          statusText.textContent = 'Connected';
+          connectBtn.disabled = true;
+          disconnectBtn.disabled = false;
+          sendEventsBtn.disabled = false;
+        });
+        
+        // Listen for messages
+        socket.addEventListener('message', (event) => {
+          const data = JSON.parse(event.data);
+          log(`Received message: ${JSON.stringify(data)}`);
+          
+          // If it's an agent activity, display it in the activities container
+          if (data.type && data.message) {
+            displayActivity(data);
+          }
+        });
+        
+        // Connection closed
+        socket.addEventListener('close', (event) => {
+          log(`WebSocket connection closed: ${event.code} ${event.reason}`);
+          statusIndicator.className = 'status-indicator disconnected';
+          statusText.textContent = 'Disconnected';
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+          sendEventsBtn.disabled = true;
+          socket = null;
+        });
+        
+        // Connection error
+        socket.addEventListener('error', (event) => {
+          log('WebSocket error: Check console for details');
+          console.error('WebSocket error:', event);
+          statusIndicator.className = 'status-indicator disconnected';
+          statusText.textContent = 'Error';
+          connectBtn.disabled = false;
+          disconnectBtn.disabled = true;
+          sendEventsBtn.disabled = true;
+        });
+      } catch (error) {
+        log(`Error creating WebSocket connection: ${error.message}`);
+        statusIndicator.className = 'status-indicator disconnected';
+        statusText.textContent = 'Error';
+        connectBtn.disabled = false;
+        disconnectBtn.disabled = true;
+        sendEventsBtn.disabled = true;
+      }
+    }
+    
+    // Disconnect from WebSocket
+    function disconnect() {
+      if (socket) {
+        log('Closing WebSocket connection');
+        socket.close();
+        // UI will be updated in the 'close' event handler
+      }
+    }
+    
+    // Send test events
+    function sendTestEvents() {
+      const propertyId = propertyIdInput.value.trim();
+      const count = parseInt(eventCountInput.value, 10);
+      
+      if (count < 1 || count > 10) {
+        log('Event count must be between 1 and 10');
+        return;
+      }
+      
+      log(`Sending ${count} test events for property ${propertyId || 'all properties'}`);
+      
+      // Construct URL with query parameters
+      const url = '/api/terrafusion/test/agent-activity?' + 
+        (propertyId ? `propertyId=${encodeURIComponent(propertyId)}&` : '') +
+        `count=${count}&interval=1000`;
+      
+      // Send the request
+      fetch(url)
+        .then(response => response.json())
+        .then(data => {
+          log(`API Response: ${JSON.stringify(data)}`);
+        })
+        .catch(error => {
+          log(`Error sending test events: ${error.message}`);
+        });
+    }
+    
+    // Display agent activity in the activities container
+    function displayActivity(activity) {
+      // Create activity element
+      const activityEl = document.createElement('div');
+      activityEl.className = `activity ${activity.type || 'info'}`;
+      activityEl.id = activity.id; // Set ID for potential future reference
+      
+      // Format timestamp
+      const timestamp = new Date(activity.timestamp);
+      const formattedTime = timestamp.toLocaleTimeString();
+      
+      // Create content
+      activityEl.innerHTML = `
+        <div class="time">${formattedTime}</div>
+        <div class="message">${activity.message}</div>
+        ${activity.details ? `<div class="details">${activity.details}</div>` : ''}
+        ${activity.formField ? `<div class="details">Form Field: ${activity.formField}</div>` : ''}
+        ${activity.agentName ? `<div class="details">Agent: ${activity.agentName}</div>` : ''}
+      `;
+      
+      // Add to container at the beginning
+      activitiesContainer.insertBefore(activityEl, activitiesContainer.firstChild);
+    }
+    
+    // Add a log entry
+    function log(message) {
+      const timestamp = new Date().toISOString();
+      logArea.innerHTML += `[${timestamp}] ${message}\n`;
+      logArea.scrollTop = logArea.scrollHeight; // Auto-scroll to bottom
+    }
+    
+    // Clear the log
+    function clearLog() {
+      logArea.innerHTML = '';
+    }
+    
+    // Event listeners
+    connectBtn.addEventListener('click', connect);
+    disconnectBtn.addEventListener('click', disconnect);
+    sendEventsBtn.addEventListener('click', sendTestEvents);
+    clearLogBtn.addEventListener('click', clearLog);
+    
+    // Log initial state
+    log('TerraFusion WebSocket Test Initialized');
+    log('Click "Connect" to establish WebSocket connection');
+  </script>
+</body>
+</html>
