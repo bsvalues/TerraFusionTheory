@@ -3,12 +3,18 @@ import { TerraFusionUXLayout } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
 import { Link } from 'wouter';
-import { SmartCompTray, CompGridDropzone, CompProperty } from '@/components/terrafusion/comp-grid';
+import { 
+  SmartCompTray, 
+  CompGridDropzone, 
+  CompProperty,
+  CompImpactVisualizer 
+} from '@/components/terrafusion/comp-grid';
 import { useToast } from '@/hooks/use-toast';
 
 export default function ComparisonGridPage() {
   const { toast } = useToast();
   const [selectedComps, setSelectedComps] = useState<(CompProperty | null)[]>([null, null, null]);
+  const [selectedCompIndex, setSelectedCompIndex] = useState<number | null>(null);
   
   // Mock subject property
   const subjectProperty: CompProperty = {
@@ -167,6 +173,7 @@ export default function ComparisonGridPage() {
     const newComps = [...selectedComps];
     newComps[index] = comp;
     setSelectedComps(newComps);
+    setSelectedCompIndex(index); // Select this comp to show its impact
   };
   
   // Handle removing a comp from the selected list
@@ -174,6 +181,17 @@ export default function ComparisonGridPage() {
     const newComps = [...selectedComps];
     newComps[index] = null;
     setSelectedComps(newComps);
+    
+    // If the selected comp was removed, clear the selection or select another comp
+    if (selectedCompIndex === index) {
+      const nextComp = selectedComps.findIndex((comp, i) => i !== index && comp !== null);
+      setSelectedCompIndex(nextComp !== -1 ? nextComp : null);
+    }
+  };
+  
+  // Handle selecting a comp to view its impact
+  const handleSelectCompForImpact = (index: number) => {
+    setSelectedCompIndex(index);
   };
   
   // Handle recalculation
@@ -205,6 +223,17 @@ export default function ComparisonGridPage() {
         onCompRemoved={handleCompRemoved}
         onRecalculate={handleRecalculate}
       />
+      
+      {/* Show the Impact Visualizer if a comp is selected */}
+      {selectedCompIndex !== null && selectedComps[selectedCompIndex] && (
+        <div className="mt-6">
+          <h3 className="text-lg font-medium mb-4">Value Impact Analysis</h3>
+          <CompImpactVisualizer
+            compProperty={selectedComps[selectedCompIndex]!}
+            subjectProperty={subjectProperty}
+          />
+        </div>
+      )}
       
       <div className="mt-8">
         <h3 className="text-lg font-medium mb-4">Available Comparable Properties</h3>

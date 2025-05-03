@@ -5,3 +5,4 @@
 export { default as SmartCompTray } from './SmartCompTray';
 export type { CompProperty } from './SmartCompTray';
 export { default as CompGridDropzone } from './CompGridDropzone';
+export { default as CompImpactVisualizer } from './CompImpactVisualizer';

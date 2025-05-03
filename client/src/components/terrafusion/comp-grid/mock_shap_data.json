@@ -1,0 +1,48 @@
+{
+  "baseValue": 425000,
+  "outputValue": 437800,
+  "features": [
+    {
+      "feature": "Location",
+      "effect": 5200,
+      "value": "0.8 miles",
+      "description": "This comp is very close to the subject property in a similar neighborhood"
+    },
+    {
+      "feature": "Square Footage",
+      "effect": 3200,
+      "value": "2300 sqft vs 2450 sqft",
+      "description": "The comp is 150 sqft smaller, requiring upward adjustment"
+    },
+    {
+      "feature": "Bedrooms",
+      "effect": 0,
+      "value": "4 (same)",
+      "description": "Both properties have the same number of bedrooms"
+    },
+    {
+      "feature": "Bathrooms",
+      "effect": 0,
+      "value": "2.5 (same)",
+      "description": "Both properties have the same number of bathrooms"
+    },
+    {
+      "feature": "Year Built",
+      "effect": -1600,
+      "value": "1995 vs 1998",
+      "description": "The comp is 3 years older, requiring downward adjustment"
+    },
+    {
+      "feature": "Lot Size",
+      "effect": 2100,
+      "value": "0.22 vs 0.25 acres",
+      "description": "The comp has a slightly smaller lot"
+    },
+    {
+      "feature": "Sale Date",
+      "effect": 3900,
+      "value": "90 days ago",
+      "description": "Market appreciation since sale date of the comp"
+    }
+  ]
+}
