@@ -1,136 +1,52 @@
 /**
- * TerraFusion Dark Mode AI-First Visual Theme
+ * TerraFusion UI Theme - Dark Mode AI-First Design
  * 
- * A modern, AI-focused dark theme for the TerraFusion real estate intelligence platform
- * that emphasizes data visualization and AI interactions.
+ * This theme implements a dark-mode centered UX for the TerraFusion real estate
+ * intelligence platform. It features:
+ * 
+ * - Dark mode palette with accent colors
+ * - AI-focused UI enhancements
+ * - Dedicated component zones
+ * - Special interactive elements
  */
 
-:root {
-  /* Core colors */
-  --tf-primary: #3e7bc8;
-  --tf-primary-hover: #4d8ad7;
-  --tf-secondary: #34b8a5;
-  --tf-accent: #9c6dff;
-  --tf-accent-hover: #a57fff;
-  
-  /* Dark mode colors */
-  --tf-bg-dark: #121520;
-  --tf-bg-darker: #0a0c14;
-  --tf-bg-lighter: #1e2231;
-  --tf-surface: #181c2a;
-  --tf-surface-hover: #1f2434;
-
-  /* Text colors */
-  --tf-text-primary: #e9ebf0;
-  --tf-text-secondary: #a3a8b7;
-  --tf-text-disabled: #5d6377;
-  
-  /* Borders and dividers */
-  --tf-border: #2a2f3f;
-  --tf-divider: #2d3444;
-  
-  /* AI-specific elements */
-  --tf-ai-glow: rgba(62, 123, 200, 0.3);
-  --tf-ai-highlight: rgba(156, 109, 255, 0.2);
-  --tf-ai-assistant-bg: #1a1e2d;
-  --tf-ai-assistant-border: #3c3f50;
-  
-  /* Data visualization colors */
-  --tf-chart-1: #3e7bc8;
-  --tf-chart-2: #34b8a5;
-  --tf-chart-3: #9c6dff;
-  --tf-chart-4: #fc7b54;
-  --tf-chart-5: #ffd166;
-  
-  /* Status colors */
-  --tf-success: #4caf50;
-  --tf-warning: #ff9800;
-  --tf-error: #f44336;
-  --tf-info: #2196f3;
-  
-  /* Shadows */
-  --tf-shadow-sm: 0 2px 4px rgba(0, 0, 0, 0.3);
-  --tf-shadow-md: 0 4px 8px rgba(0, 0, 0, 0.4);
-  --tf-shadow-lg: 0 8px 16px rgba(0, 0, 0, 0.5);
-  
-  /* Animations */
-  --tf-transition-fast: 150ms ease;
-  --tf-transition-normal: 250ms ease;
-  --tf-transition-slow: 350ms ease;
-  
-  /* Spacing */
-  --tf-spacing-xs: 4px;
-  --tf-spacing-sm: 8px;
-  --tf-spacing-md: 16px;
-  --tf-spacing-lg: 24px;
-  --tf-spacing-xl: 32px;
-  
-  /* Border radius */
-  --tf-radius-sm: 4px;
-  --tf-radius-md: 8px;
-  --tf-radius-lg: 12px;
-  --tf-radius-full: 9999px;
-}
-
-/* Dark Theme Base Styles */
+/* Base theme colors */
 .tf-theme {
-  background-color: var(--tf-bg-dark);
+  --tf-bg-primary: #121212;
+  --tf-bg-secondary: #1e1e1e;
+  --tf-bg-tertiary: #2d2d2d;
+  --tf-bg-accent: rgba(59, 130, 246, 0.1);
+  
+  --tf-primary: #3b82f6;
+  --tf-primary-hover: #2563eb;
+  --tf-accent: #10b981;
+  --tf-accent-hover: #059669;
+  --tf-danger: #ef4444;
+  
+  --tf-text-primary: #f3f4f6;
+  --tf-text-secondary: #a1a1aa;
+  --tf-text-muted: #71717a;
+  --tf-text-accent: var(--tf-accent);
+  
+  --tf-border-light: #333333;
+  --tf-border-medium: #444444;
+  
+  --tf-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
+  --tf-shadow: 0 4px 6px rgba(0, 0, 0, 0.4), 0 1px 3px rgba(0, 0, 0, 0.3);
+  --tf-shadow-lg: 0 10px 15px -3px rgba(0, 0, 0, 0.5), 0 4px 6px -2px rgba(0, 0, 0, 0.4);
+  
+  background-color: var(--tf-bg-primary);
   color: var(--tf-text-primary);
 }
 
-/* Layout Components */
-.tf-container {
-  display: grid;
-  width: 100%;
-  height: 100%;
-  gap: var(--tf-spacing-md);
-}
-
-/* Form Zone */
-.tf-form-zone {
-  background-color: var(--tf-surface);
-  border-radius: var(--tf-radius-md);
-  border: 1px solid var(--tf-border);
-  padding: var(--tf-spacing-lg);
-  box-shadow: var(--tf-shadow-md);
-}
-
-/* Agent Feed Zone */
-.tf-agent-feed {
-  background-color: var(--tf-ai-assistant-bg);
-  border-radius: var(--tf-radius-md);
-  border: 1px solid var(--tf-ai-assistant-border);
-  padding: var(--tf-spacing-md);
-  box-shadow: var(--tf-shadow-md);
-  overflow-y: auto;
-}
-
-.tf-agent-message {
-  background-color: var(--tf-surface);
-  border-radius: var(--tf-radius-md);
-  padding: var(--tf-spacing-md);
-  margin-bottom: var(--tf-spacing-md);
-  animation: fadeIn 0.3s ease;
-  border-left: 3px solid var(--tf-accent);
-}
-
-.tf-user-message {
-  background-color: var(--tf-surface-hover);
-  border-radius: var(--tf-radius-md);
-  padding: var(--tf-spacing-md);
-  margin-bottom: var(--tf-spacing-md);
-  animation: fadeIn 0.3s ease;
-  border-left: 3px solid var(--tf-primary);
-}
-
-/* Header Zone */
+/* Header */
 .tf-header {
-  background-color: var(--tf-bg-darker);
-  border-bottom: 1px solid var(--tf-border);
-  padding: var(--tf-spacing-md) var(--tf-spacing-lg);
+  background-color: var(--tf-bg-secondary);
+  border-bottom: 1px solid var(--tf-border-light);
+  padding: 1rem 1.5rem;
   display: flex;
-  align-items: center;
   justify-content: space-between;
+  align-items: center;
 }
 
 .tf-header-title {
@@ -139,177 +55,138 @@
   color: var(--tf-text-primary);
 }
 
+/* Main container with grid layout for form and agent feed */
+.tf-container {
+  display: grid;
+  gap: 1.5rem;
+  width: 100%;
+  height: 100%;
+}
+
+/* Form zone */
+.tf-form-zone {
+  background-color: var(--tf-bg-secondary);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: var(--tf-shadow);
+}
+
+/* Agent feed zone */
+.tf-agent-feed {
+  background-color: var(--tf-bg-secondary);
+  border-radius: 0.5rem;
+  padding: 1.5rem;
+  box-shadow: var(--tf-shadow);
+}
+
+/* AI badge */
+.tf-ai-badge {
+  background-color: var(--tf-accent);
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.125rem 0.375rem;
+  border-radius: 1rem;
+  display: inline-flex;
+  align-items: center;
+}
+
+/* AI Pulse glow effect */
+.tf-ai-pulse {
+  position: relative;
+}
+
+.tf-ai-pulse::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  border-radius: inherit;
+  box-shadow: 0 0 0 2px var(--tf-accent);
+  animation: tf-pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+@keyframes tf-pulse {
+  0%, 100% {
+    opacity: 0.2;
+  }
+  50% {
+    opacity: 0.5;
+  }
+}
+
+/* Cards */
+.tf-card {
+  background-color: var(--tf-bg-secondary);
+  border: 1px solid var(--tf-border-light);
+  border-radius: 0.5rem;
+  overflow: hidden;
+}
+
 /* Buttons */
 .tf-button {
   background-color: var(--tf-primary);
   color: white;
-  border: none;
-  border-radius: var(--tf-radius-md);
-  padding: var(--tf-spacing-sm) var(--tf-spacing-md);
   font-weight: 500;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: none;
   cursor: pointer;
-  transition: background-color var(--tf-transition-fast);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  transition: background-color 150ms, transform 150ms;
 }
 
 .tf-button:hover {
   background-color: var(--tf-primary-hover);
 }
 
+.tf-button:active {
+  transform: translateY(1px);
+}
+
 .tf-button-secondary {
   background-color: transparent;
   color: var(--tf-text-primary);
-  border: 1px solid var(--tf-border);
+  border: 1px solid var(--tf-border-medium);
 }
 
 .tf-button-secondary:hover {
-  background-color: var(--tf-surface-hover);
+  background-color: var(--tf-bg-tertiary);
 }
 
-.tf-button-accent {
-  background-color: var(--tf-accent);
-}
-
-.tf-button-accent:hover {
-  background-color: var(--tf-accent-hover);
-}
-
-/* AI Elements */
-.tf-ai-indicator {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--tf-spacing-xs);
-  color: var(--tf-accent);
-  font-weight: 500;
-}
-
-.tf-ai-badge {
-  background-color: var(--tf-ai-highlight);
-  color: var(--tf-accent);
-  padding: 2px 8px;
-  border-radius: var(--tf-radius-full);
-  font-size: 0.75rem;
-  font-weight: 600;
-}
-
-.tf-ai-action {
-  border: 1px solid var(--tf-accent);
-  background-color: var(--tf-ai-highlight);
-  color: var(--tf-accent);
-  border-radius: var(--tf-radius-md);
-  padding: var(--tf-spacing-sm) var(--tf-spacing-md);
-  cursor: pointer;
-  transition: all var(--tf-transition-fast);
-}
-
-.tf-ai-action:hover {
-  box-shadow: 0 0 8px var(--tf-ai-glow);
-}
-
-/* Inputs */
-.tf-input {
-  background-color: var(--tf-bg-dark);
-  border: 1px solid var(--tf-border);
-  border-radius: var(--tf-radius-md);
-  padding: var(--tf-spacing-md);
-  color: var(--tf-text-primary);
-  width: 100%;
-  transition: border-color var(--tf-transition-fast);
-}
-
-.tf-input:focus {
-  outline: none;
-  border-color: var(--tf-primary);
-  box-shadow: 0 0 0 2px var(--tf-ai-glow);
-}
-
-.tf-input-label {
-  display: block;
-  margin-bottom: var(--tf-spacing-xs);
-  color: var(--tf-text-secondary);
-  font-weight: 500;
-}
-
-/* Cards */
-.tf-card {
-  background-color: var(--tf-surface);
-  border-radius: var(--tf-radius-md);
-  border: 1px solid var(--tf-border);
-  padding: var(--tf-spacing-md);
-  box-shadow: var(--tf-shadow-sm);
-}
-
-.tf-card-header {
-  padding-bottom: var(--tf-spacing-sm);
-  margin-bottom: var(--tf-spacing-md);
-  border-bottom: 1px solid var(--tf-divider);
-  font-weight: 600;
-}
-
-/* Utility Classes */
-.tf-glow {
-  box-shadow: 0 0 15px var(--tf-ai-glow);
-}
-
-.tf-text-primary {
-  color: var(--tf-primary);
-}
-
-.tf-text-accent {
-  color: var(--tf-accent);
-}
-
-.tf-mt-2 {
-  margin-top: var(--tf-spacing-sm);
-}
-
-.tf-mt-4 {
-  margin-top: var(--tf-spacing-md);
-}
-
-.tf-mb-2 {
-  margin-bottom: var(--tf-spacing-sm);
-}
-
-.tf-mb-4 {
-  margin-bottom: var(--tf-spacing-md);
-}
-
-/* Animations */
-@keyframes fadeIn {
-  from {
-    opacity: 0;
-    transform: translateY(5px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes pulse {
-  0% {
-    box-shadow: 0 0 0 0 var(--tf-ai-glow);
-  }
-  70% {
-    box-shadow: 0 0 0 10px rgba(62, 123, 200, 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 rgba(62, 123, 200, 0);
-  }
-}
-
+/* Dropzone animation */
 .tf-pulse {
-  animation: pulse 2s infinite;
+  animation: tf-dropzone-pulse 1.5s cubic-bezier(0.4, 0, 0.6, 1) infinite;
 }
 
-/* Responsive adjustments */
+@keyframes tf-dropzone-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+/* Smart Comp Tray */
+.tf-smart-comp-tray {
+  background-color: var(--tf-bg-secondary);
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+/* Comp Grid */
+.tf-comp-grid {
+  margin-bottom: 1.5rem;
+}
+
+/* Media queries */
 @media (max-width: 768px) {
   .tf-container {
     grid-template-columns: 1fr !important;
-  }
-  
-  .tf-form-zone,
-  .tf-agent-feed {
-    max-height: none;
   }
 }
