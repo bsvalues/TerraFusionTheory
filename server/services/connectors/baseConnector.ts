@@ -1,6 +1,6 @@
 import { LogCategory, LogLevel } from '@shared/schema';
 import { storage } from '../../storage';
-import { AppError, ExternalServiceError } from '../../errors';
+import { AppError } from '../../errors';
 
 /**
  * Interface for connector configuration
@@ -46,6 +46,11 @@ export interface DataConnector {
    * Get schema for a specific model/table/entity
    */
   getModelSchema(modelName: string): Promise<any>;
+  
+  /**
+   * Get connector configuration without sensitive data
+   */
+  getSafeConfig(): any;
 }
 
 /**
@@ -175,7 +180,8 @@ export abstract class BaseDataConnector implements DataConnector {
             name: error.name,
             message: error.message,
             stack: error.stack,
-            ...(error instanceof ExternalServiceError ? { context: error.context } : {})
+            // Add any error details if present
+            ...(error instanceof AppError && error.details ? { details: error.details } : {})
           } : error
         }),
         source: `${this.getType()}-connector`,
@@ -295,6 +301,37 @@ export abstract class BaseDataConnector implements DataConnector {
     }
     
     return 'Unknown error';
+  }
+  
+  /**
+   * Get a safe (no sensitive data) version of the connector config
+   */
+  getSafeConfig(): any {
+    // Clone the config
+    const safeConfig = { ...this.config };
+    
+    // Remove sensitive fields
+    if (safeConfig.apiKey) safeConfig.apiKey = '[REDACTED]';
+    if (safeConfig.api_key) safeConfig.api_key = '[REDACTED]';
+    if (safeConfig.key) safeConfig.key = '[REDACTED]';
+    if (safeConfig.secret) safeConfig.secret = '[REDACTED]';
+    if (safeConfig.token) safeConfig.token = '[REDACTED]';
+    if (safeConfig.password) safeConfig.password = '[REDACTED]';
+    
+    // Handle nested objects
+    if (safeConfig.headers) {
+      safeConfig.headers = { ...safeConfig.headers };
+      if (safeConfig.headers.Authorization) safeConfig.headers.Authorization = '[REDACTED]';
+      if (safeConfig.headers.authorization) safeConfig.headers.authorization = '[REDACTED]';
+      if (safeConfig.headers['X-API-Key']) safeConfig.headers['X-API-Key'] = '[REDACTED]';
+    }
+    
+    // Add connector metadata
+    return {
+      ...safeConfig,
+      name: this.getName(),
+      type: this.getType()
+    };
   }
   
   /**
