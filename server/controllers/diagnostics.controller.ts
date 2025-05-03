@@ -13,7 +13,9 @@ export const getConnectorStatuses = async (req: Request, res: Response, next: Ne
     
     // Test connection for each connector
     const statuses = await Promise.all(
-      Object.entries(connectors).map(async ([name, connector]) => {
+      connectors.map(async (connector) => {
+        const name = connector.getName();
+        const type = connector.getType();
         let status = false;
         let error = null;
         
@@ -27,7 +29,7 @@ export const getConnectorStatuses = async (req: Request, res: Response, next: Ne
         await storage.createLog({
           level: status ? LogLevel.INFO : LogLevel.ERROR,
           category: LogCategory.SYSTEM,
-          message: `Connector ${name} status check: ${status ? 'Connected' : 'Failed'}`,
+          message: `Connector ${name} (${type}) status check: ${status ? 'Connected' : 'Failed'}`,
           details: JSON.stringify({
             connector: name,
             type: connector.getType(),
@@ -227,14 +229,16 @@ async function refreshConnectorData(): Promise<void> {
     const connectors = connectorFactory.getAllConnectors();
     
     // Process each connector
-    for (const [name, connector] of Object.entries(connectors)) {
+    for (const connector of connectors) {
+      const name = connector.getName();
+      const type = connector.getType();
       try {
         // Log start of refresh for this connector
         await storage.createLog({
           level: LogLevel.INFO,
           category: LogCategory.SYSTEM,
-          message: `Starting data refresh for connector: ${name}`,
-          details: JSON.stringify({ connector: name, type: connector.getType() }),
+          message: `Starting data refresh for connector: ${name} (${type})`,
+          details: JSON.stringify({ connector: name, type }),
           source: 'diagnostics-controller',
           projectId: null,
           userId: null,
@@ -309,7 +313,7 @@ async function refreshConnectorData(): Promise<void> {
       category: LogCategory.SYSTEM,
       message: 'Completed data refresh for all connectors',
       details: JSON.stringify({
-        connectorsCount: Object.keys(connectors).length
+        connectorsCount: connectors.length
       }),
       source: 'diagnostics-controller',
       projectId: null,

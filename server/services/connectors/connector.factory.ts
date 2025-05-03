@@ -35,6 +35,10 @@ export class ConnectorFactory {
   }
   
   /**
+   * Get connector methods are implemented below with overloads
+   */
+  
+  /**
    * Create a CAMA system connector
    */
   public createCAMAConnector(name: string, config: CAMAConnectorConfig): CAMAConnector {
