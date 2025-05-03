@@ -1,0 +1,450 @@
+{
+  "adjustments": [
+    {
+      "comp_id": "comp-001",
+      "features": [
+        {
+          "feature": "Location",
+          "effect": -1500,
+          "value": "0.8 miles",
+          "description": "This comp is 0.8 miles from the subject property",
+          "adjustable": true,
+          "adjustment_range": [-5000, 5000]
+        },
+        {
+          "feature": "Square Footage",
+          "effect": -15000,
+          "value": "2300 sqft vs 2450 sqft",
+          "description": "The comp is 150 sqft smaller, requiring upward adjustment",
+          "adjustable": true,
+          "adjustment_range": [-50000, 50000]
+        },
+        {
+          "feature": "Bedrooms",
+          "effect": 0,
+          "value": "4 vs 4",
+          "description": "Both properties have the same number of bedrooms",
+          "adjustable": true,
+          "adjustment_range": [-20000, 20000]
+        },
+        {
+          "feature": "Bathrooms",
+          "effect": 0,
+          "value": "2.5 vs 2.5",
+          "description": "Both properties have the same number of bathrooms",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Year Built",
+          "effect": -1500,
+          "value": "1995 vs 1998",
+          "description": "The comp is 3 years older",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        },
+        {
+          "feature": "Sale Date",
+          "effect": 5000,
+          "value": "1 month ago",
+          "description": "Market appreciation since sale date of the comp",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Quality",
+          "effect": 3000,
+          "value": "Average Plus vs Average",
+          "description": "The comp has superior quality finishes",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        }
+      ],
+      "total_adjustment": -10000,
+      "adjusted_price": 425000,
+      "confidence": 0.92
+    },
+    {
+      "comp_id": "comp-002",
+      "features": [
+        {
+          "feature": "Location",
+          "effect": -2500,
+          "value": "1.2 miles",
+          "description": "This comp is 1.2 miles from the subject property",
+          "adjustable": true,
+          "adjustment_range": [-5000, 5000]
+        },
+        {
+          "feature": "Square Footage",
+          "effect": -20000,
+          "value": "2250 sqft vs 2450 sqft",
+          "description": "The comp is 200 sqft smaller, requiring upward adjustment",
+          "adjustable": true,
+          "adjustment_range": [-50000, 50000]
+        },
+        {
+          "feature": "Bedrooms",
+          "effect": -5000,
+          "value": "3 vs 4",
+          "description": "The comp has 1 fewer bedroom",
+          "adjustable": true,
+          "adjustment_range": [-20000, 20000]
+        },
+        {
+          "feature": "Bathrooms",
+          "effect": -3000,
+          "value": "2 vs 2.5",
+          "description": "The comp has 0.5 fewer bathrooms",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Year Built",
+          "effect": -1000,
+          "value": "1996 vs 1998",
+          "description": "The comp is 2 years older",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        },
+        {
+          "feature": "Sale Date",
+          "effect": 8000,
+          "value": "4 months ago",
+          "description": "Market appreciation since sale date of the comp",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Stories",
+          "effect": -5000,
+          "value": "1 vs 2",
+          "description": "The comp is a single-story home vs. two-story subject",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        }
+      ],
+      "total_adjustment": -28500,
+      "adjusted_price": 400500,
+      "confidence": 0.85
+    },
+    {
+      "comp_id": "comp-003",
+      "features": [
+        {
+          "feature": "Location",
+          "effect": 0,
+          "value": "0.5 miles",
+          "description": "This comp is very close to the subject property",
+          "adjustable": true,
+          "adjustment_range": [-5000, 5000]
+        },
+        {
+          "feature": "Square Footage",
+          "effect": 3000,
+          "value": "2480 sqft vs 2450 sqft",
+          "description": "The comp is 30 sqft larger, requiring downward adjustment",
+          "adjustable": true,
+          "adjustment_range": [-50000, 50000]
+        },
+        {
+          "feature": "Bedrooms",
+          "effect": 0,
+          "value": "4 vs 4",
+          "description": "Both properties have the same number of bedrooms",
+          "adjustable": true,
+          "adjustment_range": [-20000, 20000]
+        },
+        {
+          "feature": "Bathrooms",
+          "effect": 3750,
+          "value": "3 vs 2.5",
+          "description": "The comp has 0.5 more bathrooms",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Year Built",
+          "effect": 500,
+          "value": "1999 vs 1998",
+          "description": "The comp is 1 year newer",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        },
+        {
+          "feature": "Sale Date",
+          "effect": 1000,
+          "value": "2 weeks ago",
+          "description": "Market appreciation since sale date of the comp",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Garage",
+          "effect": 5000,
+          "value": "3 vs 2 spaces",
+          "description": "The comp has 1 additional garage space",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        },
+        {
+          "feature": "Quality",
+          "effect": 3000,
+          "value": "Average Plus vs Average",
+          "description": "The comp has superior quality finishes",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        }
+      ],
+      "total_adjustment": 16250,
+      "adjusted_price": 431250,
+      "confidence": 0.90
+    },
+    {
+      "comp_id": "comp-004",
+      "features": [
+        {
+          "feature": "Location",
+          "effect": -4000,
+          "value": "1.5 miles",
+          "description": "This comp is far from the subject property",
+          "adjustable": true,
+          "adjustment_range": [-5000, 5000]
+        },
+        {
+          "feature": "Square Footage",
+          "effect": -35000,
+          "value": "2100 sqft vs 2450 sqft",
+          "description": "The comp is 350 sqft smaller, requiring upward adjustment",
+          "adjustable": true,
+          "adjustment_range": [-50000, 50000]
+        },
+        {
+          "feature": "Bedrooms",
+          "effect": -5000,
+          "value": "3 vs 4",
+          "description": "The comp has 1 fewer bedroom",
+          "adjustable": true,
+          "adjustment_range": [-20000, 20000]
+        },
+        {
+          "feature": "Bathrooms",
+          "effect": -3000,
+          "value": "2 vs 2.5",
+          "description": "The comp has 0.5 fewer bathrooms",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Year Built",
+          "effect": -500,
+          "value": "1997 vs 1998",
+          "description": "The comp is 1 year older",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        },
+        {
+          "feature": "Sale Date",
+          "effect": 7000,
+          "value": "3 months ago",
+          "description": "Market appreciation since sale date of the comp",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Stories",
+          "effect": -5000,
+          "value": "1 vs 2",
+          "description": "The comp is a single-story home vs. two-story subject",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        },
+        {
+          "feature": "Cooling",
+          "effect": -3000,
+          "value": "Window Units vs Central",
+          "description": "The comp has inferior cooling system",
+          "adjustable": true,
+          "adjustment_range": [-5000, 5000]
+        },
+        {
+          "feature": "Fireplace",
+          "effect": -2500,
+          "value": "No vs Yes",
+          "description": "The comp does not have a fireplace",
+          "adjustable": true,
+          "adjustment_range": [-5000, 5000]
+        }
+      ],
+      "total_adjustment": -51000,
+      "adjusted_price": 359000,
+      "confidence": 0.78
+    },
+    {
+      "comp_id": "comp-005",
+      "features": [
+        {
+          "feature": "Location",
+          "effect": -1200,
+          "value": "0.7 miles",
+          "description": "This comp is 0.7 miles from the subject property",
+          "adjustable": true,
+          "adjustment_range": [-5000, 5000]
+        },
+        {
+          "feature": "Square Footage",
+          "effect": 15000,
+          "value": "2600 sqft vs 2450 sqft",
+          "description": "The comp is 150 sqft larger, requiring downward adjustment",
+          "adjustable": true,
+          "adjustment_range": [-50000, 50000]
+        },
+        {
+          "feature": "Bedrooms",
+          "effect": 5000,
+          "value": "5 vs 4",
+          "description": "The comp has 1 additional bedroom",
+          "adjustable": true,
+          "adjustment_range": [-20000, 20000]
+        },
+        {
+          "feature": "Bathrooms",
+          "effect": 3750,
+          "value": "3 vs 2.5",
+          "description": "The comp has 0.5 more bathrooms",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Year Built",
+          "effect": 1000,
+          "value": "2000 vs 1998",
+          "description": "The comp is 2 years newer",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        },
+        {
+          "feature": "Sale Date",
+          "effect": 2500,
+          "value": "1.5 months ago",
+          "description": "Market appreciation since sale date of the comp",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Garage",
+          "effect": 5000,
+          "value": "3 vs 2 spaces",
+          "description": "The comp has 1 additional garage space",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        },
+        {
+          "feature": "Roof",
+          "effect": 2500,
+          "value": "Tile vs Composite",
+          "description": "The comp has superior roofing material",
+          "adjustable": true,
+          "adjustment_range": [-5000, 5000]
+        },
+        {
+          "feature": "Pool",
+          "effect": 10000,
+          "value": "Yes vs No",
+          "description": "The comp has a pool",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Quality",
+          "effect": 5000,
+          "value": "Good vs Average",
+          "description": "The comp has superior quality finishes",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        }
+      ],
+      "total_adjustment": 48550,
+      "adjusted_price": 403450,
+      "confidence": 0.82
+    },
+    {
+      "comp_id": "comp-006",
+      "features": [
+        {
+          "feature": "Location",
+          "effect": -4000,
+          "value": "1.8 miles",
+          "description": "This comp is far from the subject property",
+          "adjustable": true,
+          "adjustment_range": [-5000, 5000]
+        },
+        {
+          "feature": "Square Footage",
+          "effect": -25000,
+          "value": "2200 sqft vs 2450 sqft",
+          "description": "The comp is 250 sqft smaller, requiring upward adjustment",
+          "adjustable": true,
+          "adjustment_range": [-50000, 50000]
+        },
+        {
+          "feature": "Bedrooms",
+          "effect": 0,
+          "value": "4 vs 4",
+          "description": "Both properties have the same number of bedrooms",
+          "adjustable": true,
+          "adjustment_range": [-20000, 20000]
+        },
+        {
+          "feature": "Bathrooms",
+          "effect": -3000,
+          "value": "2 vs 2.5",
+          "description": "The comp has 0.5 fewer bathrooms",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Year Built",
+          "effect": -2000,
+          "value": "1994 vs 1998",
+          "description": "The comp is 4 years older",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        },
+        {
+          "feature": "Sale Date",
+          "effect": 10000,
+          "value": "4 months ago",
+          "description": "Market appreciation since sale date of the comp",
+          "adjustable": true,
+          "adjustment_range": [-15000, 15000]
+        },
+        {
+          "feature": "Fireplace",
+          "effect": -2500,
+          "value": "No vs Yes",
+          "description": "The comp does not have a fireplace",
+          "adjustable": true,
+          "adjustment_range": [-5000, 5000]
+        },
+        {
+          "feature": "View",
+          "effect": -3000,
+          "value": "Residential vs Mountain",
+          "description": "The comp has inferior view",
+          "adjustable": true,
+          "adjustment_range": [-10000, 10000]
+        }
+      ],
+      "total_adjustment": -29500,
+      "adjusted_price": 385500,
+      "confidence": 0.75
+    }
+  ],
+  "meta": {
+    "subject_id": "subject-001",
+    "analysis_date": "2025-05-03",
+    "algorithm_version": "1.2.5",
+    "confidence_threshold": 0.7
+  }
+}

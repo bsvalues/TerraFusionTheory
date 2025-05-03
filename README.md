@@ -1,126 +1,127 @@
-# IntelligentEstate: AI-Powered Real Estate Analytics Platform
+# TerraFusion CompFusion Platform
 
-A cutting-edge, full-stack AI application for real estate analytics with advanced ETL pipelines, microservices architecture, real-time geospatial analysis, machine learning predictions, and interactive visualizations.
+A cutting-edge Real Estate Intelligence Platform that leverages advanced geospatial technologies and intelligent analysis to transform complex property data into actionable insights for professionals and investors.
 
-## Key Components
+## Features
 
-### 1. Real-Time Data Pipeline with Apache Airflow
-- Automated ETL workflows for real estate data ingestion
-- Scheduled data processing jobs
-- Visual workflow management
-- Multi-source data integration
+- **Smart Comp Selection System**: Drag-and-drop interface for comparable property selection with AI-powered recommendations
+- **Real-time SHAP Calculator**: Live calculation of property feature impacts with detailed breakdowns
+- **Advanced Visualization**: Interactive Plotly-based waterfall charts showing value impacts
+- **Narrative Generation**: Plain-language explanations of technical adjustments
+- **Modern UI/UX**: Dark-mode AI-first visual styling with consistent component design
 
-### 2. FastAPI Microservices Architecture
-- High-performance async API endpoints
-- Auto-generated Swagger documentation
-- Independently scalable microservices
-- Resilient service isolation
+## Deployment Instructions
 
-### 3. Real-Time Geospatial Analytics
-- Interactive mapping with Leaflet
-- Advanced spatial queries with Turf.js
-- Property boundary visualization
-- Proximity analysis to amenities
+### Option 1: Vercel Deployment (Recommended)
 
-### 4. Machine Learning Prediction Engine
-- Property valuation models
-- Market trend forecasting
-- Smart investment analysis
-- Automated model training and evaluation
+1. **Fork this repository**
+   - Create a GitHub account if you don't have one
+   - Click the "Fork" button at the top right of this repository
 
-### 5. Interactive Data Visualization Dashboard
-- Real-time market metrics
-- Customizable analytics views
-- Comparative market analysis
-- Exportable reports and insights
+2. **Connect to Vercel**
+   - Go to [Vercel](https://vercel.com/) and sign up/login
+   - Click "New Project"
+   - Import your forked repository
+   - Select the repository from the list
 
-## Architecture Overview
+3. **Configure project**
+   - Project Name: Choose a name (e.g., "terrafusion-demo")
+   - Framework Preset: Select "Other"
+   - Root Directory: Leave as default
+   - Build Command: `npm run build`
+   - Output Directory: `dist`
+   - Install Command: `npm install`
 
-The platform consists of the following interconnected components:
+4. **Environment Variables (Optional)**
+   - No environment variables are required for the basic demo
+   - For extended features, add relevant API keys
 
-```
-┌─────────────────┐       ┌─────────────────┐       ┌─────────────────┐
-│                 │       │                 │       │                 │
-│  Data Sources   │──────▶│  ETL Pipeline   │──────▶│   PostgreSQL    │
-│  (MLS, Tax,     │       │  (Airflow)      │       │   Database      │
-│   County, etc.) │       │                 │       │                 │
-└─────────────────┘       └─────────────────┘       └────────┬────────┘
-                                                             │
-                                                             ▼
-┌─────────────────┐       ┌─────────────────────────────────────────────┐
-│                 │       │                                             │
-│    React UI     │◀─────▶│              Microservices                 │
-│    Frontend     │       │  ┌───────────┐┌───────────┐┌───────────┐   │
-│                 │       │  │ Property  ││  Market   ││ Spatial   │   │
-└─────────────────┘       │  │ Service   ││  Service  ││ Service   │   │
-                          │  └───────────┘└───────────┘└───────────┘   │
-                          │  ┌───────────┐                             │
-                          │  │ Analytics │                             │
-                          │  │ Service   │                             │
-                          │  └───────────┘                             │
-                          └─────────────────────────────────────────────┘
-```
+5. **Deploy**
+   - Click "Deploy"
+   - Wait for the build to complete (typically under 2 minutes)
+   - Once deployed, Vercel will provide a URL to access your application
 
-## Getting Started
+### Option 2: Render Deployment
 
-### Prerequisites
-- Python 3.11+
-- Node.js 
-- PostgreSQL database
+1. **Create a Render account**
+   - Go to [Render](https://render.com/) and sign up/login
 
-### Installation
+2. **Set up a new Web Service**
+   - Click "New" and select "Web Service"
+   - Connect to your GitHub repository
+   - Name: Choose a name (e.g., "terrafusion-demo")
+   - Environment: Node
+   - Build Command: `npm install && npm run build`
+   - Start Command: `npm run start`
 
-1. Clone the repository:
-```
-git clone https://github.com/yourusername/intelligentestate.git
-cd intelligentestate
-```
+3. **Configure settings**
+   - Select the free plan for testing
+   - Auto-Deploy: Enable
 
-2. Initialize the database:
-```
-cd microservices
-python init_database.py
-```
+4. **Deploy**
+   - Click "Create Web Service"
+   - Wait for the build to complete
+   - Render will provide a URL to access your application
 
-3. Start the microservices:
-```
-python launch.py
-```
+## Local Development
 
-4. For ETL pipeline setup:
-```
-cd etl
-export AIRFLOW_HOME=$(pwd)
-airflow db init
-airflow scheduler
-```
+1. **Clone the repository**
+   ```
+   git clone https://github.com/your-username/terrafusion.git
+   cd terrafusion
+   ```
 
-5. Start the React frontend:
-```
-cd client
-npm install
-npm run dev
-```
+2. **Install dependencies**
+   ```
+   npm install
+   ```
 
-## API Documentation
+3. **Start the development server**
+   ```
+   npm run dev
+   ```
 
-Each microservice provides its own Swagger documentation at the `/docs` endpoint:
+4. **Access the application**
+   - Open your browser and navigate to `http://localhost:5000`
 
-- Property Service: http://localhost:8001/docs
-- Market Service: http://localhost:8002/docs
-- Spatial Service: http://localhost:8003/docs
-- Analytics Service: http://localhost:8004/docs
+## Demo Data
 
-## Technologies Used
+The repository includes demo-safe AI data for testing:
+- `mock_adjustments.json`: Sample adjustment data for properties
+- `mock_comp_data.json`: Sample comparable property data
 
-- **Backend**: Python, FastAPI, SQLAlchemy, Apache Airflow
-- **Database**: PostgreSQL
-- **ML Stack**: scikit-learn, NumPy, Pandas
-- **Frontend**: React, TypeScript, Shadcn
-- **Geospatial**: Leaflet, Turf.js, GeoJSON
-- **Visualization**: D3.js, Recharts, Plotly
-- **DevOps**: Docker, GitHub Actions (planned)
+These files provide realistic data for demonstration purposes without requiring a backend connection.
 
-## License
+## Extending the Platform
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+### Authentication & Audit Backend
+
+To add user authentication and audit logging capabilities:
+
+1. Set up Firebase authentication
+2. Implement audit logging middleware
+3. Add user management dashboard
+
+### Marketing Landing Page
+
+To create a marketing landing page:
+
+1. Customize the included landing page template
+2. Add your branding and messaging
+3. Deploy to the same or separate domain
+
+### Pilot Walkthrough Kit
+
+For organizations interested in piloting the platform:
+
+1. Use the included pilot onboarding script
+2. Customize the training materials
+3. Schedule a demonstration session
+
+## Support
+
+For support, please contact our team at support@terrafusion.com
+
+---
+
+© 2025 TerraFusion. All rights reserved.
