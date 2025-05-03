@@ -1,0 +1,137 @@
+/**
+ * TerraFusion Component Styling
+ * Dark-mode AI-first visual styling for the TerraFusion platform
+ */
+
+@layer components {
+  .tf-card {
+    @apply bg-card text-card-foreground border border-border shadow-sm;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .tf-card:hover {
+    @apply shadow-md;
+    transform: translateY(-1px);
+  }
+
+  .tf-button-primary {
+    @apply bg-primary text-primary-foreground hover:bg-primary/90;
+  }
+
+  .tf-button-secondary {
+    @apply bg-secondary text-secondary-foreground hover:bg-secondary/80;
+  }
+
+  .tf-button-destructive {
+    @apply bg-destructive text-destructive-foreground hover:bg-destructive/90;
+  }
+
+  .tf-viz-container {
+    @apply rounded-md overflow-hidden;
+    min-height: 300px;
+  }
+
+  .tf-vizion-plot {
+    @apply w-full h-full;
+  }
+
+  .tf-comp-card {
+    @apply relative border rounded-md p-3 bg-card hover:shadow-md cursor-grab;
+    transition: all 0.2s ease-in-out;
+  }
+
+  .tf-comp-card-selected {
+    @apply ring-2 ring-primary;
+  }
+
+  .tf-comp-card-dragging {
+    @apply shadow-lg;
+    cursor: grabbing !important;
+  }
+
+  .tf-comp-tray {
+    @apply grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 p-4 rounded-md border bg-muted/20;
+  }
+
+  .tf-comp-grid {
+    @apply grid grid-cols-1 md:grid-cols-3 gap-4 p-4 rounded-md border bg-muted/30;
+  }
+
+  .tf-comp-grid-cell {
+    @apply border-2 border-dashed border-muted-foreground/20 rounded-md p-4 bg-background/50 flex items-center justify-center transition-all;
+    min-height: 180px;
+  }
+
+  .tf-comp-grid-cell-active {
+    @apply border-primary/50 bg-primary/5;
+  }
+
+  .tf-comp-grid-cell-selected {
+    @apply border-primary border-solid bg-primary/10;
+  }
+
+  /* Animation for visualizations */
+  .tf-viz-fade-in {
+    animation: vizFadeIn 0.5s ease-in-out;
+  }
+
+  /* Custom scrollbar for TerraFusion components */
+  .tf-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--primary)/0.3) transparent;
+  }
+
+  .tf-scrollbar::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+
+  .tf-scrollbar::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  .tf-scrollbar::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--primary)/0.3);
+    border-radius: 10px;
+  }
+
+  /* Data visualization styling */
+  .tf-data-positive {
+    @apply text-green-500;
+  }
+
+  .tf-data-negative {
+    @apply text-red-500;
+  }
+
+  .tf-data-neutral {
+    @apply text-gray-500;
+  }
+
+  /* Map components */
+  .tf-map-container {
+    @apply rounded-md overflow-hidden border;
+    height: 450px;
+  }
+
+  /* Responsive containers */
+  .tf-content-container {
+    @apply mx-auto w-full max-w-screen-xl px-4 md:px-6;
+  }
+
+  /* AI Narrative styling */
+  .tf-narrative-block {
+    @apply p-3 rounded-md bg-muted/40 text-sm border-l-4 border-primary/70;
+  }
+}
+
+@keyframes vizFadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}

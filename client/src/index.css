@@ -1,3 +1,6 @@
+/* Import TerraFusion styles */
+@import './styles/terrafusion.css';
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
