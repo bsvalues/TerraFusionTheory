@@ -41,6 +41,7 @@ import NotFoundPage from './pages/NotFoundPage';
 
 // TerraFusion integration pages
 import ParcelDetailsPage from './pages/terrafusion/ParcelDetailsPage';
+import ParcelDetailsPageNew from './pages/terrafusion/ParcelDetailsPageNew';
 import AuditTrailPage from './pages/terrafusion/AuditTrailPage';
 // Additional TerraFusion pages will be imported here once created
 
@@ -113,7 +114,8 @@ const App = () => {
               <Route path="/admin/users" component={UserAdminPage} />
               
               {/* TerraFusion Integration Routes */}
-              <Route path="/parcel/:id" component={ParcelDetailsPage} />
+              <Route path="/parcel/:id" component={ParcelDetailsPageNew} />
+              <Route path="/parcel-old/:id" component={ParcelDetailsPage} />
               <Route path="/audit/:parcelId" component={AuditTrailPage} />
               {/* These routes will be implemented as components are created */}
               {/* <Route path="/valuation/:id" component={ValuationSummaryPage} /> */}
