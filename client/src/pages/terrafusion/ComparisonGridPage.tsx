@@ -221,12 +221,14 @@ export default function ComparisonGridPage() {
         selectedComps={selectedComps}
         onCompAdded={handleCompAdded}
         onCompRemoved={handleCompRemoved}
+        onCompSelected={handleSelectCompForImpact}
+        selectedCompIndex={selectedCompIndex}
         onRecalculate={handleRecalculate}
       />
       
       {/* Show the Impact Visualizer if a comp is selected */}
       {selectedCompIndex !== null && selectedComps[selectedCompIndex] && (
-        <div className="mt-6">
+        <div className="mt-6 tf-viz-fade-in">
           <h3 className="text-lg font-medium mb-4">Value Impact Analysis</h3>
           <CompImpactVisualizer
             compProperty={selectedComps[selectedCompIndex]!}

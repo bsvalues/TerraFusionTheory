@@ -18,6 +18,8 @@ interface CompGridDropzoneProps {
   selectedComps: (CompProperty | null)[];
   onCompAdded: (index: number, comp: CompProperty) => void;
   onCompRemoved: (index: number) => void;
+  onCompSelected?: (index: number) => void;
+  selectedCompIndex?: number | null;
   onRecalculate?: () => void;
   showRecalculateButton?: boolean;
 }
@@ -27,6 +29,8 @@ const CompGridDropzone: React.FC<CompGridDropzoneProps> = ({
   selectedComps,
   onCompAdded,
   onCompRemoved,
+  onCompSelected,
+  selectedCompIndex,
   onRecalculate,
   showRecalculateButton = true
 }) => {
@@ -201,7 +205,17 @@ const CompGridDropzone: React.FC<CompGridDropzoneProps> = ({
               ${activeDropzone === index ? 'ring-2 ring-primary ring-opacity-70 tf-pulse' : ''}
             `}
           >
-            <Card className="tf-card h-full">
+            <Card 
+              className={`tf-card h-full cursor-pointer transition-all 
+                ${selectedCompIndex === index && selectedComps[index] ? 'ring-2 ring-accent' : ''}
+                ${selectedComps[index] ? 'hover:border-accent' : ''}
+              `}
+              onClick={() => {
+                if (selectedComps[index] && onCompSelected) {
+                  onCompSelected(index);
+                }
+              }}
+            >
               <CardHeader className="pb-2">
                 <CardTitle className="flex justify-between items-center">
                   <span>Comp {index + 1}</span>
@@ -209,8 +223,11 @@ const CompGridDropzone: React.FC<CompGridDropzoneProps> = ({
                     <Button 
                       variant="ghost" 
                       size="icon" 
-                      className="h-6 w-6 rounded-full"
-                      onClick={() => handleRemoveComp(index)}
+                      className="h-6 w-6 rounded-full z-10"
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent triggering card click
+                        handleRemoveComp(index);
+                      }}
                     >
                       <X className="h-4 w-4" />
                     </Button>
@@ -254,6 +271,14 @@ const CompGridDropzone: React.FC<CompGridDropzoneProps> = ({
                       <div className="flex items-center text-sm mt-1">
                         <ArrowRightLeft className="h-4 w-4 mr-1 text-blue-500" />
                         <span>Adjusted: {formatPrice(selectedComps[index]!.adjustedPrice)}</span>
+                      </div>
+                    )}
+                    
+                    {selectedComps[index] && (
+                      <div className="flex justify-center mt-3">
+                        <span className="text-xs text-center text-muted-foreground">
+                          {selectedCompIndex === index ? "Analysis shown below ↓" : "Click to show impact analysis"}
+                        </span>
                       </div>
                     )}
                   </div>
