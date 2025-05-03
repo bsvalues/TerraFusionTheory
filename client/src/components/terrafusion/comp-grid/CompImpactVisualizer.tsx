@@ -46,19 +46,24 @@ const CompImpactVisualizer: React.FC<CompImpactVisualizerProps> = ({
 }) => {
   const [data, setData] = useState<ShapData | null>(null);
   
-  // Placeholder for SHAP data API fetch
+  // Use provided SHAP data or load mock data if none is provided
   useEffect(() => {
-    // In a real implementation, we would fetch SHAP data from an API
-    // For now, use the mock data regardless of which comp property is passed
-    const loadData = () => {
-      // Simulate an API call delay
-      setTimeout(() => {
-        setData(mockShapData);
-      }, 500);
-    };
-    
-    loadData();
-  }, [compProperty.id]);
+    if (shapData) {
+      // If shapData is provided by parent, use it
+      setData(shapData);
+    } else if (!loading) {
+      // If no shapData is provided and not loading, use mock data
+      // In a real implementation, this fallback wouldn't be needed
+      const loadData = () => {
+        // Simulate an API call delay
+        setTimeout(() => {
+          setData(mockShapData);
+        }, 500);
+      };
+      
+      loadData();
+    }
+  }, [shapData, loading, compProperty.id]);
   
   // Format currency values
   const formatCurrency = (value: number): string => {

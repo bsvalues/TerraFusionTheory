@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { TerraFusionUXLayout } from '@/components/layout';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
@@ -7,7 +7,10 @@ import {
   SmartCompTray, 
   CompGridDropzone, 
   CompProperty,
-  CompImpactVisualizer 
+  CompImpactVisualizer,
+  NarrativeAgent,
+  calculateShapValues,
+  ShapData
 } from '@/components/terrafusion/comp-grid';
 import { useToast } from '@/hooks/use-toast';
 
@@ -15,6 +18,8 @@ export default function ComparisonGridPage() {
   const { toast } = useToast();
   const [selectedComps, setSelectedComps] = useState<(CompProperty | null)[]>([null, null, null]);
   const [selectedCompIndex, setSelectedCompIndex] = useState<number | null>(null);
+  const [shapData, setShapData] = useState<ShapData | null>(null);
+  const [isCalculating, setIsCalculating] = useState<boolean>(false);
   
   // Mock subject property
   const subjectProperty: CompProperty = {
@@ -194,6 +199,24 @@ export default function ComparisonGridPage() {
     setSelectedCompIndex(index);
   };
   
+  // Calculate SHAP data when a comp is selected
+  useEffect(() => {
+    if (selectedCompIndex !== null && selectedComps[selectedCompIndex] && subjectProperty) {
+      setIsCalculating(true);
+      
+      // In a real-world scenario, this would be an API call
+      // For now, we'll use our mock calculator with simulated delay
+      setTimeout(() => {
+        const newShapData = calculateShapValues(
+          selectedComps[selectedCompIndex]!,
+          subjectProperty
+        );
+        setShapData(newShapData);
+        setIsCalculating(false);
+      }, 800); // Simulate API delay
+    }
+  }, [selectedCompIndex, selectedComps]);
+  
   // Handle recalculation
   const handleRecalculate = () => {
     // This would connect to an API in a real implementation
@@ -233,7 +256,20 @@ export default function ComparisonGridPage() {
           <CompImpactVisualizer
             compProperty={selectedComps[selectedCompIndex]!}
             subjectProperty={subjectProperty}
+            shapData={shapData || undefined}
+            loading={isCalculating}
           />
+          
+          {/* Narrative explanation of the impact */}
+          {shapData && !isCalculating && (
+            <div className="mt-6 tf-viz-fade-in">
+              <NarrativeAgent
+                compProperty={selectedComps[selectedCompIndex]!}
+                subjectProperty={subjectProperty}
+                shapData={shapData as ShapData}
+              />
+            </div>
+          )}
         </div>
       )}
       
