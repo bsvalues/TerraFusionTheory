@@ -9,6 +9,7 @@ import { Separator } from '@/components/ui/separator';
 import { useToast } from '@/hooks/use-toast';
 import { Activity, Map, Home, FileText, BarChart3, Users, ArrowLeft, FileBarChart2 } from 'lucide-react';
 import { Link } from 'wouter';
+import { TerraFusionUXLayout } from '@/components/layout';
 
 // Mock API function to get property details
 const fetchPropertyDetails = async (id: string) => {
