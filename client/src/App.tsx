@@ -38,6 +38,11 @@ import DevAuthAdminPage from './pages/DevAuthAdminPage';
 import UserAdminPage from './pages/UserAdminPage';
 import { RecommendationsPage } from './pages/RecommendationsPage';
 import NotFoundPage from './pages/NotFoundPage';
+
+// TerraFusion integration pages
+import ParcelDetailsPage from './pages/terrafusion/ParcelDetailsPage';
+// Additional TerraFusion pages will be imported here once created
+
 import { 
   TutorialManager, 
   TutorialButton, 
@@ -105,6 +110,14 @@ const App = () => {
               <Route path="/dev-auth" component={DevAuthLoginPage} />
               <Route path="/dev-auth/admin" component={DevAuthAdminPage} />
               <Route path="/admin/users" component={UserAdminPage} />
+              
+              {/* TerraFusion Integration Routes */}
+              <Route path="/parcel/:id" component={ParcelDetailsPage} />
+              {/* These routes will be implemented as components are created */}
+              {/* <Route path="/valuation/:id" component={ValuationSummaryPage} /> */}
+              {/* <Route path="/comps/:parcelId" component={CompsSelectionPage} /> */}
+              {/* <Route path="/audit/:parcelId" component={AuditTrailPage} /> */}
+              
               <Route component={NotFoundPage} />
             </Switch>
             
