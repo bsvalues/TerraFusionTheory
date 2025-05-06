@@ -76,15 +76,27 @@ export class CAMAConnector extends BaseDataConnector {
       throw new Error('CAMA connector requires apiKey in configuration');
     }
     
+    // Check if we're using RapidAPI
+    const isRapidApi = config.baseUrl.includes('rapidapi.com');
+    
+    // Create headers with appropriate API key format
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+      ...(config.headers || {})
+    };
+    
+    if (isRapidApi) {
+      headers['x-rapidapi-key'] = config.apiKey;
+      headers['x-rapidapi-host'] = config.baseUrl.replace('https://', '').split('/')[0];
+    } else {
+      headers['X-API-Key'] = config.apiKey;
+    }
+    
     // Create Axios client with base configuration
     this.client = axios.create({
       baseURL: config.baseUrl,
       timeout: config.timeout || 30000,
-      headers: {
-        'Content-Type': 'application/json',
-        'X-API-Key': config.apiKey,
-        ...(config.headers || {})
-      }
+      headers
     });
     
     // Add response interceptor for error handling
@@ -146,7 +158,24 @@ export class CAMAConnector extends BaseDataConnector {
   }> {
     try {
       const startTime = Date.now();
-      const endpoint = '/properties';
+      
+      // Check if we're using RapidAPI
+      const isRapidApi = (this.config as CAMAConnectorConfig).baseUrl.includes('rapidapi.com');
+      
+      // Adjust endpoint based on API provider
+      let endpoint = '/properties';
+      
+      if (isRapidApi && (this.config as CAMAConnectorConfig).baseUrl.includes('county-data-lookup-api')) {
+        endpoint = '/v1/countydata';
+        // Transform query to match the county data API format
+        if (query.county || (this.config as CAMAConnectorConfig).county) {
+          query = { 
+            ...query, 
+            county: query.county || (this.config as CAMAConnectorConfig).county || 'Yakima',
+            state: query.state || (this.config as CAMAConnectorConfig).state || 'WA'
+          };
+        }
+      }
       
       // Log the request
       await this.logRequest('GET', endpoint, query);
@@ -167,7 +196,39 @@ export class CAMAConnector extends BaseDataConnector {
       // Log the response
       await this.logResponse('GET', endpoint, query, response.data, duration);
       
-      // Return the formatted data
+      // Format response based on API provider
+      if (isRapidApi && (this.config as CAMAConnectorConfig).baseUrl.includes('county-data-lookup-api')) {
+        // Format county data API response to match expected structure
+        const countyData = response.data;
+        
+        // Transform the county data into property data format
+        const properties: PropertyData[] = [{
+          id: '1',
+          parcelId: '1',
+          address: `${query.county}, ${query.state}`,
+          owner: 'County Property',
+          assessedValue: countyData.medianPropertyValue || 0,
+          marketValue: countyData.medianPropertyValue || 0,
+          landValue: 0,
+          improvementValue: 0,
+          assessmentYear: new Date().getFullYear(),
+          propertyClass: 'County',
+          acres: countyData.landAreaSqMiles || 0,
+          squareFeet: (countyData.landAreaSqMiles || 0) * 27878400, // convert sq miles to sq ft
+          neighborhood: countyData.county,
+          latitude: countyData.latitude,
+          longitude: countyData.longitude
+        }];
+        
+        return {
+          properties,
+          total: 1,
+          page: 1,
+          limit: 10
+        };
+      }
+      
+      // Standard CAMA API response
       return {
         properties: response.data.properties || [],
         total: response.data.total || 0,

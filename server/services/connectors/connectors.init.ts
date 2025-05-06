@@ -15,8 +15,8 @@ const defaultCAMAConnectors: { name: string; config: CAMAConnectorConfig }[] = [
   {
     name: 'grandview-cama',
     config: {
-      baseUrl: 'https://data.yakimacounty.us/api/v2/assessor',
-      apiKey: process.env.YAKIMA_COUNTY_API_KEY || '',
+      baseUrl: 'https://county-data-lookup-api-apiverve.p.rapidapi.com',
+      apiKey: '451301875bmsh347cde0b3c6bf7ep1fad23jsn9f94e7d04b55',
       county: 'Yakima',
       state: 'WA',
       useAdvancedFiltering: true

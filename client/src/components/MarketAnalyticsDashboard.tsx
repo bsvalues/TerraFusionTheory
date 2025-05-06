@@ -42,29 +42,59 @@ const MarketAnalyticsDashboard: React.FC = () => {
     enabled: false, // Don't fetch on component mount
   });
 
-  // Get market prediction data - we'll use a mock for now
-  // In a real app, we would fetch this from the API
-  const predictionData: MarketPrediction | null = null; // We'll use our mock data instead
+  // Get market prediction data from the API
+  const { data: predictionData, isLoading: predictionLoading } = useQuery({
+    queryKey: ['/api/market/predictions', selectedArea],
+    queryFn: async () => {
+      try {
+        const response = await fetch(`/api/market/predictions?area=${selectedArea}`);
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || 'Error fetching market predictions');
+        }
+        const data = await response.json();
+        return data.data;
+      } catch (error) {
+        console.error('Error fetching market predictions:', error);
+        throw error;
+      }
+    },
+    enabled: false, // Will be triggered by handleLoadData
+  });
 
   // Load the data when "Load Data" button is clicked
   const handleLoadData = () => {
-    // This will trigger both queries
-    // In a real application, this would be automatic based on user selections
     toast({
       title: "Loading market data",
       description: `Fetching market data for ${selectedArea}...`,
     });
     
-    // In a real application, we would enable API fetching here
-    // and the data would be refreshed from the server
+    // Trigger refetching data from the real APIs
+    const refetchQueries = async () => {
+      try {
+        // Force refetch all the queries with real data
+        await Promise.all([
+          refetchPriceHistory(),
+          refetchMarketMetrics(),
+          refetchSegmentData(),
+          refetchPrediction()
+        ]);
+        
+        toast({
+          title: "Data loaded successfully",
+          description: `Market data for ${selectedArea} loaded successfully`,
+        });
+      } catch (error) {
+        console.error("Error loading market data:", error);
+        toast({
+          title: "Error loading data",
+          description: `Failed to load market data for ${selectedArea}. ${error instanceof Error ? error.message : ''}`,
+          variant: "destructive"
+        });
+      }
+    };
     
-    // For now, we'll just show a success message after a short delay
-    setTimeout(() => {
-      toast({
-        title: "Data loaded successfully",
-        description: "Using locally generated market data for demonstration",
-      });
-    }, 1000);
+    refetchQueries();
   };
 
   // Generate demo price history data - this would come from the API in a real application
