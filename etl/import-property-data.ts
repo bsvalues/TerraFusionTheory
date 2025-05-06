@@ -45,11 +45,14 @@ function transformPropertyData(raw: RawPropertyData) {
     landUse: raw.land_use || raw.landUse || null,
     yearBuilt: raw.year_built && raw.year_built !== "null" && raw.year_built !== "" ? 
               (isNaN(parseInt(raw.year_built)) ? null : parseInt(raw.year_built)) : null,
-    buildingArea: raw.building_area || raw.buildingArea ? String(raw.building_area || raw.buildingArea) : null,
-    lotSize: raw.lot_size || raw.lotSize ? String(raw.lot_size || raw.lotSize) : null,
+    buildingArea: raw.building_area && raw.building_area !== "null" && raw.building_area !== "" ? 
+              String(raw.building_area) : null,
+    lotSize: raw.lot_size && raw.lot_size !== "null" && raw.lot_size !== "" ? 
+           String(raw.lot_size) : null,
     bedrooms: raw.bedrooms && raw.bedrooms !== "null" && raw.bedrooms !== "" ? 
               (isNaN(parseInt(raw.bedrooms)) ? null : parseInt(raw.bedrooms)) : null,
-    bathrooms: raw.bathrooms ? String(raw.bathrooms) : null,
+    bathrooms: raw.bathrooms && raw.bathrooms !== "null" && raw.bathrooms !== "" ? 
+             String(raw.bathrooms) : null,
     stories: raw.stories && raw.stories !== "null" && raw.stories !== "" ? 
             (isNaN(parseInt(raw.stories)) ? null : parseInt(raw.stories)) : null,
     condition: raw.condition || null,
@@ -66,11 +69,21 @@ function transformPropertyData(raw: RawPropertyData) {
     porchType: raw.porch_type || raw.porchType || null,
     deckType: raw.deck_type || raw.deckType || null,
     poolType: raw.pool_type || raw.poolType || null,
-    assessedValue: raw.assessed_value || raw.assessedValue ? String(raw.assessed_value || raw.assessedValue) : null,
-    marketValue: raw.market_value || raw.marketValue ? String(raw.market_value || raw.marketValue) : null,
-    taxableValue: raw.taxable_value || raw.taxableValue ? String(raw.taxable_value || raw.taxableValue) : null,
-    lastSalePrice: raw.last_sale_price || raw.lastSalePrice ? String(raw.last_sale_price || raw.lastSalePrice) : null,
-    lastSaleDate: raw.last_sale_date || raw.lastSaleDate ? raw.last_sale_date || raw.lastSaleDate : null,
+    assessedValue: raw.assessed_value && raw.assessed_value !== "null" && raw.assessed_value !== "" ? 
+                 String(raw.assessed_value) : (raw.assessedValue && raw.assessedValue !== "null" && raw.assessedValue !== "" ? 
+                 String(raw.assessedValue) : null),
+    marketValue: raw.market_value && raw.market_value !== "null" && raw.market_value !== "" ? 
+               String(raw.market_value) : (raw.marketValue && raw.marketValue !== "null" && raw.marketValue !== "" ? 
+               String(raw.marketValue) : null),
+    taxableValue: raw.taxable_value && raw.taxable_value !== "null" && raw.taxable_value !== "" ? 
+                String(raw.taxable_value) : (raw.taxableValue && raw.taxableValue !== "null" && raw.taxableValue !== "" ? 
+                String(raw.taxableValue) : null),
+    lastSalePrice: raw.last_sale_price && raw.last_sale_price !== "null" && raw.last_sale_price !== "" ? 
+                 String(raw.last_sale_price) : (raw.lastSalePrice && raw.lastSalePrice !== "null" && raw.lastSalePrice !== "" ? 
+                 String(raw.lastSalePrice) : null),
+    lastSaleDate: raw.last_sale_date && raw.last_sale_date !== "null" && raw.last_sale_date !== "" ? 
+                raw.last_sale_date : (raw.lastSaleDate && raw.lastSaleDate !== "null" && raw.lastSaleDate !== "" ? 
+                raw.lastSaleDate : null),
     latitude: raw.latitude ? parseFloat(raw.latitude) : null,
     longitude: raw.longitude ? parseFloat(raw.longitude) : null,
     zoning: raw.zoning || null,
@@ -92,22 +105,36 @@ function transformSaleData(raw: RawSaleData) {
   return {
     propertyId: raw.property_id || raw.propertyId ? parseInt(raw.property_id || raw.propertyId) : 0, // Must be set later
     parcelId: raw.parcel_id || raw.parcelId || '',
-    salePrice: raw.sale_price || raw.salePrice ? String(raw.sale_price || raw.salePrice) : '0',
-    saleDate: raw.sale_date || raw.saleDate ? raw.sale_date || raw.saleDate : new Date().toISOString().split('T')[0],
+    salePrice: raw.sale_price && raw.sale_price !== "null" && raw.sale_price !== "" ? 
+             String(raw.sale_price) : (raw.salePrice && raw.salePrice !== "null" && raw.salePrice !== "" ? 
+             String(raw.salePrice) : '0'),
+    saleDate: raw.sale_date && raw.sale_date !== "null" && raw.sale_date !== "" ? 
+            raw.sale_date : (raw.saleDate && raw.saleDate !== "null" && raw.saleDate !== "" ? 
+            raw.saleDate : new Date().toISOString().split('T')[0]),
     transactionType: (raw.transaction_type || raw.transactionType || 'SALE') as TransactionType,
-    deedType: raw.deed_type || raw.deedType || null,
-    buyerName: raw.buyer_name || raw.buyerName || null,
-    sellerName: raw.seller_name || raw.sellerName || null,
-    verified: raw.verified ? raw.verified.toLowerCase() === 'true' : false,
-    validForAnalysis: raw.valid_for_analysis || raw.validForAnalysis ? 
-                     (raw.valid_for_analysis || raw.validForAnalysis).toLowerCase() === 'true' : true,
-    financingType: raw.financing_type || raw.financingType || null,
-    assessedValueAtSale: raw.assessed_value_at_sale || raw.assessedValueAtSale ? 
-                        String(raw.assessed_value_at_sale || raw.assessedValueAtSale) : null,
-    salePricePerSqFt: raw.sale_price_per_sqft || raw.salePricePerSqFt ? 
-                     String(raw.sale_price_per_sqft || raw.salePricePerSqFt) : null,
-    assessmentRatio: raw.assessment_ratio || raw.assessmentRatio ? 
-                    String(raw.assessment_ratio || raw.assessmentRatio) : null,
+    deedType: raw.deed_type && raw.deed_type !== "null" ? 
+            raw.deed_type : (raw.deedType && raw.deedType !== "null" ? raw.deedType : null),
+    buyerName: raw.buyer_name && raw.buyer_name !== "null" ? 
+             raw.buyer_name : (raw.buyerName && raw.buyerName !== "null" ? raw.buyerName : null),
+    sellerName: raw.seller_name && raw.seller_name !== "null" ? 
+              raw.seller_name : (raw.sellerName && raw.sellerName !== "null" ? raw.sellerName : null),
+    verified: raw.verified && raw.verified !== "null" ? raw.verified.toLowerCase() === 'true' : false,
+    validForAnalysis: raw.valid_for_analysis && raw.valid_for_analysis !== "null" ? 
+                    raw.valid_for_analysis.toLowerCase() === 'true' : 
+                    (raw.validForAnalysis && raw.validForAnalysis !== "null" ? 
+                    raw.validForAnalysis.toLowerCase() === 'true' : true),
+    financingType: raw.financing_type && raw.financing_type !== "null" ? 
+                 raw.financing_type : (raw.financingType && raw.financingType !== "null" ? 
+                 raw.financingType : null),
+    assessedValueAtSale: raw.assessed_value_at_sale && raw.assessed_value_at_sale !== "null" && raw.assessed_value_at_sale !== "" ? 
+                       String(raw.assessed_value_at_sale) : (raw.assessedValueAtSale && raw.assessedValueAtSale !== "null" && raw.assessedValueAtSale !== "" ? 
+                       String(raw.assessedValueAtSale) : null),
+    salePricePerSqFt: raw.sale_price_per_sqft && raw.sale_price_per_sqft !== "null" && raw.sale_price_per_sqft !== "" ? 
+                    String(raw.sale_price_per_sqft) : (raw.salePricePerSqFt && raw.salePricePerSqFt !== "null" && raw.salePricePerSqFt !== "" ? 
+                    String(raw.salePricePerSqFt) : null),
+    assessmentRatio: raw.assessment_ratio && raw.assessment_ratio !== "null" && raw.assessment_ratio !== "" ? 
+                   String(raw.assessment_ratio) : (raw.assessmentRatio && raw.assessmentRatio !== "null" && raw.assessmentRatio !== "" ? 
+                   String(raw.assessmentRatio) : null),
     metadata: {},
   };
 }
@@ -122,33 +149,47 @@ function transformNeighborhoodData(raw: RawNeighborhoodData) {
     city: raw.city || '',
     county: raw.county || '',
     state: raw.state || '',
-    description: raw.description || null,
-    characteristics: raw.characteristics ? JSON.parse(raw.characteristics) : {},
-    boundaries: raw.boundaries ? JSON.parse(raw.boundaries) : null,
-    medianHomeValue: raw.median_home_value || raw.medianHomeValue ? 
-                    String(raw.median_home_value || raw.medianHomeValue) : null,
-    avgHomeValue: raw.avg_home_value || raw.avgHomeValue ? 
-                String(raw.avg_home_value || raw.avgHomeValue) : null,
-    avgYearBuilt: raw.avg_year_built || raw.avgYearBuilt ? 
-                String(raw.avg_year_built || raw.avgYearBuilt) : null,
-    totalProperties: raw.total_properties || raw.totalProperties ? 
-                   parseInt(raw.total_properties || raw.totalProperties) : null,
-    totalSales: raw.total_sales || raw.totalSales ? 
-              parseInt(raw.total_sales || raw.totalSales) : null,
-    avgSalePrice: raw.avg_sale_price || raw.avgSalePrice ? 
-                String(raw.avg_sale_price || raw.avgSalePrice) : null,
-    medianSalePrice: raw.median_sale_price || raw.medianSalePrice ? 
-                   String(raw.median_sale_price || raw.medianSalePrice) : null,
-    avgDaysOnMarket: raw.avg_days_on_market || raw.avgDaysOnMarket ? 
-                   String(raw.avg_days_on_market || raw.avgDaysOnMarket) : null,
-    schoolRating: raw.school_rating || raw.schoolRating ? 
-                String(raw.school_rating || raw.schoolRating) : null,
-    crimeRate: raw.crime_rate || raw.crimeRate ? 
-             String(raw.crime_rate || raw.crimeRate) : null,
-    walkScore: raw.walk_score || raw.walkScore ? 
-             String(raw.walk_score || raw.walkScore) : null,
-    transitScore: raw.transit_score || raw.transitScore ? 
-                String(raw.transit_score || raw.transitScore) : null,
+    description: raw.description && raw.description !== "null" ? raw.description : null,
+    characteristics: raw.characteristics && raw.characteristics !== "null" ? 
+                    JSON.parse(raw.characteristics) : {},
+    boundaries: raw.boundaries && raw.boundaries !== "null" ? 
+               JSON.parse(raw.boundaries) : null,
+    medianHomeValue: raw.median_home_value && raw.median_home_value !== "null" && raw.median_home_value !== "" ? 
+                    String(raw.median_home_value) : (raw.medianHomeValue && raw.medianHomeValue !== "null" && raw.medianHomeValue !== "" ? 
+                    String(raw.medianHomeValue) : null),
+    avgHomeValue: raw.avg_home_value && raw.avg_home_value !== "null" && raw.avg_home_value !== "" ? 
+                String(raw.avg_home_value) : (raw.avgHomeValue && raw.avgHomeValue !== "null" && raw.avgHomeValue !== "" ? 
+                String(raw.avgHomeValue) : null),
+    avgYearBuilt: raw.avg_year_built && raw.avg_year_built !== "null" && raw.avg_year_built !== "" ? 
+                String(raw.avg_year_built) : (raw.avgYearBuilt && raw.avgYearBuilt !== "null" && raw.avgYearBuilt !== "" ? 
+                String(raw.avgYearBuilt) : null),
+    totalProperties: raw.total_properties && raw.total_properties !== "null" && raw.total_properties !== "" ? 
+                   parseInt(raw.total_properties) : (raw.totalProperties && raw.totalProperties !== "null" && raw.totalProperties !== "" ? 
+                   parseInt(raw.totalProperties) : null),
+    totalSales: raw.total_sales && raw.total_sales !== "null" && raw.total_sales !== "" ? 
+              parseInt(raw.total_sales) : (raw.totalSales && raw.totalSales !== "null" && raw.totalSales !== "" ? 
+              parseInt(raw.totalSales) : null),
+    avgSalePrice: raw.avg_sale_price && raw.avg_sale_price !== "null" && raw.avg_sale_price !== "" ? 
+                String(raw.avg_sale_price) : (raw.avgSalePrice && raw.avgSalePrice !== "null" && raw.avgSalePrice !== "" ? 
+                String(raw.avgSalePrice) : null),
+    medianSalePrice: raw.median_sale_price && raw.median_sale_price !== "null" && raw.median_sale_price !== "" ? 
+                   String(raw.median_sale_price) : (raw.medianSalePrice && raw.medianSalePrice !== "null" && raw.medianSalePrice !== "" ? 
+                   String(raw.medianSalePrice) : null),
+    avgDaysOnMarket: raw.avg_days_on_market && raw.avg_days_on_market !== "null" && raw.avg_days_on_market !== "" ? 
+                   String(raw.avg_days_on_market) : (raw.avgDaysOnMarket && raw.avgDaysOnMarket !== "null" && raw.avgDaysOnMarket !== "" ? 
+                   String(raw.avgDaysOnMarket) : null),
+    schoolRating: raw.school_rating && raw.school_rating !== "null" && raw.school_rating !== "" ? 
+                String(raw.school_rating) : (raw.schoolRating && raw.schoolRating !== "null" && raw.schoolRating !== "" ? 
+                String(raw.schoolRating) : null),
+    crimeRate: raw.crime_rate && raw.crime_rate !== "null" && raw.crime_rate !== "" ? 
+             String(raw.crime_rate) : (raw.crimeRate && raw.crimeRate !== "null" && raw.crimeRate !== "" ? 
+             String(raw.crimeRate) : null),
+    walkScore: raw.walk_score && raw.walk_score !== "null" && raw.walk_score !== "" ? 
+             String(raw.walk_score) : (raw.walkScore && raw.walkScore !== "null" && raw.walkScore !== "" ? 
+             String(raw.walkScore) : null),
+    transitScore: raw.transit_score && raw.transit_score !== "null" && raw.transit_score !== "" ? 
+                String(raw.transit_score) : (raw.transitScore && raw.transitScore !== "null" && raw.transitScore !== "" ? 
+                String(raw.transitScore) : null),
     metadata: {},
   };
 }
