@@ -1,0 +1,10 @@
+{
+  "name": "etl-scripts",
+  "version": "1.0.0",
+  "description": "ETL scripts for property data import",
+  "main": "import-property-data.ts",
+  "type": "module",
+  "scripts": {
+    "import": "tsx import-property-data.ts"
+  }
+}

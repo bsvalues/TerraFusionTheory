@@ -1,0 +1,6 @@
+name,code,city,county,state,description,median_home_value,avg_home_value,avg_year_built,total_properties,total_sales,avg_sale_price,median_sale_price,avg_days_on_market,school_rating,crime_rate,walk_score,transit_score
+"North Heights","NH001","Grandview","Yakima","WA","Established residential neighborhood with well-maintained homes",260000,275000,1985,125,42,245000,255000,25,8.2,2.1,65,35
+"East Valley","EV002","Grandview","Yakima","WA","Newer development with larger lot sizes and modern homes",320000,335000,1995,98,31,310000,315000,18,8.7,1.8,55,30
+"South Side","SS003","Grandview","Yakima","WA","Mixed age homes with affordable housing options",210000,218000,1975,156,58,195000,200000,32,7.5,3.2,70,40
+"Downtown","DT004","Grandview","Yakima","WA","Commercial district with some mixed-use properties",400000,425000,1980,65,22,450000,435000,45,7.8,2.5,85,60
+"Rural","RU005","Grandview","Yakima","WA","Agricultural properties and rural homesteads",750000,820000,1970,85,15,825000,800000,120,6.5,1.2,25,10

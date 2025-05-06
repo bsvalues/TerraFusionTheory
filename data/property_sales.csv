@@ -1,0 +1,11 @@
+parcel_id,sale_price,sale_date,transaction_type,deed_type,buyer_name,seller_name,verified,valid_for_analysis,financing_type,assessed_value_at_sale,sale_price_per_sqft
+GV1001,240000,2022-05-15,SALE,Warranty,"Smith Family","Johnson Family",true,true,Conventional,225000,114.29
+GV1001,200000,2015-08-22,SALE,Warranty,"Johnson Family","Davis Estate",true,true,FHA,190000,95.24
+GV1002,300000,2021-11-10,SALE,Warranty,"Garcia Trust","Williams LLC",true,true,Conventional,270000,125.00
+GV1002,230000,2012-04-18,SALE,Warranty,"Williams LLC","Martinez Family",true,true,VA,220000,95.83
+GV1003,185000,2023-02-20,SALE,Warranty,"Baker Family","Thompson Trust",true,true,FHA,180000,102.78
+GV1003,150000,2010-09-05,SALE,Warranty,"Thompson Trust","Anderson Estate",true,true,Cash,140000,83.33
+GV1004,475000,2021-08-05,SALE,Warranty,"GV Business Partners","Commercial Investments",true,true,Commercial,440000,95.00
+GV1004,400000,2008-12-10,SALE,Warranty,"Commercial Investments","Retail Properties LLC",true,true,Commercial,375000,80.00
+GV1005,875000,2022-10-15,SALE,Warranty,"Valley Ag Holdings","Northwest Farms",true,true,Farm Credit,840000,2.50
+GV1005,750000,2014-06-23,SALE,Warranty,"Northwest Farms","Heritage Agriculture",true,true,Farm Credit,720000,2.14
