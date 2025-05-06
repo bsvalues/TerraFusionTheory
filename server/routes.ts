@@ -24,6 +24,7 @@ import { registerValuationAgentRoutes } from "./routes/valuation-agent.routes";
 import { registerMicroservicesRoutes } from "./routes/microservices-routes";
 import { registerTerraFusionRoutes } from "./routes/terrafusion-routes";
 import { registerDiagnosticsRoutes } from "./routes/diagnostics.routes";
+import { registerAnalysisRoutes } from "./routes/analysis-routes";
 import microservicesClient from "./services/microservices-client";
 import { registerTestRoutes } from "./utils/terrafusion-test";
 
@@ -90,6 +91,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register diagnostics routes
   registerDiagnosticsRoutes(app);
+  
+  // Register analysis routes
+  registerAnalysisRoutes(app);
   
   // API routes - prefix all routes with /api
   
