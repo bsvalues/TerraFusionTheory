@@ -8,6 +8,7 @@ import { parse } from 'csv-parse';
 import * as fs from 'fs';
 import * as path from 'path';
 import { fileURLToPath } from 'url';
+import { inArray } from 'drizzle-orm';
 import { db } from '../server/db';
 import { 
   properties, propertySales, neighborhoods,
@@ -42,18 +43,22 @@ function transformPropertyData(raw: RawPropertyData) {
     county: raw.county || '',
     propertyType: (raw.property_type || raw.propertyType || 'RESIDENTIAL') as PropertyType,
     landUse: raw.land_use || raw.landUse || null,
-    yearBuilt: raw.year_built || raw.yearBuilt ? parseInt(raw.year_built || raw.yearBuilt) : null,
+    yearBuilt: raw.year_built && raw.year_built !== "null" && raw.year_built !== "" ? 
+              (isNaN(parseInt(raw.year_built)) ? null : parseInt(raw.year_built)) : null,
     buildingArea: raw.building_area || raw.buildingArea ? String(raw.building_area || raw.buildingArea) : null,
     lotSize: raw.lot_size || raw.lotSize ? String(raw.lot_size || raw.lotSize) : null,
-    bedrooms: raw.bedrooms ? parseInt(raw.bedrooms) : null,
+    bedrooms: raw.bedrooms && raw.bedrooms !== "null" && raw.bedrooms !== "" ? 
+              (isNaN(parseInt(raw.bedrooms)) ? null : parseInt(raw.bedrooms)) : null,
     bathrooms: raw.bathrooms ? String(raw.bathrooms) : null,
-    stories: raw.stories ? parseInt(raw.stories) : null,
+    stories: raw.stories && raw.stories !== "null" && raw.stories !== "" ? 
+            (isNaN(parseInt(raw.stories)) ? null : parseInt(raw.stories)) : null,
     condition: raw.condition || null,
     quality: raw.quality || null,
     heatingType: raw.heating_type || raw.heatingType || null,
     coolingType: raw.cooling_type || raw.coolingType || null,
-    garageType: raw.garage_type || raw.garageType || null,
-    garageCapacity: raw.garage_capacity || raw.garageCapacity ? parseInt(raw.garage_capacity || raw.garageCapacity) : null,
+    garageType: raw.garage_type && raw.garage_type !== "null" ? raw.garage_type : null,
+    garageCapacity: raw.garage_capacity && raw.garage_capacity !== "null" && raw.garage_capacity !== "" ? 
+                   (isNaN(parseInt(raw.garage_capacity)) ? null : parseInt(raw.garage_capacity)) : null,
     basement: raw.basement ? raw.basement.toLowerCase() === 'true' : false,
     roofType: raw.roof_type || raw.roofType || null,
     externalWallType: raw.external_wall_type || raw.externalWallType || null,
@@ -207,9 +212,42 @@ async function importProperties() {
     // Insert valid properties into database
     if (validProperties.length > 0) {
       console.log(`Inserting ${validProperties.length} properties into database...`);
-      const insertedProperties = await db.insert(properties).values(validProperties).returning();
-      console.log(`Successfully inserted ${insertedProperties.length} properties`);
-      return insertedProperties;
+      try {
+        // Check if properties already exist by parcelId to avoid duplicate key errors
+        const existingParcelIds = await db.select({ parcelId: properties.parcelId }).from(properties);
+        const existingParcelIdSet = new Set(existingParcelIds.map(p => p.parcelId));
+        
+        // Filter out properties that already exist
+        const newProperties = validProperties.filter(p => !existingParcelIdSet.has(p.parcelId));
+        
+        if (newProperties.length === 0) {
+          console.log('All properties already exist in database, skipping insert');
+          
+          // Return the existing properties for sales relationship mapping
+          const existingProperties = await db.select().from(properties)
+            .where(inArray(properties.parcelId, validProperties.map(p => p.parcelId)));
+          return existingProperties;
+        }
+        
+        console.log(`Inserting ${newProperties.length} new properties...`);
+        const insertedProperties = await db.insert(properties).values(newProperties).returning();
+        console.log(`Successfully inserted ${insertedProperties.length} properties`);
+        
+        // Return all properties (new and existing) for sales relationship mapping
+        const allProperties = [...insertedProperties];
+        if (insertedProperties.length < validProperties.length) {
+          const existingProperties = await db.select().from(properties)
+            .where(inArray(properties.parcelId, validProperties
+              .filter(p => !newProperties.some(np => np.parcelId === p.parcelId))
+              .map(p => p.parcelId)));
+          allProperties.push(...existingProperties);
+        }
+        
+        return allProperties;
+      } catch (insertError) {
+        console.error('Error importing properties:', insertError);
+        return [];
+      }
     }
     
     return [];
@@ -314,8 +352,25 @@ async function importNeighborhoods() {
     // Insert valid neighborhoods into database
     if (validNeighborhoods.length > 0) {
       console.log(`Inserting ${validNeighborhoods.length} neighborhoods into database...`);
-      const insertedNeighborhoods = await db.insert(neighborhoods).values(validNeighborhoods).returning();
-      console.log(`Successfully inserted ${insertedNeighborhoods.length} neighborhoods`);
+      try {
+        // Check if neighborhoods already exist by code to avoid duplicate key errors
+        const existingCodes = await db.select({ code: neighborhoods.code }).from(neighborhoods);
+        const existingCodeSet = new Set(existingCodes.map(n => n.code));
+        
+        // Filter out neighborhoods that already exist
+        const newNeighborhoods = validNeighborhoods.filter(n => !existingCodeSet.has(n.code));
+        
+        if (newNeighborhoods.length === 0) {
+          console.log('All neighborhoods already exist in database, skipping insert');
+          return;
+        }
+        
+        console.log(`Inserting ${newNeighborhoods.length} new neighborhoods...`);
+        const insertedNeighborhoods = await db.insert(neighborhoods).values(newNeighborhoods).returning();
+        console.log(`Successfully inserted ${insertedNeighborhoods.length} neighborhoods`);
+      } catch (insertError) {
+        console.error('Error inserting neighborhoods:', insertError);
+      }
     }
   } catch (error) {
     console.error('Error importing neighborhoods:', error);
