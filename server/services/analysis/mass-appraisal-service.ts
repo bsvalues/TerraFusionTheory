@@ -512,7 +512,7 @@ export class MassAppraisalService {
   ): Promise<void> {
     await storage.createLog({
       level: stage === 'error' ? LogLevel.ERROR : LogLevel.INFO,
-      category: LogCategory.ANALYTICS,
+      category: LogCategory.API,
       message: `Mass appraisal analysis ${stage}`,
       details: JSON.stringify(details),
       source: 'mass-appraisal-service',

@@ -1,4 +1,4 @@
-import { pgTable, text, serial, integer, boolean, jsonb, timestamp } from "drizzle-orm/pg-core";
+import { pgTable, text, serial, integer, boolean, jsonb, timestamp, numeric, date, varchar, real, unique, index, doublePrecision } from "drizzle-orm/pg-core";
 import { createInsertSchema } from "drizzle-zod";
 import { z } from "zod";
 
@@ -39,6 +39,37 @@ export enum BadgeLevel {
   SILVER = "silver",
   GOLD = "gold",
   PLATINUM = "platinum"
+}
+
+// Property type enum for categorizing properties
+export enum PropertyType {
+  RESIDENTIAL = "residential",
+  COMMERCIAL = "commercial",
+  INDUSTRIAL = "industrial",
+  AGRICULTURAL = "agricultural",
+  VACANT_LAND = "vacant_land",
+  MIXED_USE = "mixed_use",
+  SPECIAL_PURPOSE = "special_purpose"
+}
+
+// Property status enum
+export enum PropertyStatus {
+  ACTIVE = "active",
+  PENDING = "pending",
+  SOLD = "sold",
+  OFF_MARKET = "off_market",
+  FORECLOSURE = "foreclosure",
+  SHORT_SALE = "short_sale"
+}
+
+// Transaction type enum
+export enum TransactionType {
+  SALE = "sale",
+  REFINANCE = "refinance",
+  FORECLOSURE = "foreclosure",
+  AUCTION = "auction",
+  SHORT_SALE = "short_sale",
+  OTHER = "other"
 }
 
 export const users = pgTable("users", {
@@ -121,6 +152,108 @@ export const userBadges = pgTable("user_badges", {
   metadata: jsonb("metadata").default({}), // Additional context for the badge
 });
 
+// Property table for storing real estate property data
+export const properties = pgTable("properties", {
+  id: serial("id").primaryKey(),
+  parcelId: text("parcel_id").notNull().unique(), // Unique parcel ID from county/tax records
+  address: text("address").notNull(),
+  city: text("city").notNull(),
+  state: text("state").notNull(),
+  zipCode: text("zip_code").notNull(),
+  county: text("county").notNull(),
+  propertyType: text("property_type").notNull(), // Residential, Commercial, etc.
+  landUse: text("land_use"), // More specific use: Single Family, Multi-Family, Retail, etc.
+  yearBuilt: integer("year_built"),
+  buildingArea: numeric("building_area"), // In square feet
+  lotSize: numeric("lot_size"), // In square feet or acres
+  bedrooms: integer("bedrooms"),
+  bathrooms: numeric("bathrooms"), // Can be decimal for half baths
+  stories: integer("stories"),
+  condition: text("condition"), // Excellent, Good, Average, Fair, Poor
+  quality: text("quality"), // Luxury, High, Average, Low
+  heatingType: text("heating_type"),
+  coolingType: text("cooling_type"),
+  garageType: text("garage_type"),
+  garageCapacity: integer("garage_capacity"),
+  basement: boolean("basement").default(false),
+  roofType: text("roof_type"),
+  externalWallType: text("external_wall_type"),
+  foundationType: text("foundation_type"),
+  porchType: text("porch_type"),
+  deckType: text("deck_type"),
+  poolType: text("pool_type"),
+  assessedValue: numeric("assessed_value"), // Current assessed value
+  marketValue: numeric("market_value"), // Estimated market value
+  taxableValue: numeric("taxable_value"), // Value used for taxation
+  lastSalePrice: numeric("last_sale_price"),
+  lastSaleDate: date("last_sale_date"),
+  latitude: doublePrecision("latitude"),
+  longitude: doublePrecision("longitude"),
+  zoning: text("zoning"), // Zoning code
+  floodZone: text("flood_zone"),
+  parcelGeometry: jsonb("parcel_geometry"), // GeoJSON geometry of parcel
+  taxDistrict: text("tax_district"),
+  school: text("school"),
+  neighborhood: text("neighborhood"), // Neighborhood or subdivision name
+  neighborhoodCode: text("neighborhood_code"), // Code for classification
+  metadata: jsonb("metadata").default({}), // Additional property data
+  images: text("images").array(), // Array of image URLs
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Sales table for storing property transactions
+export const propertySales = pgTable("property_sales", {
+  id: serial("id").primaryKey(),
+  propertyId: integer("property_id").notNull(), // Reference to properties table
+  parcelId: text("parcel_id").notNull(), // Redundant for faster queries
+  salePrice: numeric("sale_price").notNull(),
+  saleDate: date("sale_date").notNull(),
+  transactionType: text("transaction_type").notNull(), // Regular, Foreclosure, etc.
+  deedType: text("deed_type"), // Warranty, Quitclaim, etc.
+  buyerName: text("buyer_name"),
+  sellerName: text("seller_name"),
+  verified: boolean("verified").default(false), // Whether sale has been verified as valid
+  validForAnalysis: boolean("valid_for_analysis").default(true), // Used in ratio studies
+  financingType: text("financing_type"), // Cash, Conventional, FHA, VA, etc.
+  assessedValueAtSale: numeric("assessed_value_at_sale"), // Assessment at time of sale
+  salePricePerSqFt: numeric("sale_price_per_sqft"), // Price per square foot
+  assessmentRatio: numeric("assessment_ratio"), // Assessed value / sale price
+  metadata: jsonb("metadata").default({}), // Additional sale data
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
+// Indexes will be added separately after database creation
+
+// Neighborhoods table for storing neighborhood boundaries and characteristics
+export const neighborhoods = pgTable("neighborhoods", {
+  id: serial("id").primaryKey(),
+  name: text("name").notNull(),
+  code: text("code").notNull().unique(),
+  city: text("city").notNull(),
+  county: text("county").notNull(),
+  state: text("state").notNull(),
+  description: text("description"),
+  characteristics: jsonb("characteristics").default({}), // Housing stock, demographics, etc.
+  boundaries: jsonb("boundaries"), // GeoJSON polygon of neighborhood boundaries
+  medianHomeValue: numeric("median_home_value"),
+  avgHomeValue: numeric("avg_home_value"),
+  avgYearBuilt: numeric("avg_year_built"),
+  totalProperties: integer("total_properties"),
+  totalSales: integer("total_sales"),
+  avgSalePrice: numeric("avg_sale_price"),
+  medianSalePrice: numeric("median_sale_price"),
+  avgDaysOnMarket: numeric("avg_days_on_market"),
+  schoolRating: numeric("school_rating"),
+  crimeRate: numeric("crime_rate"),
+  walkScore: numeric("walk_score"),
+  transitScore: numeric("transit_score"),
+  metadata: jsonb("metadata").default({}), // Additional neighborhood data
+  createdAt: timestamp("created_at").defaultNow(),
+  updatedAt: timestamp("updated_at").defaultNow(),
+});
+
 export const insertUserSchema = createInsertSchema(users).pick({
   username: true,
   password: true,
@@ -182,6 +315,97 @@ export const insertUserBadgeSchema = createInsertSchema(userBadges).pick({
   badgeId: true,
   projectId: true,
   progress: true,
+  metadata: true,
+});
+
+// Schema for inserting property data
+export const insertPropertySchema = createInsertSchema(properties).pick({
+  parcelId: true,
+  address: true,
+  city: true,
+  state: true,
+  zipCode: true,
+  county: true,
+  propertyType: true,
+  landUse: true,
+  yearBuilt: true,
+  buildingArea: true,
+  lotSize: true,
+  bedrooms: true,
+  bathrooms: true,
+  stories: true,
+  condition: true,
+  quality: true,
+  heatingType: true,
+  coolingType: true,
+  garageType: true,
+  garageCapacity: true,
+  basement: true,
+  roofType: true,
+  externalWallType: true,
+  foundationType: true,
+  porchType: true,
+  deckType: true,
+  poolType: true,
+  assessedValue: true,
+  marketValue: true,
+  taxableValue: true,
+  lastSalePrice: true,
+  lastSaleDate: true,
+  latitude: true,
+  longitude: true,
+  zoning: true,
+  floodZone: true,
+  parcelGeometry: true,
+  taxDistrict: true,
+  school: true,
+  neighborhood: true,
+  neighborhoodCode: true,
+  metadata: true,
+  images: true,
+});
+
+// Schema for inserting property sales data
+export const insertPropertySaleSchema = createInsertSchema(propertySales).pick({
+  propertyId: true,
+  parcelId: true,
+  salePrice: true,
+  saleDate: true,
+  transactionType: true,
+  deedType: true,
+  buyerName: true,
+  sellerName: true,
+  verified: true,
+  validForAnalysis: true,
+  financingType: true,
+  assessedValueAtSale: true,
+  salePricePerSqFt: true,
+  assessmentRatio: true,
+  metadata: true,
+});
+
+// Schema for inserting neighborhood data
+export const insertNeighborhoodSchema = createInsertSchema(neighborhoods).pick({
+  name: true,
+  code: true,
+  city: true,
+  county: true,
+  state: true,
+  description: true,
+  characteristics: true,
+  boundaries: true,
+  medianHomeValue: true,
+  avgHomeValue: true,
+  avgYearBuilt: true,
+  totalProperties: true,
+  totalSales: true,
+  avgSalePrice: true,
+  medianSalePrice: true,
+  avgDaysOnMarket: true,
+  schoolRating: true,
+  crimeRate: true,
+  walkScore: true,
+  transitScore: true,
   metadata: true,
 });
 

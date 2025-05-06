@@ -6,11 +6,21 @@ import {
   logs, type Log, type InsertLog, type LogEntry,
   badges, type Badge, type InsertBadge,
   userBadges, type UserBadge, type InsertUserBadge,
+  properties, propertySales, neighborhoods,
   type BadgeWithProgress,
   LogLevel, LogCategory, BadgeType, BadgeLevel,
   type Message,
-  type FeedbackItem
+  type FeedbackItem,
+  insertPropertySchema, insertPropertySaleSchema, insertNeighborhoodSchema
 } from "../shared/schema";
+import { z } from "zod";
+import { db } from "./db";
+import { eq, and, like, gte, lte, desc, asc, inArray, isNull, sql } from "drizzle-orm";
+
+// Define types for new schemas
+type InsertProperty = z.infer<typeof insertPropertySchema>;
+type InsertPropertySale = z.infer<typeof insertPropertySaleSchema>;
+type InsertNeighborhood = z.infer<typeof insertNeighborhoodSchema>;
 
 // Complete storage interface with all CRUD methods needed
 export interface IStorage {
@@ -953,4 +963,523 @@ export class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+// Database storage implementation
+export class DatabaseStorage implements IStorage {
+  // User methods
+  async getUser(id: number): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.id, id));
+    return user;
+  }
+
+  async getUserByUsername(username: string): Promise<User | undefined> {
+    const [user] = await db.select().from(users).where(eq(users.username, username));
+    return user;
+  }
+
+  async getAllUsers(): Promise<User[]> {
+    return await db.select().from(users);
+  }
+
+  async createUser(insertUser: InsertUser): Promise<User> {
+    const [user] = await db.insert(users).values(insertUser).returning();
+    return user;
+  }
+
+  async updateUser(user: User): Promise<User> {
+    const [updatedUser] = await db
+      .update(users)
+      .set(user)
+      .where(eq(users.id, user.id))
+      .returning();
+    return updatedUser;
+  }
+
+  async deleteUser(id: number): Promise<boolean> {
+    const result = await db.delete(users).where(eq(users.id, id));
+    return result.rowCount > 0;
+  }
+
+  // Project methods
+  async getProject(id: number): Promise<Project | undefined> {
+    const [project] = await db.select().from(projects).where(eq(projects.id, id));
+    return project;
+  }
+
+  async getAllProjects(): Promise<Project[]> {
+    return await db.select().from(projects);
+  }
+
+  async createProject(insertProject: InsertProject): Promise<Project> {
+    const [project] = await db.insert(projects).values(insertProject).returning();
+    return project;
+  }
+
+  async updateProject(project: Project): Promise<Project> {
+    const [updatedProject] = await db
+      .update(projects)
+      .set(project)
+      .where(eq(projects.id, project.id))
+      .returning();
+    return updatedProject;
+  }
+
+  // Conversation methods
+  async getConversation(id: number): Promise<Conversation | undefined> {
+    const [conversation] = await db.select().from(conversations).where(eq(conversations.id, id));
+    return conversation;
+  }
+
+  async getConversationByProjectId(projectId: number): Promise<Conversation | undefined> {
+    const [conversation] = await db
+      .select()
+      .from(conversations)
+      .where(eq(conversations.projectId, projectId));
+    return conversation;
+  }
+
+  async createConversation(insertConversation: InsertConversation): Promise<Conversation> {
+    const [conversation] = await db
+      .insert(conversations)
+      .values(insertConversation)
+      .returning();
+    return conversation;
+  }
+
+  async updateConversation(conversation: Conversation): Promise<Conversation> {
+    const [updatedConversation] = await db
+      .update(conversations)
+      .set(conversation)
+      .where(eq(conversations.id, conversation.id))
+      .returning();
+    return updatedConversation;
+  }
+
+  // Analysis methods
+  async getAnalysis(id: number): Promise<Analysis | undefined> {
+    const [analysisData] = await db.select().from(analysis).where(eq(analysis.id, id));
+    return analysisData;
+  }
+
+  async getAnalysisByProjectId(projectId: number): Promise<Analysis | undefined> {
+    const [analysisData] = await db
+      .select()
+      .from(analysis)
+      .where(eq(analysis.projectId, projectId));
+    return analysisData;
+  }
+
+  async saveAnalysis(analysisInput: Partial<Analysis> & { projectId: number }): Promise<Analysis> {
+    // Check if there's an existing analysis for this project
+    const existing = await this.getAnalysisByProjectId(analysisInput.projectId);
+    
+    if (existing) {
+      // Update existing analysis
+      const [updatedAnalysis] = await db
+        .update(analysis)
+        .set({ ...analysisInput, updatedAt: new Date() })
+        .where(eq(analysis.id, existing.id))
+        .returning();
+      return updatedAnalysis;
+    } else {
+      // Create new analysis
+      const [newAnalysis] = await db
+        .insert(analysis)
+        .values({
+          ...analysisInput as any,
+          createdAt: new Date(),
+          updatedAt: new Date()
+        })
+        .returning();
+      return newAnalysis;
+    }
+  }
+
+  async updateAnalysis(analysisData: Analysis): Promise<Analysis> {
+    const [updatedAnalysis] = await db
+      .update(analysis)
+      .set({ ...analysisData, updatedAt: new Date() })
+      .where(eq(analysis.id, analysisData.id))
+      .returning();
+    return updatedAnalysis;
+  }
+
+  // Feedback methods (currently implemented in memory - will be added to DB in future)
+  private feedbackItems: Map<number, FeedbackItem> = new Map();
+  private currentFeedbackId: number = 1;
+
+  async getFeedback(): Promise<FeedbackItem[]> {
+    return Array.from(this.feedbackItems.values());
+  }
+
+  async saveFeedback(feedback: { message: string; timestamp: string }): Promise<FeedbackItem> {
+    const id = this.currentFeedbackId++;
+    const feedbackItem: FeedbackItem = {
+      id,
+      message: feedback.message,
+      timestamp: feedback.timestamp,
+      resolved: false
+    };
+    this.feedbackItems.set(id, feedbackItem);
+    return feedbackItem;
+  }
+
+  async updateFeedbackStatus(id: number, resolved: boolean): Promise<FeedbackItem> {
+    const feedback = this.feedbackItems.get(id);
+    if (!feedback) {
+      throw new Error(`Feedback with id ${id} not found`);
+    }
+    const updatedFeedback: FeedbackItem = {
+      ...feedback,
+      resolved
+    };
+    this.feedbackItems.set(id, updatedFeedback);
+    return updatedFeedback;
+  }
+
+  // Badge methods
+  async getBadges(): Promise<Badge[]> {
+    return await db.select().from(badges);
+  }
+
+  async getBadgeById(id: number): Promise<Badge | undefined> {
+    const [badge] = await db.select().from(badges).where(eq(badges.id, id));
+    return badge;
+  }
+
+  async getBadgesByType(type: BadgeType): Promise<Badge[]> {
+    return await db.select().from(badges).where(eq(badges.type, type));
+  }
+
+  async getBadgesByLevel(level: BadgeLevel): Promise<Badge[]> {
+    return await db.select().from(badges).where(eq(badges.level, level));
+  }
+
+  async createBadge(insertBadge: InsertBadge): Promise<Badge> {
+    const [badge] = await db.insert(badges).values(insertBadge).returning();
+    return badge;
+  }
+
+  async updateBadge(badge: Badge): Promise<Badge> {
+    const [updatedBadge] = await db
+      .update(badges)
+      .set(badge)
+      .where(eq(badges.id, badge.id))
+      .returning();
+    return updatedBadge;
+  }
+
+  // User Badge methods
+  async getUserBadges(userId: number): Promise<UserBadge[]> {
+    return await db.select().from(userBadges).where(eq(userBadges.userId, userId));
+  }
+
+  async getUserBadgesByProject(userId: number, projectId: number): Promise<UserBadge[]> {
+    return await db
+      .select()
+      .from(userBadges)
+      .where(and(
+        eq(userBadges.userId, userId),
+        eq(userBadges.projectId, projectId)
+      ));
+  }
+
+  async awardBadgeToUser(userBadge: InsertUserBadge): Promise<UserBadge> {
+    const [newUserBadge] = await db
+      .insert(userBadges)
+      .values({
+        ...userBadge,
+        awardedAt: new Date()
+      })
+      .returning();
+    return newUserBadge;
+  }
+
+  async updateUserBadgeProgress(id: number, progress: number, metadata?: Record<string, any>): Promise<UserBadge> {
+    let updateValues: Partial<UserBadge> = { progress };
+    if (metadata) {
+      updateValues.metadata = metadata;
+    }
+
+    const [updatedUserBadge] = await db
+      .update(userBadges)
+      .set(updateValues)
+      .where(eq(userBadges.id, id))
+      .returning();
+    return updatedUserBadge;
+  }
+
+  async getUserBadgesWithDetails(userId: number): Promise<BadgeWithProgress[]> {
+    const userBadgesData = await this.getUserBadges(userId);
+    const badgesData = await this.getBadges();
+    
+    const badgeMap = new Map(badgesData.map(b => [b.id, b]));
+    
+    return userBadgesData.map(userBadge => {
+      const badge = badgeMap.get(userBadge.badgeId);
+      if (!badge) {
+        throw new Error(`Badge with id ${userBadge.badgeId} not found`);
+      }
+      
+      const badgeWithProgress: BadgeWithProgress = {
+        ...badge,
+        progress: userBadge.progress || 0,
+        isUnlocked: (userBadge.progress || 0) >= 100,
+        metadata: userBadge.metadata || {},
+        variant: this.getBadgeVariantByLevel(badge.level as BadgeLevel),
+        tooltip: this.generateBadgeTooltip(badge, userBadge),
+        unlockDate: userBadge.progress === 100 ? userBadge.awardedAt.toISOString() : undefined
+      };
+      
+      return badgeWithProgress;
+    });
+  }
+
+  private getBadgeVariantByLevel(level: BadgeLevel): string {
+    switch (level) {
+      case BadgeLevel.BRONZE: return 'default';
+      case BadgeLevel.SILVER: return 'secondary';
+      case BadgeLevel.GOLD: return 'warning';
+      case BadgeLevel.PLATINUM: return 'success';
+      default: return 'default';
+    }
+  }
+  
+  private generateBadgeTooltip(badge: Badge, userBadge: UserBadge): string {
+    let tooltip = `${badge.name}: ${badge.description}`;
+    
+    if (userBadge.progress >= 100) {
+      const unlockDate = new Date(userBadge.awardedAt).toLocaleDateString();
+      tooltip += `\nUnlocked on ${unlockDate}`;
+    } else {
+      tooltip += `\nProgress: ${userBadge.progress}%`;
+    }
+    
+    return tooltip;
+  }
+
+  // Logging methods
+  async getLogs(options?: {
+    level?: LogLevel | LogLevel[];
+    category?: LogCategory | LogCategory[];
+    startDate?: Date;
+    endDate?: Date;
+    limit?: number;
+    offset?: number;
+    projectId?: number;
+    userId?: number;
+    search?: string;
+    sortBy?: string;
+    sortOrder?: 'asc' | 'desc';
+  }): Promise<LogEntry[]> {
+    let query = db.select().from(logs);
+    
+    if (options) {
+      if (options.level) {
+        const levels = Array.isArray(options.level) ? options.level : [options.level];
+        query = query.where(inArray(logs.level, levels));
+      }
+      
+      if (options.category) {
+        const categories = Array.isArray(options.category) ? options.category : [options.category];
+        query = query.where(inArray(logs.category, categories));
+      }
+      
+      if (options.startDate) {
+        query = query.where(gte(logs.timestamp, options.startDate));
+      }
+      
+      if (options.endDate) {
+        query = query.where(lte(logs.timestamp, options.endDate));
+      }
+      
+      if (options.projectId) {
+        query = query.where(eq(logs.projectId, options.projectId));
+      }
+      
+      if (options.userId) {
+        query = query.where(eq(logs.userId, options.userId));
+      }
+      
+      if (options.search) {
+        query = query.where(like(logs.message, `%${options.search}%`));
+      }
+      
+      if (options.sortBy) {
+        const orderFunc = options.sortOrder === 'asc' ? asc : desc;
+        // Apply dynamic sorting based on the column name
+        if (options.sortBy === 'timestamp') {
+          query = query.orderBy(orderFunc(logs.timestamp));
+        } else if (options.sortBy === 'level') {
+          query = query.orderBy(orderFunc(logs.level));
+        } else if (options.sortBy === 'category') {
+          query = query.orderBy(orderFunc(logs.category));
+        } else {
+          // Default to timestamp
+          query = query.orderBy(orderFunc(logs.timestamp));
+        }
+      } else {
+        // Default sort by timestamp desc
+        query = query.orderBy(desc(logs.timestamp));
+      }
+      
+      if (options.limit) {
+        query = query.limit(options.limit);
+      }
+      
+      if (options.offset) {
+        query = query.offset(options.offset);
+      }
+    } else {
+      // Default ordering
+      query = query.orderBy(desc(logs.timestamp));
+    }
+    
+    const rawLogs = await query;
+    
+    // Enhance logs with UI-specific properties
+    return rawLogs.map(log => ({
+      ...log,
+      color: this.getColorForLogLevel(log.level as LogLevel),
+      formatted: `[${log.timestamp.toISOString()}] [${log.level}] [${log.category}] ${log.message}`,
+      expanded: false
+    }));
+  }
+
+  async createLog(log: InsertLog): Promise<Log> {
+    const [newLog] = await db
+      .insert(logs)
+      .values(log)
+      .returning();
+    return newLog;
+  }
+
+  async getLogById(id: number): Promise<Log | undefined> {
+    const [log] = await db.select().from(logs).where(eq(logs.id, id));
+    return log;
+  }
+
+  async getLogsByCategory(category: LogCategory): Promise<Log[]> {
+    return await db.select().from(logs).where(eq(logs.category, category));
+  }
+
+  async getLogStats(): Promise<{ 
+    totalCount: number; 
+    countByLevel: Record<LogLevel, number>;
+    countByCategory: Record<LogCategory, number>;
+    recentErrors: Log[];
+    performanceAverage: number | null;
+  }> {
+    // Get total count
+    const [countResult] = await db.select({ count: sql`count(*)` }).from(logs);
+    const totalCount = Number(countResult.count);
+    
+    // Get counts by level
+    const levelCounts = await db
+      .select({
+        level: logs.level,
+        count: sql`count(*)`
+      })
+      .from(logs)
+      .groupBy(logs.level);
+    
+    const countByLevel = Object.values(LogLevel).reduce((acc, level) => {
+      acc[level] = 0;
+      return acc;
+    }, {} as Record<LogLevel, number>);
+    
+    levelCounts.forEach(item => {
+      countByLevel[item.level as LogLevel] = Number(item.count);
+    });
+    
+    // Get counts by category
+    const categoryCounts = await db
+      .select({
+        category: logs.category,
+        count: sql`count(*)`
+      })
+      .from(logs)
+      .groupBy(logs.category);
+    
+    const countByCategory = Object.values(LogCategory).reduce((acc, category) => {
+      acc[category] = 0;
+      return acc;
+    }, {} as Record<LogCategory, number>);
+    
+    categoryCounts.forEach(item => {
+      countByCategory[item.category as LogCategory] = Number(item.count);
+    });
+    
+    // Get recent errors
+    const recentErrors = await db
+      .select()
+      .from(logs)
+      .where(inArray(logs.level, [LogLevel.ERROR, LogLevel.CRITICAL]))
+      .orderBy(desc(logs.timestamp))
+      .limit(5);
+    
+    // Get performance average
+    const [performanceResult] = await db
+      .select({
+        average: sql`avg(duration)`
+      })
+      .from(logs)
+      .where(and(
+        eq(logs.category, LogCategory.PERFORMANCE),
+        sql`duration is not null`
+      ));
+    
+    const performanceAverage = performanceResult.average ? Number(performanceResult.average) : null;
+    
+    return {
+      totalCount,
+      countByLevel,
+      countByCategory,
+      recentErrors,
+      performanceAverage
+    };
+  }
+
+  async deleteLogById(id: number): Promise<boolean> {
+    const result = await db.delete(logs).where(eq(logs.id, id));
+    return result.rowCount > 0;
+  }
+
+  async clearLogs(options?: { 
+    olderThan?: Date; 
+    level?: LogLevel;
+    category?: LogCategory;
+  }): Promise<number> {
+    let query = db.delete(logs);
+    
+    if (options) {
+      if (options.olderThan) {
+        query = query.where(lte(logs.timestamp, options.olderThan));
+      }
+      
+      if (options.level) {
+        query = query.where(eq(logs.level, options.level));
+      }
+      
+      if (options.category) {
+        query = query.where(eq(logs.category, options.category));
+      }
+    }
+    
+    const result = await query;
+    return result.rowCount;
+  }
+
+  private getColorForLogLevel(level: LogLevel): string {
+    switch (level) {
+      case LogLevel.DEBUG: return '#9ca3af'; // Gray
+      case LogLevel.INFO: return '#3b82f6';  // Blue
+      case LogLevel.WARNING: return '#f59e0b'; // Amber
+      case LogLevel.ERROR: return '#ef4444';  // Red
+      case LogLevel.CRITICAL: return '#7f1d1d'; // Dark red
+      default: return '#000000';
+    }
+  }
+}
+
+// Use database storage
+export const storage = new DatabaseStorage();
