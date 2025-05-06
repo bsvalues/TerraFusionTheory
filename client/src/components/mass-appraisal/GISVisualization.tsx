@@ -176,16 +176,16 @@ const GISVisualization: React.FC = () => {
     neighborhoods: ['All'],
   });
 
-  // Fetch sample properties with assessment ratios
+  // Fetch actual properties with assessment ratios from the API
   const { data: properties, isLoading: propertiesLoading } = useQuery({
     queryKey: ['/api/mass-appraisal/property-ratios'],
-    queryFn: () => generateSampleProperties(), // This would normally fetch from the API
+    // Actual API fetch instead of sample data
   });
   
-  // Fetch neighborhood boundaries with assessment stats
+  // Fetch actual neighborhood boundaries with assessment stats from the API
   const { data: neighborhoods, isLoading: neighborhoodsLoading } = useQuery({
     queryKey: ['/api/mass-appraisal/neighborhood-boundaries'],
-    queryFn: () => generateSampleNeighborhoods(), // This would normally fetch from the API
+    // Actual API fetch instead of sample data
   });
   
   // Function to reset map view

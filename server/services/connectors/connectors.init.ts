@@ -13,10 +13,10 @@ import { storage } from '../../storage';
  */
 const defaultCAMAConnectors: { name: string; config: CAMAConnectorConfig }[] = [
   {
-    name: 'demo-cama',
+    name: 'grandview-cama',
     config: {
-      baseUrl: 'https://api.example.com/cama',
-      apiKey: 'demo-key',
+      baseUrl: 'https://data.yakimacounty.us/api/v2/assessor',
+      apiKey: process.env.YAKIMA_COUNTY_API_KEY || '',
       county: 'Yakima',
       state: 'WA',
       useAdvancedFiltering: true
@@ -29,10 +29,10 @@ const defaultCAMAConnectors: { name: string; config: CAMAConnectorConfig }[] = [
  */
 const defaultGISConnectors: { name: string; config: GISConnectorConfig }[] = [
   {
-    name: 'demo-gis',
+    name: 'grandview-gis',
     config: {
-      baseUrl: 'https://api.example.com/gis',
-      apiKey: 'demo-key',
+      baseUrl: 'https://gis.yakimacounty.us/arcgis/rest/services',
+      apiKey: process.env.YAKIMA_GIS_API_KEY || '',
       serviceType: 'arcgis',
       county: 'Yakima',
       state: 'WA'

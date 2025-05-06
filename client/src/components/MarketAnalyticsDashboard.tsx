@@ -122,46 +122,29 @@ const MarketAnalyticsDashboard: React.FC = () => {
     };
   };
 
-  // Generate demo prediction data - this would come from the API in a real application
-  const generatePredictionData = () => {
-    const today = new Date();
-    const predictions = Array.from({ length: 12 }, (_, i) => {
-      const isPast = i < 6;
-      const date = i < 6
-        ? subDays(today, (6 - i) * 30)
-        : addDays(today, (i - 6) * 30);
-      
-      const baseValue = 425000;
-      const trend = 5000; // Monthly price increase
-      
-      const value = baseValue + (i * trend);
-      const confidenceLow = isPast ? undefined : value * 0.95; // 5% variance
-      const confidenceHigh = isPast ? undefined : value * 1.05; // 5% variance
-      
-      // Return data in the format expected by our shared PredictionData type
-      return {
-        date: format(date, 'yyyy-MM-dd'),
-        value,
-        confidenceLow,
-        confidenceHigh
-      };
-    });
+  // Fetch real prediction data from the API
+  const { data: predictionsData, isLoading: predictionsLoading } = useQuery({
+    queryKey: ['/api/market/predictions', selectedArea],
+    enabled: !!selectedArea
+  });
 
-    return {
-      predictions,
-      confidenceScore: 0.75,
-      predictionDate: subDays(today, 15).toISOString(),
-      metric: 'medianPrice',
-      metricLabel: 'Median Price'
-    };
-  };
+  // Fetch real market metrics from the API
+  const { data: marketMetricsData, isLoading: marketMetricsLoading } = useQuery({
+    queryKey: ['/api/market/metrics', selectedArea],
+    enabled: !!selectedArea
+  });
 
-  // For demonstration purposes, we'll use the mock data
-  const priceHistoryData = generatePriceHistoryData();
-  const marketMetricsData = generateMarketMetricsData();
-  const segmentData = generateSegmentData();
-  // Use the mock data when API data is not available
-  const mockPredictionData = generatePredictionData();
+  // Fetch real price history data from the API
+  const { data: priceHistoryData, isLoading: priceHistoryLoading } = useQuery({
+    queryKey: ['/api/market/price-history', selectedArea],
+    enabled: !!selectedArea
+  });
+
+  // Fetch real market segment data from the API
+  const { data: segmentData, isLoading: segmentDataLoading } = useQuery({
+    queryKey: ['/api/market/segments', selectedArea],
+    enabled: !!selectedArea
+  });
 
   return (
     <div className="space-y-6 pb-10">
