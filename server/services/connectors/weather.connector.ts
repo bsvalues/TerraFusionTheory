@@ -97,15 +97,23 @@ export class WeatherConnector extends BaseDataConnector {
     }
     
     // Create Axios client with base configuration
+    // Check if we're using RapidAPI
+    const isRapidApi = config.baseUrl.includes('rapidapi.com');
+    
     this.client = axios.create({
       baseURL: config.baseUrl,
       timeout: config.timeout || 30000,
       headers: {
         'Content-Type': 'application/json',
+        ...(isRapidApi ? {
+          'x-rapidapi-key': config.apiKey,
+          'x-rapidapi-host': 'weatherapi-com.p.rapidapi.com'
+        } : {}),
         ...(config.headers || {})
       },
       params: {
-        key: config.apiKey,
+        // Only add key as a param for non-RapidAPI services
+        ...(isRapidApi ? {} : { key: config.apiKey }),
         units: config.units || 'imperial'
       }
     });
@@ -187,19 +195,22 @@ export class WeatherConnector extends BaseDataConnector {
         }
       }
       
+      // Check if we're using RapidAPI
+      const isRapidApi = (this.config as WeatherConnectorConfig).baseUrl.includes('rapidapi.com');
+      
       // Current weather
       if (!query.startDate && !query.endDate) {
-        endpoints.push('current');
+        endpoints.push(isRapidApi ? 'current.json' : 'current');
       }
       
       // Forecast (future dates)
       if (!query.startDate || new Date(query.startDate) >= new Date()) {
-        endpoints.push('forecast');
+        endpoints.push(isRapidApi ? 'forecast.json' : 'forecast');
       }
       
       // Historical (past dates)
       if (query.startDate && new Date(query.startDate) < new Date()) {
-        endpoints.push('historical');
+        endpoints.push(isRapidApi ? 'history.json' : 'historical');
       }
       
       // Execute all required requests
@@ -213,14 +224,27 @@ export class WeatherConnector extends BaseDataConnector {
             ...query,
             // Convert lat/lon to required format if provided
             ...(query.latitude && query.longitude 
-              ? { location: `${query.latitude},${query.longitude}` } 
-              : {})
+              ? { q: `${query.latitude},${query.longitude}` } 
+              : {}),
+            // For RapidAPI, use 'q' instead of 'location'
+            ...(isRapidApi && query.location ? { q: query.location } : {})
           }
         };
         
-        // Remove latitude/longitude from params as we converted them to location
+        // Remove latitude/longitude from params as we converted them to location/q
         if (config.params.latitude) delete config.params.latitude;
         if (config.params.longitude) delete config.params.longitude;
+        if (isRapidApi && config.params.location) delete config.params.location;
+        
+        // For RapidAPI forecast, add days parameter
+        if (endpoint.includes('forecast') && isRapidApi) {
+          config.params.days = 7; // Default to 7 days forecast
+        }
+        
+        // For RapidAPI history, add date parameter
+        if (endpoint.includes('history') && isRapidApi && query.startDate) {
+          config.params.dt = query.startDate;
+        }
         
         // Make the request
         const response = await this.withTimeout(
@@ -234,16 +258,28 @@ export class WeatherConnector extends BaseDataConnector {
         await this.logResponse('GET', `/${endpoint}`, query, response.data, duration);
         
         // Process and format the response based on endpoint
-        switch (endpoint) {
-          case 'current':
-            result.current = this.formatCurrentWeather(response.data);
-            break;
-          case 'forecast':
-            result.forecast = this.formatForecastWeather(response.data);
-            break;
-          case 'historical':
-            result.historical = this.formatHistoricalWeather(response.data);
-            break;
+        if (isRapidApi) {
+          // Handle RapidAPI responses
+          if (endpoint.includes('current')) {
+            result.current = this.formatRapidApiCurrentWeather(response.data);
+          } else if (endpoint.includes('forecast')) {
+            result.forecast = this.formatRapidApiForecastWeather(response.data);
+          } else if (endpoint.includes('history')) {
+            result.historical = this.formatRapidApiHistoricalWeather(response.data);
+          }
+        } else {
+          // Handle standard API responses
+          switch (endpoint) {
+            case 'current':
+              result.current = this.formatCurrentWeather(response.data);
+              break;
+            case 'forecast':
+              result.forecast = this.formatForecastWeather(response.data);
+              break;
+            case 'historical':
+              result.historical = this.formatHistoricalWeather(response.data);
+              break;
+          }
         }
       }
       
@@ -487,5 +523,126 @@ export class WeatherConnector extends BaseDataConnector {
     // Implement data mapping from the specific API to our standard format
     // This will be customized based on the actual API being used
     return data?.climate || [];
+  }
+  
+  /**
+   * Format current weather data from RapidAPI WeatherAPI response
+   */
+  private formatRapidApiCurrentWeather(data: any): any {
+    if (!data || !data.current) {
+      return {};
+    }
+    
+    // Map the RapidAPI WeatherAPI response to our standard format
+    return {
+      temperature: data.current.temp_f, // Use Fahrenheit for imperial
+      feelsLike: data.current.feelslike_f,
+      humidity: data.current.humidity,
+      windSpeed: data.current.wind_mph,
+      windDirection: data.current.wind_degree,
+      pressure: data.current.pressure_mb,
+      precipitation: data.current.precip_in,
+      visibility: data.current.vis_miles,
+      weatherCode: data.current.condition.code,
+      weatherDescription: data.current.condition.text,
+      weatherIcon: data.current.condition.icon,
+      isDay: data.current.is_day === 1,
+      lastUpdated: data.current.last_updated,
+      location: data.location ? {
+        name: data.location.name,
+        region: data.location.region,
+        country: data.location.country,
+        lat: data.location.lat,
+        lon: data.location.lon,
+        localtime: data.location.localtime
+      } : undefined
+    };
+  }
+  
+  /**
+   * Format forecast weather data from RapidAPI WeatherAPI response
+   */
+  private formatRapidApiForecastWeather(data: any): WeatherForecast[] {
+    if (!data || !data.forecast || !data.forecast.forecastday) {
+      return [];
+    }
+    
+    // Map the RapidAPI WeatherAPI forecast to our standard format
+    return data.forecast.forecastday.map((day: any) => {
+      const forecast: WeatherForecast = {
+        date: day.date,
+        timestamp: new Date(day.date).getTime(),
+        temperature: day.day.avgtemp_f,
+        feelsLike: day.day.avgtemp_f, // Not directly available, using avg temp
+        humidity: day.day.avghumidity,
+        windSpeed: day.day.maxwind_mph,
+        windDirection: 0, // Not directly available in the daily summary
+        precipitation: day.day.totalprecip_in,
+        precipitationProbability: day.day.daily_chance_of_rain,
+        weatherCode: day.day.condition.code,
+        weatherDescription: day.day.condition.text,
+        temperatureMin: day.day.mintemp_f,
+        temperatureMax: day.day.maxtemp_f,
+        sunrise: day.astro.sunrise,
+        sunset: day.astro.sunset,
+        hourlyForecasts: day.hour ? day.hour.map((hour: any) => ({
+          time: hour.time,
+          timestamp: new Date(hour.time).getTime(),
+          temperature: hour.temp_f,
+          feelsLike: hour.feelslike_f,
+          humidity: hour.humidity,
+          windSpeed: hour.wind_mph,
+          windDirection: hour.wind_degree,
+          precipitation: hour.precip_in,
+          precipitationProbability: hour.chance_of_rain,
+          weatherCode: hour.condition.code,
+          weatherDescription: hour.condition.text,
+          weatherIcon: hour.condition.icon
+        })) : []
+      };
+      
+      return forecast;
+    });
+  }
+  
+  /**
+   * Format historical weather data from RapidAPI WeatherAPI response
+   */
+  private formatRapidApiHistoricalWeather(data: any): HistoricalWeather[] {
+    if (!data || !data.forecast || !data.forecast.forecastday) {
+      return [];
+    }
+    
+    // Map the RapidAPI WeatherAPI history (uses the same structure as forecast) to our standard format
+    return data.forecast.forecastday.map((day: any) => {
+      const historical: HistoricalWeather = {
+        date: day.date,
+        timestamp: new Date(day.date).getTime(),
+        temperature: {
+          avg: day.day.avgtemp_f,
+          min: day.day.mintemp_f,
+          max: day.day.maxtemp_f
+        },
+        precipitation: day.day.totalprecip_in,
+        humidity: day.day.avghumidity,
+        windSpeed: day.day.maxwind_mph,
+        weatherCode: day.day.condition.code,
+        weatherDescription: day.day.condition.text,
+        hourlyData: day.hour ? day.hour.map((hour: any) => ({
+          time: hour.time,
+          timestamp: new Date(hour.time).getTime(),
+          temperature: hour.temp_f,
+          feelsLike: hour.feelslike_f,
+          humidity: hour.humidity,
+          windSpeed: hour.wind_mph,
+          windDirection: hour.wind_degree,
+          precipitation: hour.precip_in,
+          weatherCode: hour.condition.code,
+          weatherDescription: hour.condition.text
+        })) : []
+      };
+      
+      return historical;
+    });
   }
 }

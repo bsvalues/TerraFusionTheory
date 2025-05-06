@@ -31,9 +31,9 @@ const defaultGISConnectors: { name: string; config: GISConnectorConfig }[] = [
   {
     name: 'grandview-gis',
     config: {
-      baseUrl: 'https://gis.yakimacounty.us/arcgis/rest/services',
-      apiKey: process.env.YAKIMA_GIS_API_KEY || '',
-      serviceType: 'arcgis',
+      baseUrl: 'https://mapbox-reverse-geocoding-api-latitude-and-longitude.p.rapidapi.com',
+      apiKey: '451301875bmsh347cde0b3c6bf7ep1fad23jsn9f94e7d04b55',
+      serviceType: 'mapbox',
       county: 'Yakima',
       state: 'WA'
     }
@@ -72,8 +72,8 @@ const defaultWeatherConnectors: { name: string; config: WeatherConnectorConfig }
   {
     name: 'weather-data',
     config: {
-      baseUrl: 'https://api.weatherapi.com/v1',
-      apiKey: 'WEATHER_API_KEY',
+      baseUrl: 'https://weatherapi-com.p.rapidapi.com',
+      apiKey: '451301875bmsh347cde0b3c6bf7ep1fad23jsn9f94e7d04b55',
       defaultLocation: 'Grandview,WA',
       units: 'imperial'
     }

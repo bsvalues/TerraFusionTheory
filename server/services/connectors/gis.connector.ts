@@ -74,16 +74,23 @@ export class GISConnector extends BaseDataConnector {
       throw new Error('GIS connector requires baseUrl in configuration');
     }
     
+    // Check if we're using RapidAPI
+    const isRapidApi = config.baseUrl.includes('rapidapi.com');
+    
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
       ...(config.headers || {})
     };
     
-    // Add API key to headers if provided
+    // Add API key to headers based on service type
     if (config.apiKey) {
-      if (config.serviceType === 'arcgis') {
+      if (isRapidApi) {
+        // Use RapidAPI headers format
+        headers['x-rapidapi-key'] = config.apiKey;
+        headers['x-rapidapi-host'] = config.baseUrl.replace('https://', '').split('/')[0];
+      } else if (config.serviceType === 'arcgis') {
         headers['X-Esri-Authorization'] = `Bearer ${config.apiKey}`;
-      } else if (config.serviceType === 'mapbox') {
+      } else if (config.serviceType === 'mapbox' && !isRapidApi) {
         // Mapbox typically uses query parameters for API key
       } else {
         headers['X-API-Key'] = config.apiKey;
