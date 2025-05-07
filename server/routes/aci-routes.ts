@@ -137,7 +137,7 @@ router.get('/status', asyncHandler(async (req: Request, res: Response) => {
 import os
 import json
 import sys
-from aci import ACI
+from aci._client import ACI
 
 try:
     api_key = os.environ.get("ACI_API_KEY", "")

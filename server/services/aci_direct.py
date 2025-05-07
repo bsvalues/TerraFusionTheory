@@ -10,7 +10,7 @@ import sys
 import json
 import logging
 import traceback
-from aci import ACI
+from aci._client import ACI
 from aci.types.enums import FunctionDefinitionFormat, SecurityScheme
 
 # Configure logging

@@ -8,7 +8,7 @@ into our Geographic Assisted Mass Appraisal (GAMA) system, providing access to 6
 import os
 import json
 import logging
-from aci import ACI
+from aci._client import ACI
 from aci.meta_functions import ACISearchFunctions, ACIExecuteFunction
 from aci.types.enums import FunctionDefinitionFormat, SecurityScheme
 from flask import jsonify
