@@ -13,6 +13,7 @@ import * as massAppraisalController from "./controllers/mass-appraisal.controlle
 import * as mcpController from "./controllers/mcp.controller";
 import * as enhancedMcpController from "./controllers/enhanced-mcp.controller";
 import * as memoryManagerController from "./controllers/memory-manager.controller";
+import * as aciController from "./controllers/aci-controller";
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
 import { alertManager, AlertSeverity } from "./services/alert";
@@ -28,6 +29,7 @@ import { registerAnalysisRoutes } from "./routes/analysis-routes";
 import microservicesClient from "./services/microservices-client";
 import { registerTestRoutes } from "./utils/terrafusion-test";
 import { dataQualityRoutes } from "./routes/data-quality.routes";
+import { aciRoutes } from "./routes/aci-routes";
 
 // Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';
@@ -98,6 +100,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register data quality routes
   app.use('/api/data-quality', dataQualityRoutes);
+  
+  // Register ACI integration routes
+  app.use('/api/aci', aciRoutes);
   
   // API routes - prefix all routes with /api
   
@@ -383,6 +388,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/mcp/enhanced", asyncHandler(enhancedMcpController.executeEnhancedMCP));
   app.post("/api/mcp/context", asyncHandler(enhancedMcpController.getContextForPrompt));
   app.get("/api/mcp/stats", asyncHandler(enhancedMcpController.getMCPStats));
+  
+  // ACI integration with MCP
+  app.post("/api/mcp/aci", asyncHandler(aciController.enhancedMCPWithACI));
+  app.post("/api/aci/api-key", asyncHandler(aciController.requestACIApiKey));
+  app.post("/api/aci/tool-call", asyncHandler(aciController.handleACIToolCall));
+  app.post("/api/aci/search-tools", asyncHandler(aciController.searchACITools));
   
   // Memory Manager routes
   app.get("/api/memory/stats", asyncHandler(memoryManagerController.getMemoryStatsHandler));
