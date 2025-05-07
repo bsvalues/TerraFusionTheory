@@ -380,7 +380,21 @@ export class OptimizedLogger {
   /**
    * Helper to truncate strings with ellipsis
    */
-  private truncateString(str: string, maxLength: number): string {
+  private truncateString(str: any, maxLength: number): string {
+    if (!str) {
+      return '';
+    }
+    
+    // Convert to string if not already
+    if (typeof str !== 'string') {
+      try {
+        str = JSON.stringify(str);
+      } catch (e) {
+        str = String(str);
+      }
+    }
+    
+    // If string is already short enough, return as is
     if (str.length <= maxLength) {
       return str;
     }
