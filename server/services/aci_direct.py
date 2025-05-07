@@ -6,24 +6,35 @@ focusing on simplicity and direct execution.
 """
 
 import os
+import sys
 import json
 import logging
+import traceback
 from aci import ACI
 from aci.types.enums import FunctionDefinitionFormat, SecurityScheme
 
 # Configure logging
-logging.basicConfig(level=logging.INFO)
+logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger("aci-direct")
 
 # Get ACI API key from environment
 ACI_API_KEY = os.environ.get("ACI_API_KEY", "")
 GAMA_USER_ID = "gama-system"
 
+# Log API key status (without revealing the actual key)
+if ACI_API_KEY:
+    logger.info(f"ACI API key found, length: {len(ACI_API_KEY)}")
+else:
+    logger.warning("ACI API key not found or empty")
+
 def is_initialized():
     """
     Check if ACI is initialized with valid API key
     """
-    return ACI_API_KEY is not None and len(ACI_API_KEY) > 0
+    if not ACI_API_KEY:
+        logger.error("ACI API key is missing or empty")
+        return False
+    return True
 
 def get_tools_json_schema(format=FunctionDefinitionFormat.OPENAI):
     """

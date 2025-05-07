@@ -259,25 +259,36 @@ router.post('/search', asyncHandler(async (req: Request, res: Response) => {
       });
     }
     
-    // Use the direct approach
+    // Use the direct approach with improved error handling
     const process = spawn('python3', [
       '-c',
       `
 import sys
 import json
 import os
+import traceback
 
 try:
     sys.path.append('${process.cwd()}')
-    from server.services.aci_direct import search_functions
+    from server.services.aci_direct import search_functions, is_initialized
+    
+    # First check if ACI is initialized
+    if not is_initialized():
+        print(json.dumps({"error": "ACI is not initialized. Please check ACI_API_KEY environment variable."}))
+        sys.exit(1)
     
     intent = """${intent}"""
     limit = ${limit}
     
     result = search_functions(intent, limit)
     print(json.dumps(result))
+except ImportError as e:
+    print(json.dumps({"error": f"Import error: {str(e)}. Make sure the 'aci' package is installed."}))
 except Exception as e:
-    print(json.dumps({"error": str(e)}))
+    print(json.dumps({
+        "error": str(e),
+        "traceback": traceback.format_exc()
+    }))
       `
     ]);
 
@@ -312,9 +323,17 @@ except Exception as e:
         const result = JSON.parse(outputData.trim());
         
         if (result && result.error) {
+          logger.error({
+            message: `ACI search error: ${result.error}`,
+            category: 'API',
+            source: 'aci-routes',
+            details: result.traceback || 'No traceback'
+          });
+          
           return res.status(500).json({
             status: 'error',
-            message: result.error
+            message: result.error,
+            details: result.traceback
           });
         }
         
