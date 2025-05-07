@@ -7,6 +7,12 @@ resolution-markers = [
 ]
 
 [[package]]
+name = "aci"
+version = "1.3"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/fd/df/bef5dc5be653272273021c416b71e2d1973df784d2852cfdb74357130671/aci-1.3.tar.gz", hash = "sha256:3ab169393ede1bcaaf3d84bd3261d6922f363e18c057ce11cddaf78476dabae8", size = 119258 }
+
+[[package]]
 name = "aci-sdk"
 version = "1.0.0b2"
 source = { registry = "https://pypi.org/simple" }
@@ -2509,6 +2515,7 @@ name = "repl-nix-workspace"
 version = "0.1.0"
 source = { virtual = "." }
 dependencies = [
+    { name = "aci" },
     { name = "aci-sdk" },
     { name = "apache-airflow" },
     { name = "fastapi" },
@@ -2528,6 +2535,7 @@ dependencies = [
 
 [package.metadata]
 requires-dist = [
+    { name = "aci", specifier = ">=1.3" },
     { name = "aci-sdk", specifier = ">=1.0.0b2" },
     { name = "apache-airflow", specifier = ">=2.10.5" },
     { name = "fastapi", specifier = ">=0.115.11" },

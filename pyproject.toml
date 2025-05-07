@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "Add your description here"
 requires-python = ">=3.11"
 dependencies = [
+    "aci>=1.3",
     "aci-sdk>=1.0.0b2",
     "apache-airflow>=2.10.5",
     "fastapi>=0.115.11",
