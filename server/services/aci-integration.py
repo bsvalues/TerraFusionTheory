@@ -169,18 +169,74 @@ class ACIIntegration:
             return {"error": "ACI not initialized"}
         
         try:
-            # Ensure arguments is a dict
-            if isinstance(arguments, str):
-                arguments = json.loads(arguments)
+            # Get the client
+            client = self.client
             
-            result = self.client.handle_function_call(
-                function_name=function_name,
-                arguments=arguments,
-                linked_account_owner_id=self.gama_user_id,
-                allowed_apps_only=True,
-                format=FunctionDefinitionFormat.OPENAI
-            )
-            return result
+            # For functions from specific apps (format: APP_NAME__FUNCTION_NAME)
+            if "__" in function_name:
+                app_name, func_name = function_name.split("__", 1)
+                
+                # Execute the function directly
+                result = client.functions.execute(
+                    app_name=app_name,
+                    function_name=func_name,
+                    parameters=arguments, 
+                    linked_account_owner_id=self.gama_user_id
+                )
+                return result
+            
+            # For meta functions (ACI_SEARCH_FUNCTIONS, ACI_EXECUTE_FUNCTION)
+            elif function_name == "ACI_SEARCH_FUNCTIONS":
+                intent = arguments.get("intent", "")
+                limit = arguments.get("limit", 10)
+                offset = arguments.get("offset", 0)
+                
+                functions = client.functions.search(
+                    intent=intent,
+                    allowed_apps_only=True,
+                    limit=limit,
+                    offset=offset
+                )
+                
+                # Format the result
+                formatted_functions = []
+                for func in functions:
+                    formatted_functions.append({
+                        "app_name": func.app_name,
+                        "function_name": func.function_name,
+                        "full_name": f"{func.app_name}__{func.function_name}",
+                        "description": func.description,
+                        "requires_auth": func.requires_auth,
+                        "has_linked_account": func.has_linked_account,
+                        "schema": func.schema
+                    })
+                
+                return {"functions": formatted_functions}
+            
+            elif function_name == "ACI_EXECUTE_FUNCTION":
+                func_name = arguments.get("function_name", "")
+                func_args = arguments.get("function_arguments", {})
+                
+                if not func_name:
+                    return {"error": "No function name provided"}
+                
+                # If the function name has app name prefix
+                if "__" in func_name:
+                    app_name, function_name = func_name.split("__", 1)
+                    
+                    result = client.functions.execute(
+                        app_name=app_name,
+                        function_name=function_name,
+                        parameters=func_args,
+                        linked_account_owner_id=self.gama_user_id
+                    )
+                    return result
+                else:
+                    return {"error": f"Invalid function name format: {func_name}. Expected format: APP_NAME__FUNCTION_NAME"}
+            
+            else:
+                return {"error": f"Unknown function: {function_name}"}
+                
         except Exception as e:
             logger.error(f"Error handling function call {function_name}: {e}")
             return {"error": str(e)}

@@ -10,6 +10,8 @@ import { spawn } from 'child_process';
 import { Request, Response } from 'express';
 import { asyncHandler } from '../middleware/errorHandler';
 import { OptimizedLogger } from '../services/optimized-logging';
+import * as fs from 'fs';
+import * as os from 'os';
 
 const logger = OptimizedLogger.getInstance();
 const router = Router();
@@ -24,26 +26,51 @@ const router = Router();
  */
 async function executePythonFunction(scriptPath: string, functionName: string, args: any = {}): Promise<any> {
   return new Promise((resolve, reject) => {
+    // Pass args via command line to avoid string escaping issues
+    const argsStr = JSON.stringify(args);
+    
     const process = spawn('python3', [
       '-c',
       `
 import sys
 import json
 import importlib.util
+import os
 
-# Import the module
-spec = importlib.util.spec_from_file_location("aci_module", "${scriptPath}")
-module = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(module)
-
-# Parse input arguments
-args = json.loads('${JSON.stringify(args)}')
-
-# Call the specified function
-result = getattr(module.aci_integration, "${functionName}")(**args)
-
-# Return result as JSON
-print(json.dumps(result))
+try:
+    # Import the module
+    script_path = "${scriptPath}"
+    if not os.path.exists(script_path):
+        print(json.dumps({"error": f"Script not found: {script_path}"}))
+        sys.exit(1)
+        
+    spec = importlib.util.spec_from_file_location("aci_module", script_path)
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    
+    # Parse arguments from command line
+    args_str = '''${argsStr}'''
+    function_name = "${functionName}"
+    
+    # Parse input arguments
+    args = json.loads(args_str)
+    
+    # Get the function based on name
+    if not hasattr(module.aci_integration, function_name):
+        print(json.dumps({"error": f"Function not found: {function_name}"}))
+        sys.exit(1)
+        
+    # Get the function
+    func = getattr(module.aci_integration, function_name)
+    
+    # Call the function with arguments
+    result = func(**args)
+    
+    # Return result as JSON
+    print(json.dumps(result))
+except Exception as e:
+    print(json.dumps({"error": str(e)}))
+    sys.exit(1)
       `
     ]);
 
@@ -60,13 +87,37 @@ print(json.dumps(result))
 
     process.on('close', (code) => {
       if (code !== 0) {
+        logger.error({
+          message: `Python process exited with code ${code}`,
+          category: 'API',
+          source: 'aci-routes',
+          details: errorData
+        });
+        
         return reject(new Error(`Python process exited with code ${code}: ${errorData}`));
       }
 
       try {
         const result = JSON.parse(outputData.trim());
+        
+        if (result && result.error) {
+          logger.error({
+            message: `Error in Python function: ${result.error}`,
+            category: 'API',
+            source: 'aci-routes'
+          });
+          
+          return reject(new Error(result.error));
+        }
+        
         resolve(result);
       } catch (err) {
+        logger.error({
+          message: `Failed to parse Python output: ${outputData}`,
+          category: 'API',
+          source: 'aci-routes'
+        });
+        
         reject(new Error(`Failed to parse Python output: ${outputData}`));
       }
     });
