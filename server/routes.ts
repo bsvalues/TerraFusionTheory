@@ -27,6 +27,7 @@ import { registerDiagnosticsRoutes } from "./routes/diagnostics.routes";
 import { registerAnalysisRoutes } from "./routes/analysis-routes";
 import microservicesClient from "./services/microservices-client";
 import { registerTestRoutes } from "./utils/terrafusion-test";
+import { dataQualityRoutes } from "./routes/data-quality.routes";
 
 // Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';
@@ -94,6 +95,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register analysis routes
   registerAnalysisRoutes(app);
+  
+  // Register data quality routes
+  app.use('/api/data-quality', dataQualityRoutes);
   
   // API routes - prefix all routes with /api
   
