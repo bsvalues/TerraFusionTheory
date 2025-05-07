@@ -79,11 +79,79 @@ print(json.dumps(result))
  */
 router.get('/status', asyncHandler(async (req: Request, res: Response) => {
   try {
-    const result = await executePythonFunction('./server/services/aci-integration.py', 'is_initialized');
+    // Use a simpler approach to check the status
+    const process = spawn('python3', [
+      '-c',
+      `
+import os
+import json
+import sys
+from aci import ACI
+
+try:
+    api_key = os.environ.get("ACI_API_KEY", "")
+    client = ACI(api_key=api_key) if api_key else None
+    is_initialized = api_key is not None and len(api_key) > 0
     
-    res.json({
-      status: 'success',
-      initialized: result
+    print(json.dumps({
+        "initialized": is_initialized,
+        "api_key_present": api_key is not None and len(api_key) > 0
+    }))
+except Exception as e:
+    print(json.dumps({
+        "initialized": False,
+        "error": str(e)
+    }))
+      `
+    ]);
+
+    let outputData = '';
+    let errorData = '';
+
+    process.stdout.on('data', (data) => {
+      outputData += data.toString();
+    });
+
+    process.stderr.on('data', (data) => {
+      errorData += data.toString();
+    });
+
+    process.on('close', (code) => {
+      if (code !== 0) {
+        logger.error({
+          message: `Error checking ACI status: Process exited with code ${code}`,
+          category: 'API',
+          source: 'aci-routes',
+          details: errorData
+        });
+        
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to check ACI integration status',
+          details: errorData
+        });
+      }
+
+      try {
+        const result = JSON.parse(outputData.trim());
+        
+        return res.json({
+          status: 'success',
+          ...result
+        });
+      } catch (err) {
+        logger.error({
+          message: `Failed to parse Python output: ${outputData}`,
+          category: 'API',
+          source: 'aci-routes'
+        });
+        
+        return res.status(500).json({
+          status: 'error',
+          message: 'Failed to parse ACI status result',
+          details: outputData
+        });
+      }
     });
   } catch (error) {
     logger.error({
