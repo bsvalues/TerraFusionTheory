@@ -1,0 +1,263 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-shield-check"></i> ICSF GAMA Audit Dashboard
+                </h5>
+            </div>
+            <div class="card-body">
+                <p>Welcome to the ICSF GAMA Simulator Audit Dashboard. This dashboard provides tools for monitoring and analyzing simulation audit logs for compliance and operational purposes.</p>
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> This dashboard is for authorized county personnel only. All activities are logged.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up"></i> Log Activity
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="activityChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-exclamation-triangle"></i> Risk Distribution
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="riskChart" width="400" height="300"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-journal-text"></i> Quick Actions
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="list-group">
+                    <a href="{{ url_for('view_logs') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-search"></i> View Recent Logs
+                    </a>
+                    <a href="{{ url_for('view_logs', risk_level='HIGH') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-exclamation-circle"></i> View High-Risk Entries
+                    </a>
+                    <a href="{{ url_for('generate_report') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-file-earmark-text"></i> Generate New Report
+                    </a>
+                    <a href="{{ url_for('view_reports') }}" class="list-group-item list-group-item-action">
+                        <i class="bi bi-folder"></i> View All Reports
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-info-circle"></i> System Information
+                </h5>
+            </div>
+            <div class="card-body">
+                <table class="table table-bordered">
+                    <tbody>
+                        <tr>
+                            <th style="width: 30%;">Dashboard Version</th>
+                            <td>1.0.0</td>
+                        </tr>
+                        <tr>
+                            <th>ICSF GAMA Simulator</th>
+                            <td>Version 1.0.0</td>
+                        </tr>
+                        <tr>
+                            <th>Log File</th>
+                            <td><code>logs/compliance_audit.log</code></td>
+                        </tr>
+                        <tr>
+                            <th>Server Date/Time</th>
+                            <td id="server-time">Loading...</td>
+                        </tr>
+                        <tr>
+                            <th>Dashboard Status</th>
+                            <td><span class="badge bg-success">Active</span></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // Update server time every second
+    function updateServerTime() {
+        const now = new Date();
+        document.getElementById('server-time').textContent = now.toLocaleString();
+    }
+    updateServerTime();
+    setInterval(updateServerTime, 1000);
+    
+    // Fetch dashboard data
+    fetch('/api/logs/summary')
+        .then(response => response.json())
+        .then(data => {
+            updateRiskChart(data);
+            // More chart updates can be added here
+        })
+        .catch(error => console.error('Error loading dashboard data:', error));
+    
+    // Fetch time series data
+    fetch('/api/logs/time-series')
+        .then(response => response.json())
+        .then(data => {
+            updateActivityChart(data);
+        })
+        .catch(error => console.error('Error loading time series data:', error));
+    
+    // Risk Distribution Chart
+    function updateRiskChart(data) {
+        const riskLabels = Object.keys(data.risk_levels || {});
+        const riskData = Object.values(data.risk_levels || {});
+        
+        if (riskLabels.length === 0) {
+            // No data available
+            document.getElementById('riskChart').parentElement.innerHTML = 
+                '<div class="alert alert-info">No risk data available.</div>';
+            return;
+        }
+        
+        const riskColors = {
+            'LOW': 'rgba(40, 167, 69, 0.7)',
+            'MEDIUM': 'rgba(255, 193, 7, 0.7)',
+            'HIGH': 'rgba(220, 53, 69, 0.7)',
+            'CRITICAL': 'rgba(102, 16, 242, 0.7)'
+        };
+        
+        const backgroundColor = riskLabels.map(label => riskColors[label] || 'rgba(108, 117, 125, 0.7)');
+        
+        const riskChart = new Chart(document.getElementById('riskChart'), {
+            type: 'pie',
+            data: {
+                labels: riskLabels,
+                datasets: [{
+                    data: riskData,
+                    backgroundColor: backgroundColor,
+                    borderColor: backgroundColor.map(color => color.replace('0.7', '1')),
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                    },
+                    title: {
+                        display: true,
+                        text: 'Risk Level Distribution'
+                    }
+                }
+            }
+        });
+    }
+    
+    // Activity Chart
+    function updateActivityChart(data) {
+        if (!data || data.length === 0) {
+            // No data available
+            document.getElementById('activityChart').parentElement.innerHTML = 
+                '<div class="alert alert-info">No activity data available.</div>';
+            return;
+        }
+        
+        // Process data for chart
+        const dates = data.map(item => item.date);
+        
+        // Find unique risk levels across all data points
+        const riskLevels = new Set();
+        data.forEach(item => {
+            Object.keys(item).forEach(key => {
+                if (key !== 'date') {
+                    riskLevels.add(key);
+                }
+            });
+        });
+        
+        // Create datasets for each risk level
+        const datasets = [];
+        const colors = {
+            'LOW': 'rgba(40, 167, 69, 0.7)',
+            'MEDIUM': 'rgba(255, 193, 7, 0.7)',
+            'HIGH': 'rgba(220, 53, 69, 0.7)',
+            'CRITICAL': 'rgba(102, 16, 242, 0.7)'
+        };
+        
+        riskLevels.forEach(risk => {
+            const values = data.map(item => item[risk] || 0);
+            
+            datasets.push({
+                label: risk,
+                data: values,
+                backgroundColor: colors[risk] || 'rgba(108, 117, 125, 0.7)',
+                borderColor: (colors[risk] || 'rgba(108, 117, 125, 0.7)').replace('0.7', '1'),
+                borderWidth: 1
+            });
+        });
+        
+        const activityChart = new Chart(document.getElementById('activityChart'), {
+            type: 'bar',
+            data: {
+                labels: dates,
+                datasets: datasets
+            },
+            options: {
+                responsive: true,
+                scales: {
+                    x: {
+                        stacked: true
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true
+                    }
+                },
+                plugins: {
+                    title: {
+                        display: true,
+                        text: 'Log Activity by Date'
+                    },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    }
+                }
+            }
+        });
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,201 @@
+{% extends 'base.html' %}
+
+{% block extra_head %}
+<style>
+    .log-table {
+        font-size: 0.9rem;
+    }
+    .risk-LOW {
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+    .risk-MEDIUM {
+        background-color: rgba(255, 193, 7, 0.2);
+    }
+    .risk-HIGH {
+        background-color: rgba(220, 53, 69, 0.2);
+    }
+    .risk-CRITICAL {
+        background-color: rgba(102, 16, 242, 0.2);
+    }
+    .badge-LOW {
+        background-color: #28a745;
+    }
+    .badge-MEDIUM {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    .badge-HIGH {
+        background-color: #dc3545;
+    }
+    .badge-CRITICAL {
+        background-color: #6610f2;
+    }
+    .summary-card {
+        transition: all 0.3s;
+    }
+    .summary-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 6px 12px rgba(0,0,0,0.15);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header bg-primary text-white">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-journal-text"></i> Audit Logs
+                </h5>
+            </div>
+            <div class="card-body">
+                <form action="{{ url_for('view_logs') }}" method="GET" class="row g-3">
+                    <div class="col-md-3">
+                        <label for="start_date" class="form-label">Start Date</label>
+                        <input type="date" class="form-control" id="start_date" name="start_date" value="{{ filters.start_date }}">
+                    </div>
+                    <div class="col-md-3">
+                        <label for="end_date" class="form-label">End Date</label>
+                        <input type="date" class="form-control" id="end_date" name="end_date" value="{{ filters.end_date }}">
+                    </div>
+                    <div class="col-md-2">
+                        <label for="risk_level" class="form-label">Risk Level</label>
+                        <select class="form-select" id="risk_level" name="risk_level">
+                            <option value="">All</option>
+                            {% for level in risk_levels %}
+                            <option value="{{ level }}" {% if filters.risk_level == level %}selected{% endif %}>{{ level }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="category" class="form-label">Category</label>
+                        <select class="form-select" id="category" name="category">
+                            <option value="">All</option>
+                            {% for cat in categories %}
+                            <option value="{{ cat }}" {% if filters.category == cat %}selected{% endif %}>{{ cat }}</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    <div class="col-md-2">
+                        <label for="max_entries" class="form-label">Max Entries</label>
+                        <select class="form-select" id="max_entries" name="max_entries">
+                            <option value="100" {% if filters.max_entries == 100 %}selected{% endif %}>100</option>
+                            <option value="200" {% if filters.max_entries == 200 %}selected{% endif %}>200</option>
+                            <option value="500" {% if filters.max_entries == 500 %}selected{% endif %}>500</option>
+                            <option value="1000" {% if filters.max_entries == 1000 %}selected{% endif %}>1000</option>
+                        </select>
+                    </div>
+                    <div class="col-12">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="bi bi-search"></i> Filter Logs
+                        </button>
+                        <a href="{{ url_for('view_logs') }}" class="btn btn-secondary">
+                            <i class="bi bi-x-circle"></i> Clear Filters
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% if summary.total_entries > 0 %}
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card summary-card text-white bg-primary mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-list"></i> Total Entries</h5>
+                <p class="card-text display-6">{{ summary.total_entries }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card summary-card text-dark bg-warning mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-exclamation-triangle"></i> High Risk</h5>
+                <p class="card-text display-6">{{ summary.high_risk_count }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card summary-card text-white bg-success mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-tags"></i> Categories</h5>
+                <p class="card-text display-6">{{ summary.categories|length }}</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card summary-card text-white bg-info mb-3">
+            <div class="card-body">
+                <h5 class="card-title"><i class="bi bi-layers"></i> Log Levels</h5>
+                <p class="card-text display-6">{{ summary.log_levels|length }}</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-table"></i> Log Entries
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-bordered table-hover log-table">
+                        <thead class="table-light">
+                            <tr>
+                                <th style="width: 15%;">Timestamp</th>
+                                <th style="width: 8%;">Level</th>
+                                <th style="width: 10%;">Risk</th>
+                                <th style="width: 15%;">Category</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in entries %}
+                            <tr class="risk-{{ entry.risk }}">
+                                <td>{{ entry.timestamp }}</td>
+                                <td>
+                                    {% if entry.level == 'INFO' %}
+                                    <span class="badge bg-info">{{ entry.level }}</span>
+                                    {% elif entry.level == 'WARNING' %}
+                                    <span class="badge bg-warning text-dark">{{ entry.level }}</span>
+                                    {% elif entry.level == 'ERROR' %}
+                                    <span class="badge bg-danger">{{ entry.level }}</span>
+                                    {% elif entry.level == 'CRITICAL' %}
+                                    <span class="badge bg-dark">{{ entry.level }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ entry.level }}</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge badge-{{ entry.risk }}">{{ entry.risk }}</span></td>
+                                <td>{{ entry.category }}</td>
+                                <td>{{ entry.message }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% else %}
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-body">
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle"></i> No log entries found matching the current filter criteria.
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endif %}
+{% endblock %}
