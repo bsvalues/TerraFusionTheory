@@ -48,14 +48,37 @@ def get_tools_json_schema(format=FunctionDefinitionFormat.OPENAI):
         return []
     
     try:
+        logger.info(f"Getting ACI tools in {format} format")
         client = ACI(api_key=ACI_API_KEY)
-        schemas = client.list_functions_as_schema(
-            format=format,
-            allowed_apps_only=True
+        
+        # Get available functions via search instead
+        logger.info("Using search to get available functions")
+        functions = client.functions.search(
+            intent="list all available functions",
+            allowed_apps_only=True,
+            limit=50
         )
+        
+        logger.info(f"Found {len(functions)} functions")
+        
+        # Format as JSON schema
+        schemas = []
+        for func in functions:
+            try:
+                if isinstance(func, dict):
+                    schema = func.get('schema', {})
+                    schemas.append(schema)
+                else:
+                    schema = getattr(func, 'schema', {})
+                    schemas.append(schema)
+            except Exception as schema_error:
+                logger.error(f"Error processing schema: {schema_error}")
+                
+        logger.info(f"Returning {len(schemas)} function schemas")
         return schemas
     except Exception as e:
         logger.error(f"Error getting ACI tools: {e}")
+        logger.error(f"Error traceback: {traceback.format_exc()}")
         return []
 
 def search_functions(intent, limit=10):
@@ -115,14 +138,31 @@ def search_functions(intent, limit=10):
         logger.info("Formatting search results...")
         formatted_functions = []
         for func in functions:
+            # Handle both object and dictionary formats
+            if isinstance(func, dict):
+                app_name = func.get('app_name', '')
+                function_name = func.get('function_name', '')
+                description = func.get('description', '')
+                requires_auth = func.get('requires_auth', False)
+                has_linked_account = func.get('has_linked_account', False)
+                schema = func.get('schema', {})
+            else:
+                # Assume object with attributes
+                app_name = getattr(func, 'app_name', '')
+                function_name = getattr(func, 'function_name', '')
+                description = getattr(func, 'description', '')
+                requires_auth = getattr(func, 'requires_auth', False)
+                has_linked_account = getattr(func, 'has_linked_account', False)
+                schema = getattr(func, 'schema', {})
+                
             formatted_functions.append({
-                "app_name": func.app_name,
-                "function_name": func.function_name,
-                "full_name": f"{func.app_name}__{func.function_name}",
-                "description": func.description,
-                "requires_auth": func.requires_auth,
-                "has_linked_account": func.has_linked_account,
-                "schema": func.schema
+                "app_name": app_name,
+                "function_name": function_name,
+                "full_name": f"{app_name}__{function_name}",
+                "description": description,
+                "requires_auth": requires_auth,
+                "has_linked_account": has_linked_account,
+                "schema": schema
             })
         
         logger.info(f"Returning {len(formatted_functions)} formatted functions")
@@ -163,17 +203,69 @@ def execute_function(app_name, function_name, parameters=None):
         parameters = {}
     
     try:
+        # Log the function call
+        logger.info(f"Executing function {app_name}.{function_name} with parameters: {parameters}")
+        
         client = ACI(api_key=ACI_API_KEY)
+        
+        # Check for function existence
+        try:
+            logger.info(f"Searching for function {app_name}.{function_name}")
+            matching_functions = client.functions.search(
+                intent=f"use {app_name} {function_name}",
+                allowed_apps_only=True,
+                limit=10
+            )
+            func_found = False
+            for func in matching_functions:
+                if isinstance(func, dict):
+                    if func.get('app_name') == app_name and func.get('function_name') == function_name:
+                        func_found = True
+                        break
+                else:
+                    if getattr(func, 'app_name', '') == app_name and getattr(func, 'function_name', '') == function_name:
+                        func_found = True
+                        break
+            
+            if not func_found:
+                logger.warning(f"Function {app_name}.{function_name} not found in search results")
+        except Exception as search_error:
+            logger.warning(f"Error searching for function: {search_error}")
+        
+        # Execute the function
+        logger.info(f"Executing ACI function {app_name}.{function_name}")
         result = client.functions.execute(
-            app_name=app_name,
             function_name=function_name,
-            parameters=parameters,
+            function_arguments=parameters,
+            app_name=app_name,
             linked_account_owner_id=GAMA_USER_ID
         )
-        return result
+        
+        # Process result
+        logger.info(f"Function execution successful: {type(result)}")
+        if isinstance(result, dict):
+            return result
+        else:
+            # Convert to dictionary if it's another object type
+            logger.info(f"Converting result of type {type(result)} to dictionary")
+            try:
+                # Try to convert to JSON and back to ensure it's a clean dictionary
+                result_json = json.dumps(result)
+                return json.loads(result_json)
+            except Exception as conversion_error:
+                logger.error(f"Error converting result: {conversion_error}")
+                # Fallback to string representation
+                return {"result": str(result)}
+                
     except Exception as e:
         logger.error(f"Error executing function {app_name}.{function_name}: {e}")
-        return {"error": str(e)}
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error traceback: {traceback.format_exc()}")
+        return {
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()
+        }
 
 def handle_function_call(function_name, arguments):
     """
@@ -314,9 +406,25 @@ def get_linked_accounts():
         accounts = client.linked_accounts.list(
             linked_account_owner_id=GAMA_USER_ID
         )
-        return [{"app_name": acc.app_name, "status": acc.status} for acc in accounts]
+        
+        formatted_accounts = []
+        for acc in accounts:
+            if isinstance(acc, dict):
+                formatted_accounts.append({
+                    "app_name": acc.get("app_name", ""),
+                    "status": acc.get("status", "unknown")
+                })
+            else:
+                # Object format
+                formatted_accounts.append({
+                    "app_name": getattr(acc, "app_name", ""),
+                    "status": getattr(acc, "status", "unknown")
+                })
+        
+        return formatted_accounts
     except Exception as e:
         logger.error(f"Error getting linked accounts: {e}")
+        logger.error(f"Error traceback: {traceback.format_exc()}")
         return []
 
 # For testing when run directly
