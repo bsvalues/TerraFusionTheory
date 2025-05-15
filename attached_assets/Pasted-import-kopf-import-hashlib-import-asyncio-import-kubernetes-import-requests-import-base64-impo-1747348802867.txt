@@ -1,0 +1,123 @@
+import kopf
+import hashlib
+import asyncio
+import kubernetes
+import requests
+import base64
+import json
+import os
+import logging
+import time
+from kubernetes.client import ApiClient, CustomObjectsApi, CoreV1Api, AppsV1Api, V1Patch
+
+# Setup logging
+logging.basicConfig(level=logging.INFO)
+logger = logging.getLogger("driftguard")
+
+# Load Kubernetes configuration
+try:
+    kubernetes.config.load_incluster_config()
+    logger.info("Running with in-cluster config")
+except kubernetes.config.ConfigException:
+    kubernetes.config.load_kube_config()
+    logger.info("Running with local kubeconfig")
+
+# Kubernetes clients with retry logic
+def create_k8s_clients():
+    for attempt in range(5):
+        try:
+            api_client = ApiClient()
+            return CoreV1Api(api_client), CustomObjectsApi(api_client), AppsV1Api(api_client)
+        except Exception as e:
+            logger.warning(f"Failed to create K8s client (attempt {attempt+1}/5): {e}")
+            time.sleep(2 ** attempt)
+    raise RuntimeError("Failed to initialize Kubernetes API clients")
+
+core_api, custom_api, apps_api = create_k8s_clients()
+
+# Telemetry endpoint
+TELEMETRY_ENDPOINT = os.environ.get("TELEMETRY_ENDPOINT", "http://telemetry-service.mcp-system.svc/telemetry/driftguard")
+
+RESOURCE_TYPES = {
+    'configmap': {
+        'getter': lambda name, ns: core_api.read_namespaced_config_map(name, ns),
+        'get_data': lambda obj: obj.data or {}
+    },
+    'secret': {
+        'getter': lambda name, ns: core_api.read_namespaced_secret(name, ns),
+        'get_data': lambda obj: {k: base64.b64decode(v).decode('utf-8') if v else '' for k, v in (obj.data or {}).items()}
+    }
+}
+
+def compute_hash(obj):
+    json_str = json.dumps(obj, sort_keys=True)
+    return hashlib.sha256(json_str.encode('utf-8')).hexdigest()
+
+def fetch_target_object(kind, name, namespace):
+    kind = kind.lower()
+    if kind not in RESOURCE_TYPES:
+        raise ValueError(f"Unsupported target kind: {kind}")
+    resource = RESOURCE_TYPES[kind]
+    obj = resource['getter'](name, namespace)
+    return resource['get_data'](obj)
+
+def apply_remediation(kind, name, namespace, expected_hash, logger):
+    logger.info(f"Applying remediation to {kind}/{name} in {namespace}")
+    # Placeholder for actual remediation logic
+    logger.warning(f"No actual remediation logic implemented for {kind}/{name}")
+
+def log_telemetry(name, namespace, status):
+    try:
+        payload = {
+            "driftguard": name,
+            "namespace": namespace,
+            "status": status,
+            "timestamp": kopf.now().isoformat()
+        }
+        headers = {"Content-Type": "application/json"}
+        response = requests.post(TELEMETRY_ENDPOINT, json=payload, headers=headers, timeout=5)
+        response.raise_for_status()
+    except Exception as e:
+        logger.warning(f"Telemetry logging failed: {e}")
+
+@kopf.timer('driftguards.mcp.io', interval=30.0)
+def check_drift(spec, name, namespace, status, logger, **kwargs):
+    target_kind = spec.get('targetKind')
+    target_name = spec.get('targetName')
+    target_ns = spec.get('targetNamespace') or namespace
+    expected_hash = spec.get('expectedHash')
+    auto_remediate = spec.get('autoRemediate', False)
+
+    if not all([target_kind, target_name, expected_hash]):
+        logger.warning(f"DriftGuard '{name}' missing required fields. Skipping.")
+        return {
+            'lastChecked': kopf.now().isoformat(),
+            'hashMatch': None,
+            'reason': 'Missing targetKind, targetName, or expectedHash'
+        }
+
+    try:
+        target_data = fetch_target_object(target_kind, target_name, target_ns)
+        current_hash = compute_hash(target_data)
+        hash_match = (current_hash == expected_hash)
+
+        logger.info(f"Checked {target_kind}/{target_name}: hash match = {hash_match}")
+
+        if not hash_match and auto_remediate:
+            apply_remediation(target_kind, target_name, target_ns, expected_hash, logger)
+
+        result = {
+            'lastChecked': kopf.now().isoformat(),
+            'hashMatch': hash_match,
+            'currentHash': current_hash
+        }
+        log_telemetry(name, namespace, result)
+        return result
+
+    except Exception as e:
+        logger.error(f"DriftGuard error on {target_kind}/{target_name}: {str(e)}")
+        return {
+            'lastChecked': kopf.now().isoformat(),
+            'hashMatch': None,
+            'error': str(e)
+        }

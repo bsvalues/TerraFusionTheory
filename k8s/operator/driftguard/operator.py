@@ -187,25 +187,104 @@ async def apply_remediation(
         logger.error(f"Cannot remediate unsupported resource type: {kind}")
         return False
     
+    # Start remediation transaction with audit logging
+    transaction_id = f"remediation-{int(time.time())}-{name}-{namespace}"
+    logger.info(f"Starting remediation transaction {transaction_id}")
+    
+    # Step 1: Fetch current state for backup purposes
+    try:
+        current_obj, current_data = await fetch_target_object(kind, name, namespace)
+        # Store backup of current state (could be saved to persistent storage)
+        backup_data = {
+            'transaction_id': transaction_id,
+            'timestamp': kopf.now().isoformat(),
+            'kind': kind,
+            'name': name,
+            'namespace': namespace,
+            'data': current_data
+        }
+        logger.info(f"Backed up current state for {kind}/{name}")
+    except Exception as e:
+        logger.error(f"Failed to backup current state: {e}")
+        return False
+
+    # Step 2: Get source of truth if not provided
     if not source_of_truth:
-        # Get source of truth from version control or configuration service
-        # This is a placeholder for the actual implementation
-        logger.warning(f"No source of truth provided for {kind}/{name}, fetching from repository")
+        logger.info(f"No source of truth provided for {kind}/{name}, fetching from repository")
         try:
-            # Fetch from source of truth
-            source_of_truth = await fetch_from_source_of_truth(kind, name, namespace)
+            # Try multiple sources in order of preference
+            try:
+                # First try configuration service
+                source_of_truth = await fetch_from_config_service(kind, name, namespace)
+                logger.info(f"Retrieved configuration from config service for {kind}/{name}")
+            except Exception as config_err:
+                logger.warning(f"Config service fetch failed: {config_err}")
+                # Fall back to GitOps repository
+                source_of_truth = await fetch_from_git_repository(kind, name, namespace)
+                logger.info(f"Retrieved configuration from git repository for {kind}/{name}")
         except Exception as e:
-            logger.error(f"Failed to fetch source of truth: {e}")
+            logger.error(f"All source of truth retrieval methods failed: {e}")
+            # Log telemetry for remediation failure
+            await log_remediation_telemetry(transaction_id, kind, name, namespace, False, str(e))
             return False
     
+    # Step 3: Validate the source of truth
     try:
-        # Apply the remediation by patching the resource
-        patch_json = json.dumps(source_of_truth)
+        # Ensure the hash of the source_of_truth matches expected_hash
+        source_hash = compute_hash(source_of_truth)
+        if source_hash != expected_hash:
+            logger.error(f"Source of truth hash {source_hash} doesn't match expected hash {expected_hash}")
+            await log_remediation_telemetry(transaction_id, kind, name, namespace, False, 
+                                           "Source hash mismatch")
+            return False
+        
+        logger.info(f"Validated source of truth for {kind}/{name}")
+    except Exception as e:
+        logger.error(f"Source of truth validation failed: {e}")
+        await log_remediation_telemetry(transaction_id, kind, name, namespace, False, f"Validation error: {e}")
+        return False
+    
+    # Step 4: Apply the remediation by patching the resource
+    try:
+        if kind in ['configmap', 'secret']:
+            # For ConfigMaps and Secrets, we need to structure the patch differently
+            patch = {
+                "data": source_of_truth
+            }
+        elif kind == 'gamaconfig':
+            # For GAMAConfig, we patch the parameters field
+            patch = {
+                "spec": {
+                    "parameters": source_of_truth
+                }
+            }
+        else:
+            # For other resource types
+            patch = source_of_truth
+            
+        # Convert to JSON for the API call
+        patch_json = json.dumps(patch)
+        
+        # Apply the patch
         RESOURCE_TYPES[kind]['patcher'](name, namespace, patch_json)
-        logger.info(f"Successfully remediated {kind}/{name}")
-        return True
+        
+        # Verify the remediation was successful
+        _, updated_data = await fetch_target_object(kind, name, namespace)
+        updated_hash = compute_hash(updated_data)
+        
+        if updated_hash == expected_hash:
+            logger.info(f"Successfully remediated {kind}/{name} to match expected hash")
+            await log_remediation_telemetry(transaction_id, kind, name, namespace, True, 
+                                           "Remediation successful")
+            return True
+        else:
+            logger.error(f"Remediation didn't achieve expected hash: current={updated_hash}, expected={expected_hash}")
+            await log_remediation_telemetry(transaction_id, kind, name, namespace, False, 
+                                           "Post-remediation hash mismatch")
+            return False
     except Exception as e:
         logger.error(f"Remediation failed for {kind}/{name}: {e}")
+        await log_remediation_telemetry(transaction_id, kind, name, namespace, False, str(e))
         return False
 
 async def fetch_from_source_of_truth(kind: str, name: str, namespace: str) -> Dict:
@@ -222,24 +301,211 @@ async def fetch_from_source_of_truth(kind: str, name: str, namespace: str) -> Di
     """
     # TerraFusion integration - fetch from version control or update service
     try:
-        # For GAMA configurations, use the TerraFusion update service
-        if kind.lower() == 'gamaconfig':
-            async with aiohttp.ClientSession() as session:
-                async with session.get(
-                    f"http://terrafusion-update-service.{namespace}.svc/configurations/{kind}/{name}",
-                    timeout=10
-                ) as response:
-                    if response.status == 200:
-                        return await response.json()
-                    else:
-                        raise RuntimeError(f"Failed to fetch from update service: {response.status}")
-        else:
-            # For other resources, use GitOps repo if available
-            # This would be implemented to integrate with your Git repository
-            raise NotImplementedError("GitOps repository integration not implemented")
+        # First try configuration service
+        try:
+            return await fetch_from_config_service(kind, name, namespace)
+        except Exception as e:
+            logger.warning(f"Config service fetch failed: {e}")
+            
+        # Fall back to GitOps repository
+        return await fetch_from_git_repository(kind, name, namespace)
+            
     except Exception as e:
         logger.error(f"Source of truth fetch error: {e}")
         raise
+        
+async def fetch_from_config_service(kind: str, name: str, namespace: str) -> Dict:
+    """
+    Fetch resource configuration from TerraFusion Configuration Service
+    
+    Args:
+        kind: Resource kind
+        name: Resource name
+        namespace: Resource namespace
+        
+    Returns:
+        Dict: Configuration from the configuration service
+    """
+    logger.info(f"Fetching {kind}/{name} from config service")
+    
+    # Determine configuration service URL based on environment
+    config_service_url = os.environ.get(
+        "CONFIG_SERVICE_URL",
+        f"http://terrafusion-config-service.{namespace}.svc"
+    )
+    
+    # Build API path based on resource kind
+    if kind.lower() == 'gamaconfig':
+        api_path = f"/configurations/gama/{name}"
+    elif kind.lower() == 'configmap':
+        api_path = f"/configurations/configmaps/{name}"
+    elif kind.lower() == 'secret':
+        api_path = f"/configurations/secrets/{name}"
+    else:
+        api_path = f"/configurations/resources/{kind}/{name}"
+    
+    full_url = f"{config_service_url}{api_path}"
+    
+    # Add authentication if available
+    headers = {}
+    auth_token = os.environ.get("CONFIG_SERVICE_TOKEN")
+    if auth_token:
+        headers["Authorization"] = f"Bearer {auth_token}"
+    
+    # Fetch configuration with timeout
+    async with aiohttp.ClientSession() as session:
+        async with session.get(
+            full_url,
+            headers=headers,
+            timeout=10
+        ) as response:
+            if response.status == 200:
+                result = await response.json()
+                logger.info(f"Successfully fetched {kind}/{name} from config service")
+                
+                # Extract actual configuration data based on kind
+                if kind.lower() == 'gamaconfig':
+                    return result.get('parameters', {})
+                elif kind.lower() in ['configmap', 'secret']:
+                    return result.get('data', {})
+                else:
+                    return result
+            else:
+                response_text = await response.text()
+                raise RuntimeError(
+                    f"Failed to fetch from config service: Status {response.status}, "
+                    f"Response: {response_text[:100]}..."
+                )
+
+async def fetch_from_git_repository(kind: str, name: str, namespace: str) -> Dict:
+    """
+    Fetch resource configuration from GitOps repository
+    
+    Args:
+        kind: Resource kind
+        name: Resource name
+        namespace: Resource namespace
+        
+    Returns:
+        Dict: Configuration from the GitOps repository
+    """
+    logger.info(f"Fetching {kind}/{name} from GitOps repository")
+    
+    # Get Git repository information from environment variables
+    git_api_url = os.environ.get("GIT_API_URL")
+    git_token = os.environ.get("GIT_API_TOKEN")
+    git_repo = os.environ.get("GIT_REPO")
+    git_branch = os.environ.get("GIT_BRANCH", "main")
+    
+    if not all([git_api_url, git_token, git_repo]):
+        raise ValueError("Missing Git repository configuration in environment variables")
+    
+    # Determine file path in repository based on resource kind
+    if kind.lower() == 'gamaconfig':
+        file_path = f"configs/gama/{namespace}/{name}.json"
+    elif kind.lower() == 'configmap':
+        file_path = f"configs/kubernetes/{namespace}/configmaps/{name}.yaml"
+    elif kind.lower() == 'secret':
+        file_path = f"configs/kubernetes/{namespace}/secrets/{name}.yaml"
+    else:
+        file_path = f"configs/kubernetes/{namespace}/{kind.lower()}s/{name}.yaml"
+    
+    # Build API URL based on Git provider (example: GitHub API)
+    # This example assumes GitHub, adapt for GitLab, BitBucket, etc.
+    api_url = f"{git_api_url}/repos/{git_repo}/contents/{file_path}?ref={git_branch}"
+    
+    headers = {
+        "Accept": "application/vnd.github.v3+json",
+        "Authorization": f"token {git_token}"
+    }
+    
+    # Fetch file from Git repository
+    async with aiohttp.ClientSession() as session:
+        async with session.get(api_url, headers=headers, timeout=15) as response:
+            if response.status == 200:
+                result = await response.json()
+                
+                # GitHub API returns content as base64-encoded string
+                content = base64.b64decode(result.get("content", "")).decode("utf-8")
+                
+                # Parse content based on file type (JSON/YAML)
+                if file_path.endswith(".json"):
+                    config = json.loads(content)
+                elif file_path.endswith(".yaml") or file_path.endswith(".yml"):
+                    # Placeholder for YAML parsing
+                    # We'd need to add PyYAML dependency for proper implementation
+                    raise NotImplementedError("YAML parsing not implemented")
+                else:
+                    raise ValueError(f"Unsupported file format for {file_path}")
+                
+                # Extract actual configuration data based on kind
+                if kind.lower() == 'gamaconfig':
+                    return config.get('parameters', {})
+                elif kind.lower() in ['configmap', 'secret']:
+                    return config.get('data', {})
+                else:
+                    return config
+            else:
+                raise RuntimeError(f"Failed to fetch from Git repository: {response.status}")
+                
+async def log_remediation_telemetry(
+    transaction_id: str,
+    kind: str,
+    name: str,
+    namespace: str,
+    success: bool,
+    details: str
+) -> None:
+    """
+    Log telemetry specifically for remediation operations
+    
+    Args:
+        transaction_id: Unique identifier for this remediation transaction
+        kind: Resource kind
+        name: Resource name
+        namespace: Resource namespace
+        success: Whether remediation was successful
+        details: Additional details about the remediation
+    """
+    try:
+        remediation_endpoint = os.environ.get(
+            "REMEDIATION_TELEMETRY_ENDPOINT", 
+            f"{TELEMETRY_ENDPOINT}/remediation"
+        )
+        
+        payload = {
+            "transaction_id": transaction_id,
+            "kind": kind,
+            "name": name,
+            "namespace": namespace,
+            "success": success,
+            "details": details,
+            "timestamp": kopf.now().isoformat(),
+            "operator_version": os.environ.get("OPERATOR_VERSION", "unknown"),
+            "node": os.environ.get("NODE_NAME", "unknown"),
+            "cluster": os.environ.get("CLUSTER_NAME", "unknown")
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Transaction-ID": transaction_id,
+            "X-Source": "driftguard-operator"
+        }
+        
+        # Using async HTTP client for non-blocking operation
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                remediation_endpoint, 
+                json=payload, 
+                headers=headers, 
+                timeout=5
+            ) as response:
+                if response.status >= 400:
+                    logger.warning(f"Remediation telemetry API returned error: {response.status}")
+                else:
+                    logger.info(f"Remediation telemetry logged successfully: {transaction_id}")
+    except Exception as e:
+        logger.error(f"Remediation telemetry logging failed: {e}")
 
 async def log_telemetry(
     name: str, 
@@ -247,9 +513,9 @@ async def log_telemetry(
     status: Dict[str, Any], 
     target_kind: str,
     target_name: str
-) -> None:
+) -> bool:
     """
-    Log telemetry data to central monitoring
+    Log telemetry data to central monitoring with retry logic and backup
     
     Args:
         name: DriftGuard name
@@ -257,30 +523,201 @@ async def log_telemetry(
         status: Status information
         target_kind: Kind of monitored resource
         target_name: Name of monitored resource
-    """
-    try:
-        payload = {
-            "driftguard": name,
-            "namespace": namespace,
-            "targetKind": target_kind,
-            "targetName": target_name,
-            "status": status,
-            "timestamp": kopf.now().isoformat()
-        }
-        headers = {"Content-Type": "application/json"}
         
-        # Using async HTTP client for non-blocking operation
+    Returns:
+        bool: True if telemetry was successfully logged
+    """
+    # Create a unique identifier for this telemetry event
+    event_id = f"telemetry-{int(time.time())}-{name}-{target_name}"
+    
+    # Enrich the payload with additional diagnostic information
+    payload = {
+        "event_id": event_id,
+        "driftguard": name,
+        "namespace": namespace,
+        "targetKind": target_kind,
+        "targetName": target_name,
+        "status": status,
+        "timestamp": kopf.now().isoformat(),
+        "environment": os.environ.get("ENVIRONMENT", "production"),
+        "operator_version": os.environ.get("OPERATOR_VERSION", "unknown"),
+        "node": os.environ.get("NODE_NAME", "unknown"),
+        "cluster": os.environ.get("CLUSTER_NAME", "unknown")
+    }
+    
+    headers = {
+        "Content-Type": "application/json",
+        "X-Event-ID": event_id,
+        "X-Source": "driftguard-operator"
+    }
+    
+    # First, try to write to local backup in case the remote endpoint is unavailable
+    try:
+        # Ensure the telemetry directory exists
+        telemetry_dir = os.environ.get("TELEMETRY_BACKUP_DIR", "/tmp/driftguard-telemetry")
+        os.makedirs(telemetry_dir, exist_ok=True)
+        
+        # Write to a local file as backup
+        backup_path = f"{telemetry_dir}/{event_id}.json"
+        with open(backup_path, 'w') as f:
+            json.dump(payload, f)
+    except Exception as backup_err:
+        logger.warning(f"Could not write telemetry backup: {backup_err}")
+    
+    # Try to send to the remote endpoint with retries
+    max_retries = 3
+    retry_delay = 1  # seconds
+    success = False
+    
+    for attempt in range(max_retries):
+        try:
+            # Using async HTTP client for non-blocking operation
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    TELEMETRY_ENDPOINT, 
+                    json=payload, 
+                    headers=headers, 
+                    timeout=5
+                ) as response:
+                    if response.status < 400:
+                        # Request succeeded
+                        logger.info(f"Telemetry logged successfully: {event_id}")
+                        success = True
+                        
+                        # Clean up any backup file if the request was successful
+                        try:
+                            if os.path.exists(backup_path):
+                                os.remove(backup_path)
+                        except Exception:
+                            pass  # Ignore cleanup errors
+                            
+                        break
+                    else:
+                        # Server error
+                        response_text = await response.text()
+                        logger.warning(
+                            f"Telemetry API returned error (attempt {attempt+1}/{max_retries}): "
+                            f"Status {response.status}, Response: {response_text[:100]}..."
+                        )
+        except aiohttp.ClientError as e:
+            # Network error, retry
+            logger.warning(f"Telemetry network error (attempt {attempt+1}/{max_retries}): {e}")
+        except Exception as e:
+            # Unexpected error
+            logger.error(f"Telemetry unexpected error (attempt {attempt+1}/{max_retries}): {e}")
+        
+        # Wait before retrying (except on the last attempt)
+        if attempt < max_retries - 1:
+            await asyncio.sleep(retry_delay * (2 ** attempt))  # Exponential backoff
+    
+    if not success:
+        logger.error(f"Telemetry logging failed after {max_retries} attempts for event {event_id}")
+        
+        # Schedule a background task to retry sending failed telemetry later
+        asyncio.create_task(retry_failed_telemetry(backup_path))
+    
+    return success
+
+async def retry_failed_telemetry(backup_path: str) -> None:
+    """
+    Background task to retry sending failed telemetry
+    
+    Args:
+        backup_path: Path to the backup file containing the telemetry data
+    """
+    # Wait some time before retrying (e.g., 5 minutes)
+    await asyncio.sleep(300)
+    
+    try:
+        # Check if the file still exists (hasn't been processed by another task)
+        if not os.path.exists(backup_path):
+            return
+            
+        # Load the telemetry data from the backup file
+        with open(backup_path, 'r') as f:
+            payload = json.load(f)
+            
+        # Extract event ID from the payload
+        event_id = payload.get("event_id", "unknown")
+        
+        # Try to send the telemetry again
+        headers = {
+            "Content-Type": "application/json",
+            "X-Event-ID": event_id,
+            "X-Source": "driftguard-operator",
+            "X-Retry": "true"
+        }
+        
         async with aiohttp.ClientSession() as session:
             async with session.post(
                 TELEMETRY_ENDPOINT, 
                 json=payload, 
                 headers=headers, 
+                timeout=10  # Longer timeout for retries
+            ) as response:
+                if response.status < 400:
+                    logger.info(f"Retry telemetry logged successfully: {event_id}")
+                    # Remove the backup file
+                    os.remove(backup_path)
+                else:
+                    logger.warning(f"Retry telemetry failed: Status {response.status} for {event_id}")
+    except Exception as e:
+        logger.error(f"Retry telemetry error: {e}")
+
+async def log_remediation_telemetry(
+    transaction_id: str,
+    kind: str,
+    name: str,
+    namespace: str,
+    success: bool,
+    details: str
+) -> None:
+    """
+    Log telemetry specifically for remediation operations
+    
+    Args:
+        transaction_id: Unique identifier for this remediation transaction
+        kind: Resource kind
+        name: Resource name
+        namespace: Resource namespace
+        success: Whether remediation was successful
+        details: Additional details about the remediation
+    """
+    try:
+        remediation_endpoint = os.environ.get(
+            "REMEDIATION_TELEMETRY_ENDPOINT", 
+            f"{TELEMETRY_ENDPOINT}/remediation"
+        )
+        
+        payload = {
+            "transaction_id": transaction_id,
+            "kind": kind,
+            "name": name,
+            "namespace": namespace,
+            "success": success,
+            "details": details,
+            "timestamp": kopf.now().isoformat(),
+            "operator_version": os.environ.get("OPERATOR_VERSION", "unknown")
+        }
+        
+        headers = {
+            "Content-Type": "application/json",
+            "X-Transaction-ID": transaction_id,
+            "X-Source": "driftguard-operator"
+        }
+        
+        # Using async HTTP client for non-blocking operation
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                remediation_endpoint, 
+                json=payload, 
+                headers=headers, 
                 timeout=5
             ) as response:
                 if response.status >= 400:
-                    logger.warning(f"Telemetry API returned error: {response.status}")
+                    logger.warning(f"Remediation telemetry API returned error: {response.status}")
     except Exception as e:
-        logger.error(f"Telemetry logging failed: {e}")
+        logger.error(f"Remediation telemetry logging failed: {e}")
 
 @kopf.on.create('driftguards.terrafusion.ai')
 async def on_create(spec, name, namespace, logger, **kwargs):

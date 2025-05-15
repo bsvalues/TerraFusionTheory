@@ -2,13 +2,17 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   name: driftguards.terrafusion.ai
+  labels:
+    app: driftguard-operator
+    component: crd
 spec:
   group: terrafusion.ai
   names:
     kind: DriftGuard
-    listKind: DriftGuardList
     plural: driftguards
     singular: driftguard
+    shortNames:
+      - dg
   scope: Namespaced
   versions:
     - name: v1
@@ -17,6 +21,8 @@ spec:
       schema:
         openAPIV3Schema:
           type: object
+          required:
+            - spec
           properties:
             spec:
               type: object
@@ -27,55 +33,99 @@ spec:
               properties:
                 targetKind:
                   type: string
-                  description: "Kind of the target resource to monitor (ConfigMap, Secret, Deployment, GAMAConfig, etc.)"
+                  description: "Kind of resource to monitor (ConfigMap, Secret, GAMAConfig, etc.)"
                 targetName:
                   type: string
-                  description: "Name of the target resource to monitor"
+                  description: "Name of the resource to monitor"
                 targetNamespace:
                   type: string
-                  description: "Namespace of the target resource (defaults to same namespace as DriftGuard)"
+                  description: "Namespace of the resource (defaults to DriftGuard's namespace if not specified)"
                 expectedHash:
                   type: string
-                  description: "Expected SHA-256 hash of the resource data"
+                  pattern: "^[a-fA-F0-9]{64}$"
+                  description: "Expected SHA-256 hash of the configuration"
                 autoRemediate:
                   type: boolean
-                  description: "Whether to automatically remediate drift"
                   default: false
+                  description: "Automatically remediate drift when detected"
                 maxFailuresBeforeAlert:
                   type: integer
-                  description: "Number of consecutive failures before alerting"
                   default: 3
+                  minimum: 1
+                  description: "Number of consecutive failures before triggering an alert"
                 sourceOfTruthRef:
                   type: object
-                  description: "Reference to the source of truth for auto-remediation"
                   properties:
                     kind:
                       type: string
-                      description: "Kind of the source (git, configmap, etc.)"
+                      enum: ["git", "configmap", "secret", "service"]
+                      description: "Type of source of truth"
                     name:
                       type: string
-                      description: "Name of the source resource"
+                      description: "Name of the source of truth"
                     namespace:
                       type: string
-                      description: "Namespace of the source resource"
+                      description: "Namespace of the source of truth"
                     path:
                       type: string
-                      description: "Path within the source (if applicable)"
+                      description: "Path within the source of truth"
+                  required:
+                    - kind
+                    - name
             status:
               type: object
-              x-kubernetes-preserve-unknown-fields: true
+              properties:
+                lastChecked:
+                  type: string
+                  description: "Timestamp of last check"
+                hashMatch:
+                  type: boolean
+                  nullable: true
+                  description: "Whether the current hash matches expected hash"
+                currentHash:
+                  type: string
+                  description: "Current hash of the resource"
+                consecutiveFailures:
+                  type: integer
+                  default: 0
+                  description: "Count of consecutive drift detections"
+                remediated:
+                  type: boolean
+                  nullable: true
+                  description: "Whether remediation was applied"
+                alerted:
+                  type: boolean
+                  default: false
+                  description: "Whether an alert was raised"
+                status:
+                  type: string
+                  enum: ["Healthy", "Drifted", "Error", "Invalid"]
+                  description: "Status of the DriftGuard resource"
+                reason:
+                  type: string
+                  description: "Reason for any error status"
       additionalPrinterColumns:
         - name: Target
           type: string
           jsonPath: .spec.targetKind
-        - name: Match
-          type: boolean
-          jsonPath: .status.hashMatch
+        - name: Name
+          type: string
+          jsonPath: .spec.targetName
         - name: Status
           type: string
           jsonPath: .status.status
-        - name: Last Check
+        - name: Matched
+          type: boolean
+          jsonPath: .status.hashMatch
+        - name: Auto-Remediate
+          type: boolean
+          jsonPath: .spec.autoRemediate
+        - name: Last Checked
           type: string
           jsonPath: .status.lastChecked
+          format: date-time
+        - name: Age
+          type: date
+          jsonPath: .metadata.creationTimestamp
       subresources:
         status: {}
