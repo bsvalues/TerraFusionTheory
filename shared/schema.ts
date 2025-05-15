@@ -19,7 +19,9 @@ export enum LogCategory {
   DATABASE = "database",
   SECURITY = "security",
   PERFORMANCE = "performance",
-  AI = "ai"
+  AI = "ai",
+  GENERAL = "general",
+  CRITICAL = "critical"
 }
 
 // BadgeType enum for categorizing productivity badges

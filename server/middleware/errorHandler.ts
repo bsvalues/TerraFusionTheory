@@ -1,141 +1,64 @@
+/**
+ * Error handling middleware for Express
+ */
+
 import { Request, Response, NextFunction } from 'express';
-import { storage } from '../storage';
-import { LogCategory, LogLevel } from '@shared/schema';
-import { AppError, isAppError, toAppError } from '../errors';
-import { troubleshootingService } from '../services/troubleshooting.service';
+import { OptimizedLogger } from '../services/optimized-logging';
+import { LogCategory } from '../../shared/schema';
+
+const logger = OptimizedLogger.getInstance();
 
 /**
- * Global error handler middleware
- * Handles all errors that occur in the application
+ * Custom error class for API errors
  */
-export async function errorHandler(
-  error: Error,
-  req: Request,
-  res: Response,
-  next: NextFunction
-) {
-  const appError = isAppError(error) ? error : toAppError(error);
-
-  // Get troubleshooting diagnosis
-  const diagnosis = await troubleshootingService.analyzeIssue(error, {
-    path: req.path,
-    method: req.method,
-    query: req.query,
-    body: req.body,
-    headers: req.headers
-  });
-
-  // Log the error, including diagnosis
-  const errorLogPromise = storage.createLog({
-    level: appError.statusCode >= 500 ? LogLevel.ERROR : LogLevel.WARNING,
-    category: LogCategory.SYSTEM,
-    message: appError.message,
-    details: JSON.stringify({
-      errorCode: appError.errorCode,
-      statusCode: appError.statusCode,
-      path: req.path,
-      method: req.method,
-      isOperational: appError.isOperational,
-      context: appError.context,
-      stack: appError.stack,
-      diagnosis: diagnosis // Add diagnosis to log details
-    }),
-    source: 'error-handler',
-    projectId: null,
-    userId: req.user?.id || null,
-    sessionId: req.sessionID || null,
-    duration: null,
-    statusCode: appError.statusCode,
-    endpoint: req.path,
-    tags: ['error', appError.errorCode, appError.isOperational ? 'operational' : 'programming']
-  });
-
-  // Construct response based on environment, including diagnosis
-  const responseBody = {
-    error: {
-      message: appError.message,
-      code: appError.errorCode,
-      status: appError.statusCode,
-      diagnosis: diagnosis // Add diagnosis to response
-    }
-  };
-
-  // Add stack trace in development only
-  if (process.env.NODE_ENV === 'development') {
-    responseBody.error['stack'] = appError.stack;
-    responseBody.error['context'] = appError.context;
-  }
-
-  // Wait for the error to be logged before sending the response
-  errorLogPromise
-    .then(() => {
-      res.status(appError.statusCode).json(responseBody);
-    })
-    .catch((logError) => {
-      console.error('Failed to log error:', logError);
-      res.status(appError.statusCode).json(responseBody);
-    });
-
-  // If this is a critical error, log additional diagnostics
-  if (appError.statusCode >= 500) {
-    console.error(`[CRITICAL ERROR] ${appError.message}`, {
-      path: req.path,
-      method: req.method,
-      errorCode: appError.errorCode,
-      stack: appError.stack,
-      diagnosis: diagnosis //Add diagnosis to critical error log
-    });
+export class ApiError extends Error {
+  statusCode: number;
+  
+  constructor(message: string, statusCode: number = 500) {
+    super(message);
+    this.statusCode = statusCode;
+    this.name = 'ApiError';
   }
 }
 
 /**
- * Middleware to handle 404 errors for routes that don't exist
+ * Async handler to wrap route handlers and catch errors
  */
-export function notFoundHandler(
-  req: Request,
-  res: Response,
-  next: NextFunction
-): void {
-  // Log the 404 error
-  storage.createLog({
-    level: LogLevel.WARNING,
-    category: LogCategory.API,
-    message: `Route not found: ${req.method} ${req.path}`,
-    details: JSON.stringify({
-      path: req.path,
-      method: req.method,
-      query: req.query,
-      ip: req.ip,
-      userAgent: req.headers['user-agent']
-    }),
-    source: 'not-found-handler',
-    projectId: null,
-    userId: req.user?.id || null,
-    sessionId: req.sessionID || null, 
-    duration: null,
-    statusCode: 404,
-    endpoint: req.path,
-    tags: ['error', '404', 'not-found']
-  }).catch(console.error);
-
-  // Send 404 response
-  res.status(404).json({
-    error: {
-      message: 'Resource not found',
-      code: 'RESOURCE_NOT_FOUND',
-      status: 404
-    }
-  });
-}
+export const asyncHandler = (fn: Function) => (req: Request, res: Response, next: NextFunction) => {
+  Promise.resolve(fn(req, res, next)).catch(next);
+};
 
 /**
- * Middleware to handle async route handlers
- * Automatically catches errors and passes them to the error handler
+ * 404 Not Found handler middleware for Express
  */
-export function asyncHandler(
-  fn: (req: Request, res: Response, next: NextFunction) => Promise<any>
-) {
-  return (req: Request, res: Response, next: NextFunction) => {
-    fn(req, res, next).catch(next);
-  };
-}
+export const notFoundHandler = (req: Request, res: Response, next: NextFunction) => {
+  logger.warn(`404 Not Found: ${req.method} ${req.url}`, LogCategory.API);
+  
+  return res.status(404).json({
+    status: 'error',
+    message: 'Resource not found'
+  });
+};
+
+/**
+ * Error handler middleware for Express
+ */
+export const errorHandler = (err: Error, req: Request, res: Response, next: NextFunction) => {
+  // Log the error
+  logger.error(`API Error: ${err.message}`, LogCategory.API, { error: err, url: req.url });
+  
+  // If it's a known API error, use its status code
+  if (err instanceof ApiError) {
+    return res.status(err.statusCode).json({
+      status: 'error',
+      message: err.message
+    });
+  }
+  
+  // For unknown errors, return a 500
+  return res.status(500).json({
+    status: 'error',
+    message: 'An unexpected error occurred',
+    error: process.env.NODE_ENV === 'development' ? err.message : undefined
+  });
+};

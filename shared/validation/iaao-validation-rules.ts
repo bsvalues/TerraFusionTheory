@@ -1,775 +1,573 @@
 /**
  * IAAO Validation Rules
  * 
- * Implementation of property data validation rules based on IAAO
- * (International Association of Assessing Officers) standards.
- * 
- * These rules ensure property data meets professional standards
- * for mass appraisal and property assessment.
+ * This module defines validation rules based on IAAO (International Association
+ * of Assessing Officers) standards for property data quality.
  */
 
 import { 
-  ValidationRule, 
-  DataCategory, 
-  RuleType, 
-  SeverityLevel,
-  DataQualityFramework
+  ValidationRuleBuilder, 
+  ValidationScope, 
+  ValidationCategory, 
+  ValidationSeverity,
+  ValidationEngine,
+  ValidationIssue,
+  DataQualityReport,
+  DataQualityMetrics,
+  validationEngine
 } from './data-quality-framework';
+import { PropertyType, TransactionType } from '../schema';
 
-/**
- * Initialize IAAO validation rules
- */
-export function initializeIAAORules(): void {
-  const framework = DataQualityFramework.getInstance();
+// Helper functions
+const isNotEmpty = (value: any) => {
+  if (value === null || value === undefined) return false;
+  if (typeof value === 'string') return value.trim() !== '';
+  if (Array.isArray(value)) return value.length > 0;
+  return true;
+};
+
+const isValidNumber = (value: any) => {
+  if (value === null || value === undefined) return false;
+  const num = Number(value);
+  return !isNaN(num) && isFinite(num);
+};
+
+const isPositive = (value: any) => {
+  if (!isValidNumber(value)) return false;
+  return Number(value) > 0;
+};
+
+const isNonNegative = (value: any) => {
+  if (!isValidNumber(value)) return false;
+  return Number(value) >= 0;
+};
+
+const isInRange = (value: any, min: number, max: number) => {
+  if (!isValidNumber(value)) return false;
+  const num = Number(value);
+  return num >= min && num <= max;
+};
+
+const isValidDate = (value: any) => {
+  if (!value) return false;
+  const date = new Date(value);
+  return !isNaN(date.getTime());
+};
+
+const isAfterDate = (value: any, compareDate: Date) => {
+  if (!isValidDate(value)) return false;
+  const date = new Date(value);
+  return date > compareDate;
+};
+
+const isBeforeDate = (value: any, compareDate: Date) => {
+  if (!isValidDate(value)) return false;
+  const date = new Date(value);
+  return date < compareDate;
+};
+
+const isValidEnumValue = (value: any, enumType: any) => {
+  if (value === null || value === undefined) return false;
+  return Object.values(enumType).includes(value);
+};
+
+const hasValidFormat = (value: any, regex: RegExp) => {
+  if (value === null || value === undefined) return false;
+  if (typeof value !== 'string') return false;
+  return regex.test(value);
+};
+
+// Build IAAO validation rules
+export function createIAAOValidationRules() {
+  const propertyRules = [
+    // Required Fields
+    ValidationRuleBuilder.create('PROP-REQ-001', 'Property ID is required')
+      .withDescription('Every property record must have a unique identifier.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.CRITICAL)
+      .withApplicableFields('parcelId')
+      .withPredicate(isNotEmpty)
+      .withMessageTemplate('Property ID is missing for entity {entityId}')
+      .withSuggestedFixTemplate('Add a valid property identifier to {field}')
+      .withStandardReference('IAAO Standard on Property Data 2.1')
+      .build(),
+      
+    ValidationRuleBuilder.create('PROP-REQ-002', 'Property address is required')
+      .withDescription('Every property must have a valid address for identification.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.CRITICAL)
+      .withApplicableFields('address')
+      .withPredicate(isNotEmpty)
+      .withMessageTemplate('Property address is missing for entity {entityId}')
+      .withSuggestedFixTemplate('Add a valid street address to {field}')
+      .withStandardReference('IAAO Standard on Property Data 2.3')
+      .build(),
+      
+    ValidationRuleBuilder.create('PROP-REQ-003', 'Property location data is required')
+      .withDescription('Properties must have basic location information (city, state, zip code).')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.MAJOR)
+      .withApplicableFields('city', 'state', 'zipCode')
+      .withPredicate(isNotEmpty)
+      .withMessageTemplate('{field} is missing for property {entityId}')
+      .withSuggestedFixTemplate('Add a valid value to {field}')
+      .withStandardReference('IAAO Standard on Property Data 2.3')
+      .build(),
+      
+    ValidationRuleBuilder.create('PROP-REQ-004', 'Property type is required')
+      .withDescription('Every property must have a classification type.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.MAJOR)
+      .withApplicableFields('propertyType')
+      .withPredicate((value) => isValidEnumValue(value, PropertyType))
+      .withMessageTemplate('Property type is invalid or missing for property {entityId}')
+      .withSuggestedFixTemplate('Assign a valid property type from the approved list')
+      .withStandardReference('IAAO Standard on Property Data 3.2')
+      .build(),
+    
+    // Numerical Value Validation
+    ValidationRuleBuilder.create('PROP-NUM-001', 'Building area must be positive')
+      .withDescription('Building area must be a positive number when present.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MAJOR)
+      .withApplicableFields('buildingArea')
+      .withPredicate((value) => value === null || value === undefined || isPositive(value))
+      .withMessageTemplate('Building area must be positive, got {value} for property {entityId}')
+      .withSuggestedFixTemplate('Correct the building area to a positive value')
+      .withStandardReference('IAAO Standard on Property Data 3.4')
+      .build(),
+      
+    ValidationRuleBuilder.create('PROP-NUM-002', 'Lot size must be positive')
+      .withDescription('Lot size must be a positive number when present.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MAJOR)
+      .withApplicableFields('lotSize')
+      .withPredicate((value) => value === null || value === undefined || isPositive(value))
+      .withMessageTemplate('Lot size must be positive, got {value} for property {entityId}')
+      .withSuggestedFixTemplate('Correct the lot size to a positive value')
+      .withStandardReference('IAAO Standard on Property Data 3.4')
+      .build(),
+      
+    ValidationRuleBuilder.create('PROP-NUM-003', 'Building values must be non-negative')
+      .withDescription('Assessment values must be non-negative numbers.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.CRITICAL)
+      .withApplicableFields('assessedValue', 'marketValue', 'taxableValue')
+      .withPredicate((value) => value === null || value === undefined || isNonNegative(value))
+      .withMessageTemplate('{field} must be non-negative, got {value} for property {entityId}')
+      .withSuggestedFixTemplate('Correct {field} to a non-negative value')
+      .withStandardReference('IAAO Standard on Property Data 4.2')
+      .build(),
+      
+    ValidationRuleBuilder.create('PROP-NUM-004', 'Year built must be valid')
+      .withDescription('Year built must be a valid year between 1600 and current year.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MINOR)
+      .withApplicableFields('yearBuilt')
+      .withPredicate((value) => {
+        if (value === null || value === undefined) return true;
+        const currentYear = new Date().getFullYear();
+        return isInRange(value, 1600, currentYear);
+      })
+      .withMessageTemplate('Year built ({value}) is not valid for property {entityId}')
+      .withSuggestedFixTemplate('Correct year built to a valid year between 1600 and current year')
+      .withStandardReference('IAAO Standard on Property Data 3.3')
+      .build(),
+      
+    ValidationRuleBuilder.create('PROP-NUM-005', 'Bedrooms and bathrooms must be reasonable')
+      .withDescription('Residential properties should have a reasonable number of bedrooms and bathrooms.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MINOR)
+      .withApplicableFields('bedrooms', 'bathrooms')
+      .withPredicate((value, context) => {
+        if (value === null || value === undefined) return true;
+        
+        // Only apply to residential properties
+        if (context?.entity?.propertyType !== PropertyType.RESIDENTIAL) {
+          return true;
+        }
+        
+        // Bedrooms usually between 0 and 20
+        if (context?.field === 'bedrooms') {
+          return isInRange(value, 0, 20);
+        }
+        
+        // Bathrooms usually between 0 and 15
+        if (context?.field === 'bathrooms') {
+          return isInRange(value, 0, 15);
+        }
+        
+        return true;
+      })
+      .withMessageTemplate('{field} value ({value}) is unusually high for property {entityId}')
+      .withSuggestedFixTemplate('Verify and correct {field} to a reasonable value')
+      .withStandardReference('IAAO Standard on Property Data 3.3')
+      .build(),
+    
+    // Date Validation
+    ValidationRuleBuilder.create('PROP-DATE-001', 'Sale date must be valid')
+      .withDescription('When present, sale date must be a valid date.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MAJOR)
+      .withApplicableFields('lastSaleDate')
+      .withPredicate((value) => value === null || value === undefined || isValidDate(value))
+      .withMessageTemplate('Last sale date ({value}) is not a valid date for property {entityId}')
+      .withSuggestedFixTemplate('Correct last sale date to a valid date format')
+      .withStandardReference('IAAO Standard on Property Data 5.1')
+      .build(),
+      
+    ValidationRuleBuilder.create('PROP-DATE-002', 'Sale date must not be in future')
+      .withDescription('Sale dates cannot be in the future.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MAJOR)
+      .withApplicableFields('lastSaleDate')
+      .withPredicate((value) => {
+        if (value === null || value === undefined) return true;
+        return isBeforeDate(value, new Date());
+      })
+      .withMessageTemplate('Last sale date ({value}) is in the future for property {entityId}')
+      .withSuggestedFixTemplate('Correct last sale date to a date not in the future')
+      .withStandardReference('IAAO Standard on Property Data 5.1')
+      .build(),
+    
+    // Consistency Validation
+    ValidationRuleBuilder.create('PROP-CONS-001', 'Assessment ratio must be reasonable')
+      .withDescription('The ratio between assessed value and market value should be reasonable.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.CONSISTENCY)
+      .withSeverity(ValidationSeverity.MINOR)
+      .withApplicableFields('assessedValue', 'marketValue')
+      .withPredicate((value, context) => {
+        const assessedValue = context?.entity?.assessedValue;
+        const marketValue = context?.entity?.marketValue;
+        
+        if (!assessedValue || !marketValue) return true;
+        if (!isValidNumber(assessedValue) || !isValidNumber(marketValue)) return true;
+        if (Number(marketValue) === 0) return true;
+        
+        const ratio = Number(assessedValue) / Number(marketValue);
+        return isInRange(ratio, 0.05, 1.5); // Most jurisdictions have ratios between 5% and 150%
+      })
+      .withMessageTemplate('Assessment ratio is outside reasonable range for property {entityId}')
+      .withSuggestedFixTemplate('Verify assessed value and market value for accuracy')
+      .withStandardReference('IAAO Standard on Property Data 4.3')
+      .build(),
+      
+    ValidationRuleBuilder.create('PROP-CONS-002', 'Building area should match bedroom count')
+      .withDescription('For residential properties, building area should be reasonable for the number of bedrooms.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.CONSISTENCY)
+      .withSeverity(ValidationSeverity.MINOR)
+      .withApplicableFields('buildingArea', 'bedrooms')
+      .withPredicate((value, context) => {
+        const buildingArea = context?.entity?.buildingArea;
+        const bedrooms = context?.entity?.bedrooms;
+        const propertyType = context?.entity?.propertyType;
+        
+        // Only applies to residential properties with both values present
+        if (propertyType !== PropertyType.RESIDENTIAL) return true;
+        if (!buildingArea || !bedrooms) return true;
+        if (!isValidNumber(buildingArea) || !isValidNumber(bedrooms)) return true;
+        
+        // Very rough estimate: at least 200 sq ft per bedroom
+        const minAreaPerBedroom = 200;
+        const numBedrooms = Number(bedrooms);
+        const area = Number(buildingArea);
+        
+        return area >= numBedrooms * minAreaPerBedroom;
+      })
+      .withMessageTemplate('Building area seems too small for the number of bedrooms in property {entityId}')
+      .withSuggestedFixTemplate('Verify building area and bedroom count for consistency')
+      .withStandardReference('IAAO Standard on Property Data 3.6')
+      .build(),
+    
+    // Format Validation
+    ValidationRuleBuilder.create('PROP-FMT-001', 'Zip code format must be valid')
+      .withDescription('Zip code must be in valid format.')
+      .withScope(ValidationScope.PROPERTY)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MINOR)
+      .withApplicableFields('zipCode')
+      .withPredicate((value) => {
+        if (!value) return true;
+        // Basic US zip code format (5 digits or ZIP+4)
+        return hasValidFormat(value, /^\d{5}(-\d{4})?$/);
+      })
+      .withMessageTemplate('Zip code ({value}) has invalid format for property {entityId}')
+      .withSuggestedFixTemplate('Correct zip code to a valid 5-digit or ZIP+4 format')
+      .withStandardReference('IAAO Standard on Property Data 2.3')
+      .build(),
+  ];
   
-  // Register all IAAO rules
-  framework.registerRules([
-    // Property Characteristic Rules
-    ...getPropertyCharacteristicRules(),
+  const salesRules = [
+    // Required Fields for Sales
+    ValidationRuleBuilder.create('SALE-REQ-001', 'Sale price is required')
+      .withDescription('Every property sale must have a valid sale price.')
+      .withScope(ValidationScope.SALE)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.CRITICAL)
+      .withApplicableFields('salePrice')
+      .withPredicate(isNotEmpty)
+      .withMessageTemplate('Sale price is missing for sale {entityId}')
+      .withSuggestedFixTemplate('Add a valid sale price to {field}')
+      .withStandardReference('IAAO Standard on Verification and Adjustment of Sales 2.1')
+      .build(),
+      
+    ValidationRuleBuilder.create('SALE-REQ-002', 'Sale date is required')
+      .withDescription('Every property sale must have a valid sale date.')
+      .withScope(ValidationScope.SALE)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.CRITICAL)
+      .withApplicableFields('saleDate')
+      .withPredicate(isNotEmpty)
+      .withMessageTemplate('Sale date is missing for sale {entityId}')
+      .withSuggestedFixTemplate('Add a valid sale date to {field}')
+      .withStandardReference('IAAO Standard on Verification and Adjustment of Sales 2.1')
+      .build(),
+      
+    ValidationRuleBuilder.create('SALE-REQ-003', 'Property reference is required')
+      .withDescription('Every sale must reference a valid property.')
+      .withScope(ValidationScope.SALE)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.CRITICAL)
+      .withApplicableFields('propertyId', 'parcelId')
+      .withPredicate(isNotEmpty)
+      .withMessageTemplate('Property reference is missing for sale {entityId}')
+      .withSuggestedFixTemplate('Add a valid property ID to {field}')
+      .withStandardReference('IAAO Standard on Verification and Adjustment of Sales 2.2')
+      .build(),
+      
+    ValidationRuleBuilder.create('SALE-REQ-004', 'Transaction type is required')
+      .withDescription('Every sale must have a valid transaction type.')
+      .withScope(ValidationScope.SALE)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.MAJOR)
+      .withApplicableFields('transactionType')
+      .withPredicate((value) => isValidEnumValue(value, TransactionType))
+      .withMessageTemplate('Transaction type is invalid or missing for sale {entityId}')
+      .withSuggestedFixTemplate('Assign a valid transaction type from the approved list')
+      .withStandardReference('IAAO Standard on Verification and Adjustment of Sales 3.1')
+      .build(),
     
-    // Sales Data Rules
-    ...getSalesDataRules(),
-    
-    // Neighborhood Data Rules
-    ...getNeighborhoodRules(),
-    
-    // Statistical Analysis Rules
-    ...getStatisticalRules()
-  ]);
-}
-
-/**
- * Property Characteristic Validation Rules
- */
-function getPropertyCharacteristicRules(): ValidationRule[] {
-  return [
-    // Required Fields Rule
-    {
-      id: 'prop_req_fields',
-      name: 'Required Property Fields',
-      description: 'Validates that all required property fields are present',
-      category: DataCategory.PROPERTY,
-      ruleType: RuleType.REQUIRED,
-      severity: SeverityLevel.ERROR,
-      fields: ['parcelId', 'address', 'buildingArea', 'yearBuilt', 'landArea'],
-      validate: (data) => {
-        return (
-          !!data.parcelId &&
-          !!data.address &&
-          !!data.buildingArea &&
-          !!data.yearBuilt &&
-          !!data.landArea
-        );
-      },
-      getMessage: (data) => {
-        const missingFields = ['parcelId', 'address', 'buildingArea', 'yearBuilt', 'landArea']
-          .filter(field => !data[field]);
-        return `Missing required fields: ${missingFields.join(', ')}`;
-      }
-    },
-    
-    // Property Type Validation
-    {
-      id: 'prop_type_valid',
-      name: 'Property Type Validation',
-      description: 'Validates that property type is a recognized IAAO classification',
-      category: DataCategory.PROPERTY,
-      ruleType: RuleType.TYPE,
-      severity: SeverityLevel.ERROR,
-      fields: ['propertyType'],
-      validate: (data) => {
-        const validTypes = [
-          'residential', 'commercial', 'industrial', 'agricultural',
-          'vacant', 'exempt', 'special', 'mixed'
-        ];
+    // Numerical Value Validation for Sales
+    ValidationRuleBuilder.create('SALE-NUM-001', 'Sale price must be positive')
+      .withDescription('Sale price must be a positive number.')
+      .withScope(ValidationScope.SALE)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.CRITICAL)
+      .withApplicableFields('salePrice')
+      .withPredicate(isPositive)
+      .withMessageTemplate('Sale price must be positive, got {value} for sale {entityId}')
+      .withSuggestedFixTemplate('Correct the sale price to a positive value')
+      .withStandardReference('IAAO Standard on Verification and Adjustment of Sales 3.2')
+      .build(),
+      
+    ValidationRuleBuilder.create('SALE-NUM-002', 'Sale price per square foot must be reasonable')
+      .withDescription('Sale price per square foot should be within reasonable market ranges.')
+      .withScope(ValidationScope.SALE)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MINOR)
+      .withApplicableFields('salePricePerSqft')
+      .withPredicate((value, context) => {
+        if (value === null || value === undefined) return true;
+        if (!isValidNumber(value)) return false;
         
-        return data.propertyType && validTypes.includes(data.propertyType.toLowerCase());
-      },
-      getMessage: (data) => {
-        return `Invalid property type: ${data.propertyType}`;
-      },
-      getSuggestion: (data) => {
-        return 'Use a standard property type classification';
-      }
-    },
+        // Ranges vary widely by market, these are just examples
+        // In a real system, these would be configurable by region and property type
+        return isInRange(Number(value), 1, 10000);
+      })
+      .withMessageTemplate('Sale price per square foot ({value}) is outside reasonable range for sale {entityId}')
+      .withSuggestedFixTemplate('Verify sale price and building area for accuracy')
+      .withStandardReference('IAAO Standard on Verification and Adjustment of Sales 3.3')
+      .build(),
+      
+    ValidationRuleBuilder.create('SALE-NUM-003', 'Assessment ratio must be reasonable')
+      .withDescription('The ratio between assessed value at sale and sale price should be reasonable.')
+      .withScope(ValidationScope.SALE)
+      .withCategory(ValidationCategory.CONSISTENCY)
+      .withSeverity(ValidationSeverity.MINOR)
+      .withApplicableFields('assessmentRatio')
+      .withPredicate((value) => {
+        if (value === null || value === undefined) return true;
+        if (!isValidNumber(value)) return false;
+        
+        return isInRange(Number(value), 0.05, 1.5); // Most jurisdictions have ratios between 5% and 150%
+      })
+      .withMessageTemplate('Assessment ratio ({value}) is outside reasonable range for sale {entityId}')
+      .withSuggestedFixTemplate('Verify assessed value and sale price for accuracy')
+      .withStandardReference('IAAO Standard on Ratio Studies 5.2')
+      .build(),
     
-    // Building Area Range
-    {
-      id: 'prop_bldg_area_range',
-      name: 'Building Area Range',
-      description: 'Validates that building area is within reasonable range',
-      category: DataCategory.PROPERTY,
-      ruleType: RuleType.RANGE,
-      severity: SeverityLevel.WARNING,
-      fields: ['buildingArea'],
-      validate: (data) => {
-        const area = parseFloat(data.buildingArea);
-        return !isNaN(area) && area > 100 && area < 50000;
-      },
-      getMessage: (data) => {
-        const area = parseFloat(data.buildingArea);
-        if (isNaN(area)) {
-          return 'Building area is not a valid number';
-        } else if (area <= 100) {
-          return 'Building area is too small (< 100 sq ft)';
-        } else {
-          return 'Building area is too large (> 50,000 sq ft)';
-        }
-      },
-      getSuggestion: (data) => {
-        return 'Verify building area measurement and units';
-      }
-    },
+    // Date Validation for Sales
+    ValidationRuleBuilder.create('SALE-DATE-001', 'Sale date must be valid')
+      .withDescription('Sale date must be a valid date.')
+      .withScope(ValidationScope.SALE)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.CRITICAL)
+      .withApplicableFields('saleDate')
+      .withPredicate(isValidDate)
+      .withMessageTemplate('Sale date ({value}) is not a valid date for sale {entityId}')
+      .withSuggestedFixTemplate('Correct sale date to a valid date format')
+      .withStandardReference('IAAO Standard on Verification and Adjustment of Sales 2.3')
+      .build(),
+      
+    ValidationRuleBuilder.create('SALE-DATE-002', 'Sale date must not be in future')
+      .withDescription('Sale dates cannot be in the future.')
+      .withScope(ValidationScope.SALE)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.CRITICAL)
+      .withApplicableFields('saleDate')
+      .withPredicate((value) => isBeforeDate(value, new Date()))
+      .withMessageTemplate('Sale date ({value}) is in the future for sale {entityId}')
+      .withSuggestedFixTemplate('Correct sale date to a date not in the future')
+      .withStandardReference('IAAO Standard on Verification and Adjustment of Sales 2.3')
+      .build(),
+  ];
+  
+  const neighborhoodRules = [
+    // Required Fields for Neighborhoods
+    ValidationRuleBuilder.create('NEIGH-REQ-001', 'Neighborhood code is required')
+      .withDescription('Every neighborhood must have a unique code.')
+      .withScope(ValidationScope.NEIGHBORHOOD)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.CRITICAL)
+      .withApplicableFields('code')
+      .withPredicate(isNotEmpty)
+      .withMessageTemplate('Neighborhood code is missing for neighborhood {entityId}')
+      .withSuggestedFixTemplate('Add a valid neighborhood code to {field}')
+      .withStandardReference('IAAO Standard on Neighborhood Delineation 2.1')
+      .build(),
+      
+    ValidationRuleBuilder.create('NEIGH-REQ-002', 'Neighborhood name is required')
+      .withDescription('Every neighborhood must have a name for identification.')
+      .withScope(ValidationScope.NEIGHBORHOOD)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.MAJOR)
+      .withApplicableFields('name')
+      .withPredicate(isNotEmpty)
+      .withMessageTemplate('Neighborhood name is missing for neighborhood {entityId}')
+      .withSuggestedFixTemplate('Add a valid name to {field}')
+      .withStandardReference('IAAO Standard on Neighborhood Delineation 2.2')
+      .build(),
+      
+    ValidationRuleBuilder.create('NEIGH-REQ-003', 'Location data is required')
+      .withDescription('Neighborhoods must have basic location information (city, county, state).')
+      .withScope(ValidationScope.NEIGHBORHOOD)
+      .withCategory(ValidationCategory.COMPLETENESS)
+      .withSeverity(ValidationSeverity.MAJOR)
+      .withApplicableFields('city', 'county', 'state')
+      .withPredicate(isNotEmpty)
+      .withMessageTemplate('{field} is missing for neighborhood {entityId}')
+      .withSuggestedFixTemplate('Add a valid value to {field}')
+      .withStandardReference('IAAO Standard on Neighborhood Delineation 2.3')
+      .build(),
     
-    // Year Built Range
-    {
-      id: 'prop_year_built_range',
-      name: 'Year Built Range',
-      description: 'Validates that year built is within reasonable range',
-      category: DataCategory.PROPERTY,
-      ruleType: RuleType.RANGE,
-      severity: SeverityLevel.WARNING,
-      fields: ['yearBuilt'],
-      validate: (data) => {
-        const year = parseInt(data.yearBuilt);
+    // Numerical Value Validation for Neighborhoods
+    ValidationRuleBuilder.create('NEIGH-NUM-001', 'Home values must be non-negative')
+      .withDescription('Neighborhood home values must be non-negative numbers when present.')
+      .withScope(ValidationScope.NEIGHBORHOOD)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MAJOR)
+      .withApplicableFields('medianHomeValue', 'avgHomeValue')
+      .withPredicate((value) => value === null || value === undefined || isNonNegative(value))
+      .withMessageTemplate('{field} must be non-negative, got {value} for neighborhood {entityId}')
+      .withSuggestedFixTemplate('Correct {field} to a non-negative value')
+      .withStandardReference('IAAO Standard on Neighborhood Delineation 3.2')
+      .build(),
+      
+    ValidationRuleBuilder.create('NEIGH-NUM-002', 'Year built must be valid')
+      .withDescription('Average year built must be a valid year.')
+      .withScope(ValidationScope.NEIGHBORHOOD)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MINOR)
+      .withApplicableFields('avgYearBuilt')
+      .withPredicate((value) => {
+        if (value === null || value === undefined) return true;
         const currentYear = new Date().getFullYear();
-        return !isNaN(year) && year >= 1700 && year <= currentYear;
-      },
-      getMessage: (data) => {
-        const year = parseInt(data.yearBuilt);
-        const currentYear = new Date().getFullYear();
-        
-        if (isNaN(year)) {
-          return 'Year built is not a valid number';
-        } else if (year < 1700) {
-          return 'Year built is too early (< 1700)';
-        } else if (year > currentYear) {
-          return `Year built is in the future (> ${currentYear})`;
-        }
-        
-        return 'Year built is outside valid range';
-      },
-      getSuggestion: (data) => {
-        return 'Verify year built from property records';
-      }
-    },
+        return isInRange(value, 1600, currentYear);
+      })
+      .withMessageTemplate('Average year built ({value}) is not valid for neighborhood {entityId}')
+      .withSuggestedFixTemplate('Correct average year built to a valid year between 1600 and current year')
+      .withStandardReference('IAAO Standard on Neighborhood Delineation 3.3')
+      .build(),
+      
+    ValidationRuleBuilder.create('NEIGH-NUM-003', 'Scores must be in valid range')
+      .withDescription('Various neighborhood scores should be within valid ranges.')
+      .withScope(ValidationScope.NEIGHBORHOOD)
+      .withCategory(ValidationCategory.VALIDITY)
+      .withSeverity(ValidationSeverity.MINOR)
+      .withApplicableFields('schoolRating', 'walkScore', 'transitScore')
+      .withPredicate((value) => {
+        if (value === null || value === undefined) return true;
+        return isInRange(Number(value), 0, 100);
+      })
+      .withMessageTemplate('{field} ({value}) is outside valid range for neighborhood {entityId}')
+      .withSuggestedFixTemplate('Correct {field} to a value between 0 and 100')
+      .withStandardReference('IAAO Standard on Neighborhood Delineation 3.4')
+      .build(),
     
-    // Building to Land Ratio
-    {
-      id: 'prop_bldg_land_ratio',
-      name: 'Building to Land Ratio',
-      description: 'Validates that the building to land ratio is reasonable',
-      category: DataCategory.PROPERTY,
-      ruleType: RuleType.RELATIONSHIP,
-      severity: SeverityLevel.WARNING,
-      fields: ['buildingArea', 'landArea'],
-      validate: (data) => {
-        const buildingArea = parseFloat(data.buildingArea);
-        const landArea = parseFloat(data.landArea);
+    // Consistency Validation for Neighborhoods
+    ValidationRuleBuilder.create('NEIGH-CONS-001', 'Total properties and sales should be consistent')
+      .withDescription('Total properties should be greater than or equal to total sales.')
+      .withScope(ValidationScope.NEIGHBORHOOD)
+      .withCategory(ValidationCategory.CONSISTENCY)
+      .withSeverity(ValidationSeverity.MINOR)
+      .withApplicableFields('totalProperties', 'totalSales')
+      .withPredicate((value, context) => {
+        const totalProperties = context?.entity?.totalProperties;
+        const totalSales = context?.entity?.totalSales;
         
-        if (isNaN(buildingArea) || isNaN(landArea) || landArea === 0) {
-          return false;
-        }
-        
-        const ratio = buildingArea / landArea;
-        return ratio > 0.01 && ratio < 3.0;
-      },
-      getMessage: (data) => {
-        const buildingArea = parseFloat(data.buildingArea);
-        const landArea = parseFloat(data.landArea);
-        
-        if (isNaN(buildingArea) || isNaN(landArea)) {
-          return 'Building or land area is not a valid number';
-        }
-        
-        if (landArea === 0) {
-          return 'Land area cannot be zero';
-        }
-        
-        const ratio = buildingArea / landArea;
-        
-        if (ratio <= 0.01) {
-          return 'Building is too small for the land (ratio < 1%)';
-        } else if (ratio >= 3.0) {
-          return 'Building is too large for the land (ratio > 300%)';
-        }
-        
-        return 'Building to land ratio is outside reasonable range';
-      },
-      getSuggestion: (data) => {
-        return 'Verify building and land area measurements';
-      }
-    },
-    
-    // Address Format
-    {
-      id: 'prop_address_format',
-      name: 'Address Format',
-      description: 'Validates that the address follows standard format',
-      category: DataCategory.PROPERTY,
-      ruleType: RuleType.PATTERN,
-      severity: SeverityLevel.WARNING,
-      fields: ['address'],
-      validate: (data) => {
-        if (!data.address) return false;
-        
-        // Simple regex for basic address validation
-        // Should have number, street, and some additional info
-        const addressRegex = /^\d+\s+[A-Za-z0-9\s\.,'-]+$/;
-        return addressRegex.test(data.address);
-      },
-      getMessage: (data) => {
-        return 'Address format is invalid or incomplete';
-      },
-      getSuggestion: (data) => {
-        return 'Format address as: Number Street, City, State ZIP';
-      }
-    },
-    
-    // Condition Rating Range
-    {
-      id: 'prop_condition_range',
-      name: 'Condition Rating Range',
-      description: 'Validates that condition rating is within standard range',
-      category: DataCategory.PROPERTY,
-      ruleType: RuleType.RANGE,
-      severity: SeverityLevel.WARNING,
-      fields: ['condition'],
-      validate: (data) => {
-        // Check if condition is in standard range (1-5 or text equivalents)
-        if (!data.condition) return true; // Optional field
-        
-        if (typeof data.condition === 'number') {
-          return data.condition >= 1 && data.condition <= 5;
-        }
-        
-        const validConditions = [
-          'poor', 'fair', 'average', 'good', 'excellent',
-          '1', '2', '3', '4', '5'
-        ];
-        
-        return validConditions.includes(data.condition.toLowerCase());
-      },
-      getMessage: (data) => {
-        return `Invalid condition rating: ${data.condition}`;
-      },
-      getSuggestion: (data) => {
-        return 'Use standard condition scale (1-5 or Poor/Fair/Average/Good/Excellent)';
-      }
-    },
-    
-    // Check for Geocoding
-    {
-      id: 'prop_geocoding',
-      name: 'Property Geocoding',
-      description: 'Validates that the property has latitude and longitude',
-      category: DataCategory.PROPERTY,
-      ruleType: RuleType.GEOSPATIAL,
-      severity: SeverityLevel.WARNING,
-      fields: ['latitude', 'longitude'],
-      validate: (data) => {
-        const lat = parseFloat(data.latitude);
-        const lng = parseFloat(data.longitude);
-        
-        return (
-          !isNaN(lat) && !isNaN(lng) &&
-          lat >= -90 && lat <= 90 &&
-          lng >= -180 && lng <= 180
-        );
-      },
-      getMessage: (data) => {
-        const lat = parseFloat(data.latitude);
-        const lng = parseFloat(data.longitude);
-        
-        if (isNaN(lat) || isNaN(lng)) {
-          return 'Missing or invalid geocoding coordinates';
-        }
-        
-        if (lat < -90 || lat > 90 || lng < -180 || lng > 180) {
-          return 'Coordinates outside valid range';
-        }
-        
-        return 'Invalid geocoding data';
-      },
-      getSuggestion: (data) => {
-        return 'Geocode the property using the address';
-      }
-    }
+        if (totalProperties === null || totalProperties === undefined || 
+            totalSales === null || totalSales === undefined) return true;
+            
+        return Number(totalProperties) >= Number(totalSales);
+      })
+      .withMessageTemplate('Total sales exceeds total properties for neighborhood {entityId}')
+      .withSuggestedFixTemplate('Verify total properties and total sales for consistency')
+      .withStandardReference('IAAO Standard on Neighborhood Delineation 4.1')
+      .build(),
   ];
+  
+  // Register all rules with the validation engine
+  validationEngine.addRules(
+    ...propertyRules,
+    ...salesRules,
+    ...neighborhoodRules
+  );
+  
+  return {
+    propertyRules,
+    salesRules,
+    neighborhoodRules,
+    allRules: [...propertyRules, ...salesRules, ...neighborhoodRules]
+  };
 }
 
-/**
- * Sales Data Validation Rules
- */
-function getSalesDataRules(): ValidationRule[] {
-  return [
-    // Required Sale Fields
-    {
-      id: 'sale_req_fields',
-      name: 'Required Sale Fields',
-      description: 'Validates that all required sale fields are present',
-      category: DataCategory.SALE,
-      ruleType: RuleType.REQUIRED,
-      severity: SeverityLevel.ERROR,
-      fields: ['salePrice', 'saleDate', 'propertyId', 'deedType'],
-      validate: (data) => {
-        return (
-          data.salePrice !== undefined &&
-          data.salePrice !== null &&
-          !!data.saleDate &&
-          !!data.propertyId &&
-          !!data.deedType
-        );
-      },
-      getMessage: (data) => {
-        const missingFields = ['salePrice', 'saleDate', 'propertyId', 'deedType']
-          .filter(field => data[field] === undefined || data[field] === null);
-        return `Missing required sale fields: ${missingFields.join(', ')}`;
-      }
-    },
-    
-    // Sale Price Range
-    {
-      id: 'sale_price_range',
-      name: 'Sale Price Range',
-      description: 'Validates that sale price is within reasonable range',
-      category: DataCategory.SALE,
-      ruleType: RuleType.RANGE,
-      severity: SeverityLevel.WARNING,
-      fields: ['salePrice'],
-      validate: (data) => {
-        const price = parseFloat(data.salePrice);
-        return !isNaN(price) && price > 100 && price < 100000000;
-      },
-      getMessage: (data) => {
-        const price = parseFloat(data.salePrice);
-        
-        if (isNaN(price)) {
-          return 'Sale price is not a valid number';
-        } else if (price <= 100) {
-          return 'Sale price is too low (< $100)';
-        } else if (price >= 100000000) {
-          return 'Sale price is too high (> $100M)';
-        }
-        
-        return 'Sale price outside reasonable range';
-      },
-      getSuggestion: (data) => {
-        return 'Verify sale price from deed records';
-      }
-    },
-    
-    // Sale Date Range
-    {
-      id: 'sale_date_range',
-      name: 'Sale Date Range',
-      description: 'Validates that sale date is within reasonable range',
-      category: DataCategory.SALE,
-      ruleType: RuleType.RANGE,
-      severity: SeverityLevel.WARNING,
-      fields: ['saleDate'],
-      validate: (data) => {
-        if (!data.saleDate) return false;
-        
-        const saleDate = new Date(data.saleDate);
-        const now = new Date();
-        const minDate = new Date();
-        minDate.setFullYear(now.getFullYear() - 50); // 50 years ago
-        
-        return (
-          saleDate instanceof Date && !isNaN(saleDate.getTime()) &&
-          saleDate >= minDate && saleDate <= now
-        );
-      },
-      getMessage: (data) => {
-        if (!data.saleDate) {
-          return 'Sale date is missing';
-        }
-        
-        const saleDate = new Date(data.saleDate);
-        
-        if (!(saleDate instanceof Date) || isNaN(saleDate.getTime())) {
-          return 'Sale date is not a valid date';
-        }
-        
-        const now = new Date();
-        const minDate = new Date();
-        minDate.setFullYear(now.getFullYear() - 50); // 50 years ago
-        
-        if (saleDate < minDate) {
-          return `Sale date is too old (before ${minDate.getFullYear()})`;
-        } else if (saleDate > now) {
-          return 'Sale date is in the future';
-        }
-        
-        return 'Sale date outside reasonable range';
-      },
-      getSuggestion: (data) => {
-        return 'Verify sale date from deed records';
-      }
-    },
-    
-    // Valid Deed Type
-    {
-      id: 'sale_deed_type',
-      name: 'Valid Deed Type',
-      description: 'Validates that deed type is standard',
-      category: DataCategory.SALE,
-      ruleType: RuleType.TYPE,
-      severity: SeverityLevel.WARNING,
-      fields: ['deedType'],
-      validate: (data) => {
-        if (!data.deedType) return false;
-        
-        const validDeedTypes = [
-          'warranty', 'quitclaim', 'trustee', 'special warranty',
-          'deed of trust', 'executors deed', 'administrators deed',
-          'sheriff deed', 'tax deed', 'master deed'
-        ];
-        
-        return validDeedTypes.includes(data.deedType.toLowerCase());
-      },
-      getMessage: (data) => {
-        return `Non-standard deed type: ${data.deedType}`;
-      },
-      getSuggestion: (data) => {
-        return 'Use standard deed type classification';
-      }
-    },
-    
-    // Sale Price to Assessed Value Ratio
-    {
-      id: 'sale_price_assessed_ratio',
-      name: 'Sale Price to Assessed Value Ratio',
-      description: 'Validates that sale price to assessed value ratio is reasonable',
-      category: DataCategory.SALE,
-      ruleType: RuleType.RELATIONSHIP,
-      severity: SeverityLevel.WARNING,
-      fields: ['salePrice', 'assessedValue'],
-      validate: (data, context) => {
-        const salePrice = parseFloat(data.salePrice);
-        const assessedValue = parseFloat(data.assessedValue);
-        
-        if (isNaN(salePrice) || isNaN(assessedValue) || assessedValue === 0) {
-          return false;
-        }
-        
-        const ratio = salePrice / assessedValue;
-        return ratio >= 0.5 && ratio <= 2.0;
-      },
-      getMessage: (data) => {
-        const salePrice = parseFloat(data.salePrice);
-        const assessedValue = parseFloat(data.assessedValue);
-        
-        if (isNaN(salePrice) || isNaN(assessedValue)) {
-          return 'Sale price or assessed value is not a valid number';
-        }
-        
-        if (assessedValue === 0) {
-          return 'Assessed value cannot be zero';
-        }
-        
-        const ratio = salePrice / assessedValue;
-        
-        if (ratio < 0.5) {
-          return 'Sale price is less than 50% of assessed value';
-        } else if (ratio > 2.0) {
-          return 'Sale price is more than 200% of assessed value';
-        }
-        
-        return 'Sale price to assessed value ratio outside reasonable range';
-      },
-      getSuggestion: (data) => {
-        return 'Verify both sale price and assessed value';
-      }
-    }
-  ];
-}
+// Initialize the rules when the module is loaded
+const rules = createIAAOValidationRules();
 
-/**
- * Neighborhood Data Validation Rules
- */
-function getNeighborhoodRules(): ValidationRule[] {
-  return [
-    // Required Neighborhood Fields
-    {
-      id: 'nbhd_req_fields',
-      name: 'Required Neighborhood Fields',
-      description: 'Validates that all required neighborhood fields are present',
-      category: DataCategory.NEIGHBORHOOD,
-      ruleType: RuleType.REQUIRED,
-      severity: SeverityLevel.ERROR,
-      fields: ['neighborhoodId', 'name', 'medianValue'],
-      validate: (data) => {
-        return (
-          !!data.neighborhoodId &&
-          !!data.name &&
-          data.medianValue !== undefined && data.medianValue !== null
-        );
-      },
-      getMessage: (data) => {
-        const missingFields = ['neighborhoodId', 'name', 'medianValue']
-          .filter(field => !data[field]);
-        return `Missing required neighborhood fields: ${missingFields.join(', ')}`;
-      }
-    },
-    
-    // Neighborhood Boundary
-    {
-      id: 'nbhd_boundary',
-      name: 'Neighborhood Boundary',
-      description: 'Validates that neighborhood has boundary data',
-      category: DataCategory.NEIGHBORHOOD,
-      ruleType: RuleType.GEOSPATIAL,
-      severity: SeverityLevel.WARNING,
-      fields: ['boundary'],
-      validate: (data) => {
-        // Check if boundary exists and has valid GeoJSON format
-        return (
-          !!data.boundary &&
-          typeof data.boundary === 'object' &&
-          data.boundary.type &&
-          data.boundary.coordinates &&
-          Array.isArray(data.boundary.coordinates)
-        );
-      },
-      getMessage: (data) => {
-        if (!data.boundary) {
-          return 'Neighborhood boundary is missing';
-        } else if (!data.boundary.type || !data.boundary.coordinates) {
-          return 'Neighborhood boundary is incomplete';
-        } else if (!Array.isArray(data.boundary.coordinates)) {
-          return 'Neighborhood boundary coordinates must be an array';
-        }
-        
-        return 'Invalid neighborhood boundary data';
-      },
-      getSuggestion: (data) => {
-        return 'Define neighborhood boundary using GeoJSON format';
-      }
-    },
-    
-    // Median Value Range
-    {
-      id: 'nbhd_median_value_range',
-      name: 'Median Value Range',
-      description: 'Validates that neighborhood median value is within reasonable range',
-      category: DataCategory.NEIGHBORHOOD,
-      ruleType: RuleType.RANGE,
-      severity: SeverityLevel.WARNING,
-      fields: ['medianValue'],
-      validate: (data) => {
-        const value = parseFloat(data.medianValue);
-        return !isNaN(value) && value >= 1000 && value <= 10000000;
-      },
-      getMessage: (data) => {
-        const value = parseFloat(data.medianValue);
-        
-        if (isNaN(value)) {
-          return 'Median value is not a valid number';
-        } else if (value < 1000) {
-          return 'Median value is too low (< $1,000)';
-        } else if (value > 10000000) {
-          return 'Median value is too high (> $10M)';
-        }
-        
-        return 'Median value outside reasonable range';
-      },
-      getSuggestion: (data) => {
-        return 'Recalculate median value based on recent sales';
-      }
-    },
-    
-    // School District Association
-    {
-      id: 'nbhd_school_district',
-      name: 'School District Association',
-      description: 'Validates that neighborhood has school district association',
-      category: DataCategory.NEIGHBORHOOD,
-      ruleType: RuleType.REQUIRED,
-      severity: SeverityLevel.WARNING,
-      fields: ['schoolDistrict'],
-      validate: (data) => {
-        return !!data.schoolDistrict;
-      },
-      getMessage: (data) => {
-        return 'Missing school district association';
-      },
-      getSuggestion: (data) => {
-        return 'Assign school district based on geographic location';
-      }
-    }
-  ];
-}
+// Re-export necessary types and instances from the framework
+export {
+  ValidationScope,
+  ValidationCategory,
+  ValidationSeverity,
+  ValidationEngine,
+  ValidationIssue,
+  DataQualityReport,
+  DataQualityMetrics,
+  validationEngine
+};
 
-/**
- * Statistical Analysis Rules
- */
-function getStatisticalRules(): ValidationRule[] {
-  return [
-    // Sales Ratio COD (Coefficient of Dispersion)
-    {
-      id: 'stat_sales_ratio_cod',
-      name: 'Sales Ratio COD',
-      description: 'Validates that sales ratio COD is within IAAO standards',
-      category: DataCategory.MARKET,
-      ruleType: RuleType.STATISTICAL,
-      severity: SeverityLevel.WARNING,
-      fields: ['cod', 'propertyType'],
-      validate: (data) => {
-        if (data.cod === undefined || data.cod === null) return false;
-        
-        const cod = parseFloat(data.cod);
-        if (isNaN(cod)) return false;
-        
-        // IAAO standards for COD by property type
-        const limits: Record<string, number> = {
-          'residential': 15.0,
-          'newer_residential': 10.0,
-          'income': 20.0,
-          'commercial': 20.0,
-          'vacant': 25.0,
-          'rural': 25.0,
-          'other': 20.0
-        };
-        
-        const propertyType = (data.propertyType || 'other').toLowerCase();
-        const maxCOD = limits[propertyType] || limits.other;
-        
-        return cod <= maxCOD;
-      },
-      getMessage: (data) => {
-        if (data.cod === undefined || data.cod === null) {
-          return 'COD value is missing';
-        }
-        
-        const cod = parseFloat(data.cod);
-        if (isNaN(cod)) {
-          return 'COD is not a valid number';
-        }
-        
-        const limits: Record<string, number> = {
-          'residential': 15.0,
-          'newer_residential': 10.0,
-          'income': 20.0,
-          'commercial': 20.0,
-          'vacant': 25.0,
-          'rural': 25.0,
-          'other': 20.0
-        };
-        
-        const propertyType = (data.propertyType || 'other').toLowerCase();
-        const maxCOD = limits[propertyType] || limits.other;
-        
-        return `COD of ${cod.toFixed(1)} exceeds IAAO standard of ${maxCOD.toFixed(1)} for ${propertyType} properties`;
-      },
-      getSuggestion: (data) => {
-        return 'Review assessment uniformity and recalibrate valuation models';
-      }
-    },
-    
-    // Sales Ratio PRD (Price-Related Differential)
-    {
-      id: 'stat_sales_ratio_prd',
-      name: 'Sales Ratio PRD',
-      description: 'Validates that sales ratio PRD is within IAAO standards',
-      category: DataCategory.MARKET,
-      ruleType: RuleType.STATISTICAL,
-      severity: SeverityLevel.WARNING,
-      fields: ['prd'],
-      validate: (data) => {
-        if (data.prd === undefined || data.prd === null) return false;
-        
-        const prd = parseFloat(data.prd);
-        if (isNaN(prd)) return false;
-        
-        // IAAO standards: PRD should be between 0.98 and 1.03
-        return prd >= 0.98 && prd <= 1.03;
-      },
-      getMessage: (data) => {
-        if (data.prd === undefined || data.prd === null) {
-          return 'PRD value is missing';
-        }
-        
-        const prd = parseFloat(data.prd);
-        if (isNaN(prd)) {
-          return 'PRD is not a valid number';
-        }
-        
-        if (prd < 0.98) {
-          return `PRD of ${prd.toFixed(2)} is below IAAO standard of 0.98, indicating assessment regression`;
-        } else if (prd > 1.03) {
-          return `PRD of ${prd.toFixed(2)} exceeds IAAO standard of 1.03, indicating assessment progression`;
-        }
-        
-        return 'PRD outside IAAO standard range';
-      },
-      getSuggestion: (data) => {
-        const prd = parseFloat(data.prd);
-        
-        if (prd < 0.98) {
-          return 'Review assessment methodology for high-value properties';
-        } else if (prd > 1.03) {
-          return 'Review assessment methodology for low-value properties';
-        }
-        
-        return 'Review overall vertical equity in assessments';
-      }
-    },
-    
-    // Minimum Sample Size
-    {
-      id: 'stat_sample_size',
-      name: 'Minimum Sample Size',
-      description: 'Validates that statistical analysis has sufficient sample size',
-      category: DataCategory.MARKET,
-      ruleType: RuleType.STATISTICAL,
-      severity: SeverityLevel.WARNING,
-      fields: ['sampleSize'],
-      validate: (data) => {
-        if (data.sampleSize === undefined || data.sampleSize === null) return false;
-        
-        const sampleSize = parseInt(data.sampleSize);
-        if (isNaN(sampleSize)) return false;
-        
-        // IAAO generally recommends at least 30 samples for statistical reliability
-        return sampleSize >= 30;
-      },
-      getMessage: (data) => {
-        if (data.sampleSize === undefined || data.sampleSize === null) {
-          return 'Sample size is missing';
-        }
-        
-        const sampleSize = parseInt(data.sampleSize);
-        if (isNaN(sampleSize)) {
-          return 'Sample size is not a valid number';
-        }
-        
-        return `Sample size of ${sampleSize} is below IAAO recommended minimum of 30`;
-      },
-      getSuggestion: (data) => {
-        return 'Expand analysis timeframe or geographic area to increase sample size';
-      }
-    },
-    
-    // Time Adjustment Validation
-    {
-      id: 'stat_time_adjustment',
-      name: 'Time Adjustment Validation',
-      description: 'Validates that time adjustments are applied to sales',
-      category: DataCategory.MARKET,
-      ruleType: RuleType.REQUIRED,
-      severity: SeverityLevel.WARNING,
-      fields: ['timeAdjustmentApplied'],
-      validate: (data) => {
-        return data.timeAdjustmentApplied === true;
-      },
-      getMessage: (data) => {
-        return 'Sales have not been adjusted for time/market conditions';
-      },
-      getSuggestion: (data) => {
-        return 'Apply time adjustments based on market trends analysis';
-      }
-    }
-  ];
-}
+// Export the created rules
+export default rules;

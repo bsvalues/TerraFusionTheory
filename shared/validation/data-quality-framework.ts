@@ -1,378 +1,563 @@
 /**
  * Data Quality Framework
  * 
- * Implements IAAO (International Association of Assessing Officers) standards for
- * property data quality assessment. Provides a comprehensive framework for validating
- * property characteristics, sales data, and location information.
+ * This framework provides a robust validation system for property data
+ * based on IAAO standards and industry best practices.
  */
 
-import { OptimizedLogger } from '../../server/services/optimized-logging';
-import { LogCategory } from '../schema';
+import { PropertyType, TransactionType } from '../schema';
 
-const logger = OptimizedLogger.getInstance();
+/**
+ * Validation rule severity level
+ */
+export enum ValidationSeverity {
+  CRITICAL = 'critical',
+  MAJOR = 'major',
+  MINOR = 'minor'
+}
 
-// Types of data that can be validated
-export enum DataCategory {
+/**
+ * Validation rule scope
+ */
+export enum ValidationScope {
   PROPERTY = 'property',
   SALE = 'sale',
-  NEIGHBORHOOD = 'neighborhood',
-  MARKET = 'market'
+  NEIGHBORHOOD = 'neighborhood'
 }
 
-// Severity levels for data quality issues
-export enum SeverityLevel {
-  INFO = 'info',         // Informational only
-  WARNING = 'warning',   // May affect accuracy
-  ERROR = 'error',       // Definitely affects accuracy
-  CRITICAL = 'critical'  // Makes data unusable
+/**
+ * Validation rule category
+ */
+export enum ValidationCategory {
+  COMPLETENESS = 'completeness',
+  ACCURACY = 'accuracy',
+  CONSISTENCY = 'consistency',
+  TIMELINESS = 'timeliness',
+  UNIQUENESS = 'uniqueness',
+  VALIDITY = 'validity'
 }
 
-// Types of validation rules
-export enum RuleType {
-  REQUIRED = 'required',              // Field must be present
-  TYPE = 'type',                      // Field must be of correct type
-  RANGE = 'range',                    // Value must be within range
-  PATTERN = 'pattern',                // Value must match pattern
-  RELATIONSHIP = 'relationship',      // Relationship between fields
-  HISTORICAL = 'historical',          // Comparison with historical data
-  STATISTICAL = 'statistical',        // Statistical validation
-  GEOSPATIAL = 'geospatial'           // Spatial data validation
+/**
+ * Validation result status
+ */
+export enum ValidationStatus {
+  PASSED = 'passed',
+  FAILED = 'failed',
+  SKIPPED = 'skipped'
 }
 
-// Data Quality Issue
-export interface DataQualityIssue {
-  id: string;                // Unique identifier
-  category: DataCategory;    // Category of data
-  field: string;             // Field name with issue
-  ruleType: RuleType;        // Type of rule that failed
-  severity: SeverityLevel;   // Severity of the issue
-  message: string;           // Human-readable description
-  recordId?: number | string; // ID of the affected record
-  value?: any;               // Value that failed validation
-  expectedValue?: any;       // Expected value or pattern
-  timestamp: number;         // When issue was detected
-  remediation?: string;      // Suggested fix
-}
+/**
+ * Type for validation rule predicate function
+ */
+export type ValidationPredicate = (value: any, context?: any) => boolean;
 
-// Data Quality Score (0-100)
-export interface QualityScore {
-  category: DataCategory;
-  score: number;             // 0-100 score
-  issueCount: number;        // Number of issues
-  criticalCount: number;     // Number of critical issues
-  lastUpdated: number;       // Timestamp
-}
-
-// Validation Rule Definition
+/**
+ * Type for validation rule
+ */
 export interface ValidationRule {
   id: string;
   name: string;
   description: string;
-  category: DataCategory;
-  ruleType: RuleType;
-  severity: SeverityLevel;
-  fields: string[];
-  validate: (data: any, context?: any) => boolean;
-  getMessage: (data: any, context?: any) => string;
-  getSuggestion?: (data: any, context?: any) => string;
-  getExpectedValue?: (data: any, context?: any) => any;
-}
-
-// Data Quality Report
-export interface DataQualityReport {
-  timestamp: number;
-  scores: {
-    overall: number;
-    byCategory: QualityScore[];
-  };
-  issues: DataQualityIssue[];
-  stats: {
-    recordsProcessed: number;
-    issuesBySeverity: Record<SeverityLevel, number>;
-    issuesByCategory: Record<DataCategory, number>;
-    issuesByRule: Record<string, number>;
-  };
+  scope: ValidationScope;
+  category: ValidationCategory;
+  severity: ValidationSeverity;
+  predicate: ValidationPredicate;
+  applicableFields: string[];
+  messageTemplate: string;
+  suggestedFixTemplate?: string;
+  dependencies?: string[];
+  standardReference?: string; // Reference to IAAO/USPAP standard
 }
 
 /**
- * Main Data Quality Service
+ * Type for validation issue
  */
-export class DataQualityFramework {
-  private static instance: DataQualityFramework;
-  private rules: Map<string, ValidationRule> = new Map();
-  private latestReport: DataQualityReport | null = null;
+export interface ValidationIssue {
+  ruleId: string;
+  entityId: string;
+  field: string;
+  message: string;
+  severity: ValidationSeverity;
+  category: ValidationCategory;
+  scope: ValidationScope;
+  suggestedFix?: string;
+  data?: any;
+}
+
+/**
+ * Type for validation result
+ */
+export interface ValidationResult {
+  ruleId: string;
+  entityId: string;
+  field: string;
+  status: ValidationStatus;
+  issues: ValidationIssue[];
+}
+
+/**
+ * Data quality metrics
+ */
+export interface DataQualityMetrics {
+  overallScore: number;
+  propertiesScore: number;
+  salesScore: number;
+  neighborhoodsScore: number;
+  completenessScore: number;
+  accuracyScore: number;
+  consistencyScore: number;
+  timelinessScore: number;
+  uniquenessScore: number;
+  validityScore: number;
+  rulesPassed: number;
+  rulesFailed: number;
+  rulesSkipped: number;
+  totalRules: number;
+  criticalIssues: number;
+  majorIssues: number;
+  minorIssues: number;
+  propertiesWithIssues: number;
+  salesWithIssues: number;
+  neighborhoodsWithIssues: number;
+  totalProperties: number;
+  totalSales: number;
+  totalNeighborhoods: number;
+}
+
+/**
+ * Data quality report
+ */
+export interface DataQualityReport {
+  metrics: DataQualityMetrics;
+  issues: ValidationIssue[];
+  timestamp: Date;
+}
+
+/**
+ * Validation rule builder - provides a fluent API for creating rules
+ */
+export class ValidationRuleBuilder {
+  private rule: Partial<ValidationRule> = {
+    applicableFields: [],
+    dependencies: []
+  };
   
-  private constructor() {
-    // Private constructor for singleton
+  /**
+   * Create a new rule with ID and name
+   */
+  static create(id: string, name: string): ValidationRuleBuilder {
+    const builder = new ValidationRuleBuilder();
+    builder.rule.id = id;
+    builder.rule.name = name;
+    return builder;
   }
   
   /**
-   * Get singleton instance
+   * Set rule description
    */
-  public static getInstance(): DataQualityFramework {
-    if (!DataQualityFramework.instance) {
-      DataQualityFramework.instance = new DataQualityFramework();
+  withDescription(description: string): ValidationRuleBuilder {
+    this.rule.description = description;
+    return this;
+  }
+  
+  /**
+   * Set rule scope
+   */
+  withScope(scope: ValidationScope): ValidationRuleBuilder {
+    this.rule.scope = scope;
+    return this;
+  }
+  
+  /**
+   * Set rule category
+   */
+  withCategory(category: ValidationCategory): ValidationRuleBuilder {
+    this.rule.category = category;
+    return this;
+  }
+  
+  /**
+   * Set rule severity
+   */
+  withSeverity(severity: ValidationSeverity): ValidationRuleBuilder {
+    this.rule.severity = severity;
+    return this;
+  }
+  
+  /**
+   * Set the validation predicate function
+   */
+  withPredicate(predicate: ValidationPredicate): ValidationRuleBuilder {
+    this.rule.predicate = predicate;
+    return this;
+  }
+  
+  /**
+   * Add applicable fields
+   */
+  withApplicableFields(...fields: string[]): ValidationRuleBuilder {
+    this.rule.applicableFields = [...(this.rule.applicableFields || []), ...fields];
+    return this;
+  }
+  
+  /**
+   * Set error message template
+   */
+  withMessageTemplate(template: string): ValidationRuleBuilder {
+    this.rule.messageTemplate = template;
+    return this;
+  }
+  
+  /**
+   * Set suggested fix template
+   */
+  withSuggestedFixTemplate(template: string): ValidationRuleBuilder {
+    this.rule.suggestedFixTemplate = template;
+    return this;
+  }
+  
+  /**
+   * Add dependencies (other fields or rules that this rule depends on)
+   */
+  withDependencies(...dependencies: string[]): ValidationRuleBuilder {
+    this.rule.dependencies = [...(this.rule.dependencies || []), ...dependencies];
+    return this;
+  }
+  
+  /**
+   * Set standard reference (IAAO or USPAP)
+   */
+  withStandardReference(reference: string): ValidationRuleBuilder {
+    this.rule.standardReference = reference;
+    return this;
+  }
+  
+  /**
+   * Build and return the rule
+   */
+  build(): ValidationRule {
+    // Verify required fields are present
+    const requiredFields = ['id', 'name', 'description', 'scope', 'category', 
+                           'severity', 'predicate', 'messageTemplate'];
+    
+    for (const field of requiredFields) {
+      if (!(this.rule as any)[field]) {
+        throw new Error(`Validation rule ${this.rule.id} is missing required field: ${field}`);
+      }
     }
-    return DataQualityFramework.instance;
+    
+    return this.rule as ValidationRule;
   }
+}
+
+/**
+ * Validation engine for processing validation rules
+ */
+export class ValidationEngine {
+  private rules: ValidationRule[] = [];
   
   /**
-   * Register a validation rule
+   * Add validation rules to the engine
    */
-  public registerRule(rule: ValidationRule): void {
-    if (this.rules.has(rule.id)) {
-      logger.warning(`Validation rule with ID ${rule.id} already exists. Overwriting.`, LogCategory.SYSTEM);
-    }
-    this.rules.set(rule.id, rule);
-    logger.debug(`Registered validation rule: ${rule.id}`);
-  }
-  
-  /**
-   * Register multiple validation rules
-   */
-  public registerRules(rules: ValidationRule[]): void {
-    rules.forEach(rule => this.registerRule(rule));
+  addRules(...rules: ValidationRule[]): ValidationEngine {
+    this.rules.push(...rules);
+    return this;
   }
   
   /**
    * Get all registered rules
    */
-  public getAllRules(): ValidationRule[] {
-    return Array.from(this.rules.values());
+  getRules(): ValidationRule[] {
+    return [...this.rules];
   }
   
   /**
-   * Get rules by category
+   * Get rules by scope
    */
-  public getRulesByCategory(category: DataCategory): ValidationRule[] {
-    return this.getAllRules().filter(rule => rule.category === category);
+  getRulesByScope(scope: ValidationScope): ValidationRule[] {
+    return this.rules.filter(rule => rule.scope === scope);
   }
   
   /**
-   * Validate a single data record
+   * Get rule by ID
    */
-  public validateRecord(
-    data: any,
-    category: DataCategory,
-    recordId?: number | string,
-    context?: any
-  ): DataQualityIssue[] {
-    const issues: DataQualityIssue[] = [];
-    
-    // Get rules for this category
-    const rules = this.getRulesByCategory(category);
+  getRuleById(id: string): ValidationRule | undefined {
+    return this.rules.find(rule => rule.id === id);
+  }
+  
+  /**
+   * Validate a single entity against all applicable rules
+   */
+  validateEntity(entity: any, entityId: string, scope: ValidationScope): ValidationResult[] {
+    // Get rules applicable to this entity type
+    const applicableRules = this.getRulesByScope(scope);
     
     // Apply each rule
-    rules.forEach(rule => {
-      try {
-        const isValid = rule.validate(data, context);
+    return applicableRules.map(rule => {
+      const issues: ValidationIssue[] = [];
+      
+      // For each applicable field
+      for (const field of rule.applicableFields) {
+        // Get field value (supports nested paths with dot notation)
+        const fieldPath = field.split('.');
+        let value = entity;
         
-        if (!isValid) {
-          const issue: DataQualityIssue = {
-            id: `${rule.id}_${recordId || Date.now()}`,
-            category,
-            field: rule.fields.join(', '),
-            ruleType: rule.ruleType,
-            severity: rule.severity,
-            message: rule.getMessage(data, context),
-            recordId,
-            value: rule.fields.length === 1 ? data[rule.fields[0]] : undefined,
-            timestamp: Date.now()
-          };
-          
-          // Add remediation if available
-          if (rule.getSuggestion) {
-            issue.remediation = rule.getSuggestion(data, context);
+        for (const path of fieldPath) {
+          if (value === null || value === undefined) {
+            value = undefined;
+            break;
           }
-          
-          // Add expected value if available
-          if (rule.getExpectedValue) {
-            issue.expectedValue = rule.getExpectedValue(data, context);
-          }
-          
-          issues.push(issue);
+          value = value[path];
         }
-      } catch (error) {
-        logger.error(`Error applying rule ${rule.id}: ${error}`);
+        
+        // Skip if dependencies aren't met
+        if (rule.dependencies && rule.dependencies.length > 0) {
+          const dependenciesMet = rule.dependencies.every(dep => {
+            const depPath = dep.split('.');
+            let depValue = entity;
+            
+            for (const path of depPath) {
+              if (depValue === null || depValue === undefined) {
+                return false;
+              }
+              depValue = depValue[path];
+            }
+            
+            return depValue !== null && depValue !== undefined;
+          });
+          
+          if (!dependenciesMet) {
+            return {
+              ruleId: rule.id,
+              entityId,
+              field,
+              status: ValidationStatus.SKIPPED,
+              issues: []
+            };
+          }
+        }
+        
+        // Apply the rule
+        try {
+          const contextData = { entity, field, entityId };
+          const isValid = rule.predicate(value, contextData);
+          
+          if (!isValid) {
+            // Create message from template
+            const message = this.formatTemplate(rule.messageTemplate, {
+              field,
+              value: value !== undefined ? JSON.stringify(value) : 'undefined',
+              entityId
+            });
+            
+            // Create suggested fix from template if available
+            let suggestedFix: string | undefined;
+            if (rule.suggestedFixTemplate) {
+              suggestedFix = this.formatTemplate(rule.suggestedFixTemplate, {
+                field,
+                value: value !== undefined ? JSON.stringify(value) : 'undefined',
+                entityId
+              });
+            }
+            
+            // Add issue
+            issues.push({
+              ruleId: rule.id,
+              entityId,
+              field,
+              message,
+              severity: rule.severity,
+              category: rule.category,
+              scope: rule.scope,
+              suggestedFix,
+              data: { value }
+            });
+          }
+        } catch (error) {
+          // Rule evaluation failed
+          console.error(`Error evaluating rule ${rule.id} on field ${field}:`, error);
+          
+          issues.push({
+            ruleId: rule.id,
+            entityId,
+            field,
+            message: `Failed to evaluate rule: ${error instanceof Error ? error.message : 'Unknown error'}`,
+            severity: ValidationSeverity.CRITICAL,
+            category: rule.category,
+            scope: rule.scope,
+            data: { error }
+          });
+        }
       }
+      
+      return {
+        ruleId: rule.id,
+        entityId,
+        field: rule.applicableFields.join(', '),
+        status: issues.length > 0 ? ValidationStatus.FAILED : ValidationStatus.PASSED,
+        issues
+      };
     });
-    
-    return issues;
   }
   
   /**
-   * Validate multiple records
+   * Validate multiple entities of the same type
    */
-  public validateRecords(
-    records: any[],
-    category: DataCategory,
-    getRecordId?: (record: any) => number | string,
-    context?: any
-  ): DataQualityIssue[] {
-    let allIssues: DataQualityIssue[] = [];
-    
-    records.forEach(record => {
-      const recordId = getRecordId ? getRecordId(record) : undefined;
-      const issues = this.validateRecord(record, category, recordId, context);
-      allIssues = [...allIssues, ...issues];
+  validateEntities(entities: any[], scope: ValidationScope, idField: string = 'id'): ValidationResult[] {
+    return entities.flatMap(entity => {
+      const entityId = entity[idField]?.toString() || 'unknown';
+      return this.validateEntity(entity, entityId, scope);
     });
-    
-    return allIssues;
   }
   
   /**
-   * Calculate quality score for a set of issues
+   * Calculate data quality metrics from validation results
    */
-  private calculateQualityScore(
-    issuesByCategory: Record<DataCategory, DataQualityIssue[]>,
-    totalRecordsByCategory: Record<DataCategory, number>
-  ): {
-    overall: number;
-    byCategory: QualityScore[];
-  } {
-    const scores: QualityScore[] = [];
-    let totalScore = 0;
-    let totalWeight = 0;
+  calculateQualityMetrics(results: ValidationResult[], entityCounts: {
+    properties: number;
+    sales: number;
+    neighborhoods: number;
+  }): DataQualityMetrics {
+    // Count result statuses
+    const passed = results.filter(r => r.status === ValidationStatus.PASSED).length;
+    const failed = results.filter(r => r.status === ValidationStatus.FAILED).length;
+    const skipped = results.filter(r => r.status === ValidationStatus.SKIPPED).length;
+    const total = passed + failed + skipped;
     
-    // Define weights for each category
-    const categoryWeights: Record<DataCategory, number> = {
-      [DataCategory.PROPERTY]: 0.4,
-      [DataCategory.SALE]: 0.3,
-      [DataCategory.NEIGHBORHOOD]: 0.2,
-      [DataCategory.MARKET]: 0.1
+    // Extract all issues
+    const allIssues = results.flatMap(r => r.issues);
+    
+    // Count issues by severity
+    const criticalIssues = allIssues.filter(i => i.severity === ValidationSeverity.CRITICAL).length;
+    const majorIssues = allIssues.filter(i => i.severity === ValidationSeverity.MAJOR).length;
+    const minorIssues = allIssues.filter(i => i.severity === ValidationSeverity.MINOR).length;
+    
+    // Count issues by scope
+    const propertyIssues = allIssues.filter(i => i.scope === ValidationScope.PROPERTY);
+    const salesIssues = allIssues.filter(i => i.scope === ValidationScope.SALE);
+    const neighborhoodIssues = allIssues.filter(i => i.scope === ValidationScope.NEIGHBORHOOD);
+    
+    // Count entities with issues
+    const uniquePropertiesWithIssues = new Set(propertyIssues.map(i => i.entityId)).size;
+    const uniqueSalesWithIssues = new Set(salesIssues.map(i => i.entityId)).size;
+    const uniqueNeighborhoodsWithIssues = new Set(neighborhoodIssues.map(i => i.entityId)).size;
+    
+    // Count issues by category
+    const issuesByCategory = {
+      completeness: allIssues.filter(i => i.category === ValidationCategory.COMPLETENESS).length,
+      accuracy: allIssues.filter(i => i.category === ValidationCategory.ACCURACY).length,
+      consistency: allIssues.filter(i => i.category === ValidationCategory.CONSISTENCY).length,
+      timeliness: allIssues.filter(i => i.category === ValidationCategory.TIMELINESS).length,
+      uniqueness: allIssues.filter(i => i.category === ValidationCategory.UNIQUENESS).length,
+      validity: allIssues.filter(i => i.category === ValidationCategory.VALIDITY).length
     };
     
-    // Calculate score for each category
-    Object.entries(issuesByCategory).forEach(([category, issues]) => {
-      const dataCategory = category as DataCategory;
-      const recordCount = totalRecordsByCategory[dataCategory] || 0;
-      
-      if (recordCount === 0) {
-        return; // Skip categories with no records
-      }
-      
-      // Count issues by severity
-      const criticalCount = issues.filter(i => i.severity === SeverityLevel.CRITICAL).length;
-      const errorCount = issues.filter(i => i.severity === SeverityLevel.ERROR).length;
-      const warningCount = issues.filter(i => i.severity === SeverityLevel.WARNING).length;
-      const infoCount = issues.filter(i => i.severity === SeverityLevel.INFO).length;
-      
-      // Calculate penalty points (0-100)
-      const criticalPenalty = Math.min(50, criticalCount * 10);
-      const errorPenalty = Math.min(30, errorCount * 3);
-      const warningPenalty = Math.min(15, warningCount * 0.5);
-      const infoPenalty = Math.min(5, infoCount * 0.1);
-      
-      // Calculate record penalty
-      const recordPenalty = recordCount > 0 
-        ? Math.min(30, ((criticalCount + errorCount) / recordCount) * 100)
-        : 0;
-      
-      // Calculate final score (0-100)
-      const totalPenalty = criticalPenalty + errorPenalty + warningPenalty + infoPenalty + recordPenalty;
-      const categoryScore = Math.max(0, 100 - totalPenalty);
-      
-      // Add to scores list
-      scores.push({
-        category: dataCategory,
-        score: categoryScore,
-        issueCount: issues.length,
-        criticalCount,
-        lastUpdated: Date.now()
-      });
-      
-      // Add to weighted average
-      totalScore += categoryScore * categoryWeights[dataCategory];
-      totalWeight += categoryWeights[dataCategory];
-    });
+    // Calculate scores
+    const calculateScore = (issueCount: number, totalCount: number, weight: number = 1): number => {
+      if (totalCount === 0) return 100;
+      return Math.round(Math.max(0, 100 - (issueCount / totalCount * 100 * weight)));
+    };
     
-    // Calculate overall score
-    const overall = totalWeight > 0 ? totalScore / totalWeight : 0;
+    // Calculate category scores
+    const completenessScore = calculateScore(issuesByCategory.completeness, total, 1);
+    const accuracyScore = calculateScore(issuesByCategory.accuracy, total, 1.5);
+    const consistencyScore = calculateScore(issuesByCategory.consistency, total, 1.25);
+    const timelinessScore = calculateScore(issuesByCategory.timeliness, total, 0.75);
+    const uniquenessScore = calculateScore(issuesByCategory.uniqueness, total, 1.25);
+    const validityScore = calculateScore(issuesByCategory.validity, total, 1);
+    
+    // Calculate entity type scores with weighted severity
+    const severityWeights = {
+      [ValidationSeverity.CRITICAL]: 5,
+      [ValidationSeverity.MAJOR]: 2,
+      [ValidationSeverity.MINOR]: 0.5
+    };
+    
+    const calculateEntityScore = (issues: ValidationIssue[], totalEntities: number): number => {
+      if (totalEntities === 0) return 100;
+      
+      // Group issues by entity ID and calculate weighted issues per entity
+      const issuesByEntity = issues.reduce((acc, issue) => {
+        if (!acc[issue.entityId]) {
+          acc[issue.entityId] = { weight: 0 };
+        }
+        acc[issue.entityId].weight += severityWeights[issue.severity];
+        return acc;
+      }, {} as Record<string, { weight: number }>);
+      
+      // Calculate average weighted issues per entity
+      const totalWeight = Object.values(issuesByEntity).reduce((sum, entity) => sum + entity.weight, 0);
+      const avgWeight = totalWeight / totalEntities;
+      
+      // Convert to score (0-100)
+      return Math.round(Math.max(0, 100 - avgWeight * 10));
+    };
+    
+    const propertiesScore = calculateEntityScore(propertyIssues, entityCounts.properties);
+    const salesScore = calculateEntityScore(salesIssues, entityCounts.sales);
+    const neighborhoodsScore = calculateEntityScore(neighborhoodIssues, entityCounts.neighborhoods);
+    
+    // Calculate overall score (weighted average of all scores)
+    const overallScore = Math.round(
+      (propertiesScore * 0.4) +
+      (salesScore * 0.3) +
+      (neighborhoodsScore * 0.3)
+    );
     
     return {
-      overall,
-      byCategory: scores
+      overallScore,
+      propertiesScore,
+      salesScore,
+      neighborhoodsScore,
+      completenessScore,
+      accuracyScore,
+      consistencyScore,
+      timelinessScore,
+      uniquenessScore,
+      validityScore,
+      rulesPassed: passed,
+      rulesFailed: failed,
+      rulesSkipped: skipped,
+      totalRules: total,
+      criticalIssues,
+      majorIssues,
+      minorIssues,
+      propertiesWithIssues: uniquePropertiesWithIssues,
+      salesWithIssues: uniqueSalesWithIssues,
+      neighborhoodsWithIssues: uniqueNeighborhoodsWithIssues,
+      totalProperties: entityCounts.properties,
+      totalSales: entityCounts.sales,
+      totalNeighborhoods: entityCounts.neighborhoods
     };
   }
   
   /**
    * Generate a data quality report
    */
-  public generateReport(
-    issues: DataQualityIssue[],
-    totalRecordsByCategory: Record<DataCategory, number>
-  ): DataQualityReport {
-    // Group issues by category
-    const issuesByCategory: Record<DataCategory, DataQualityIssue[]> = {
-      [DataCategory.PROPERTY]: [],
-      [DataCategory.SALE]: [],
-      [DataCategory.NEIGHBORHOOD]: [],
-      [DataCategory.MARKET]: []
-    };
+  generateReport(results: ValidationResult[], entityCounts: {
+    properties: number;
+    sales: number;
+    neighborhoods: number;
+  }): DataQualityReport {
+    const metrics = this.calculateQualityMetrics(results, entityCounts);
+    const issues = results.flatMap(r => r.issues);
     
-    issues.forEach(issue => {
-      if (!issuesByCategory[issue.category]) {
-        issuesByCategory[issue.category] = [];
-      }
-      issuesByCategory[issue.category].push(issue);
-    });
-    
-    // Count issues by severity
-    const issuesBySeverity: Record<SeverityLevel, number> = {
-      [SeverityLevel.INFO]: 0,
-      [SeverityLevel.WARNING]: 0,
-      [SeverityLevel.ERROR]: 0,
-      [SeverityLevel.CRITICAL]: 0
-    };
-    
-    issues.forEach(issue => {
-      issuesBySeverity[issue.severity]++;
-    });
-    
-    // Count issues by category
-    const issueCountByCategory: Record<DataCategory, number> = {
-      [DataCategory.PROPERTY]: issuesByCategory[DataCategory.PROPERTY].length,
-      [DataCategory.SALE]: issuesByCategory[DataCategory.SALE].length,
-      [DataCategory.NEIGHBORHOOD]: issuesByCategory[DataCategory.NEIGHBORHOOD].length,
-      [DataCategory.MARKET]: issuesByCategory[DataCategory.MARKET].length
-    };
-    
-    // Count issues by rule
-    const issuesByRule: Record<string, number> = {};
-    issues.forEach(issue => {
-      const ruleId = issue.id.split('_')[0]; // Extract rule ID from issue ID
-      issuesByRule[ruleId] = (issuesByRule[ruleId] || 0) + 1;
-    });
-    
-    // Calculate quality scores
-    const scores = this.calculateQualityScore(issuesByCategory, totalRecordsByCategory);
-    
-    // Total records processed
-    const recordsProcessed = Object.values(totalRecordsByCategory).reduce((a, b) => a + b, 0);
-    
-    // Create report
-    const report: DataQualityReport = {
-      timestamp: Date.now(),
-      scores,
+    return {
+      metrics,
       issues,
-      stats: {
-        recordsProcessed,
-        issuesBySeverity,
-        issuesByCategory: issueCountByCategory,
-        issuesByRule
-      }
+      timestamp: new Date()
     };
-    
-    // Store latest report
-    this.latestReport = report;
-    
-    return report;
   }
   
   /**
-   * Get the most recent report
+   * Format a template string with context variables
    */
-  public getLatestReport(): DataQualityReport | null {
-    return this.latestReport;
+  private formatTemplate(template: string, context: Record<string, any>): string {
+    return template.replace(/\{([^}]+)\}/g, (match, key) => {
+      return context[key] !== undefined ? context[key] : match;
+    });
   }
 }
+
+// Export a singleton instance of the validation engine
+export const validationEngine = new ValidationEngine();

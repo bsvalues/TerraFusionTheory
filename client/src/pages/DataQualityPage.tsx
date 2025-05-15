@@ -1,494 +1,672 @@
 import React, { useState, useEffect } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { DataCategory, SeverityLevel } from '@shared/validation/data-quality-framework';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { 
+  Tabs, 
+  TabsContent, 
+  TabsList, 
+  TabsTrigger 
+} from '@/components/ui/tabs';
+import {
+  AlertCircle,
+  CheckCircle,
+  XCircle,
+  AlertTriangle,
+  BarChart4,
+  FileSpreadsheet,
+  RefreshCw,
+  Download
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Progress } from '@/components/ui/progress';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Loader2, AlertCircle, CheckCircle, RefreshCw, FileSearch, BarChart2 } from 'lucide-react';
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
+import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
 
-// Type definitions
-interface QualityScore {
-  category: string;
-  score: number;
-  issueCount: number;
-  criticalCount: number;
-  lastUpdated: number;
-}
-
-interface DataQualityIssue {
-  id: string;
-  category: string;
-  field: string;
-  ruleType: string;
-  severity: string;
-  message: string;
-  recordId?: number | string;
-  value?: any;
-  expectedValue?: any;
-  timestamp: number;
-  remediation?: string;
-}
-
+// Data Quality Report interface
 interface DataQualityReport {
-  timestamp: number;
-  scores: {
-    overall: number;
-    byCategory: QualityScore[];
+  overallScore: number;
+  propertiesScore: number;
+  neighborhoodsScore: number;
+  salesScore: number;
+  timestamp: string;
+  totals: {
+    properties: number;
+    neighborhoods: number;
+    sales: number;
   };
-  issues: DataQualityIssue[];
-  stats: {
-    recordsProcessed: number;
-    issuesBySeverity: Record<string, number>;
-    issuesByCategory: Record<string, number>;
-    issuesByRule: Record<string, number>;
+  issues: {
+    critical: number;
+    major: number;
+    minor: number;
+  };
+  propertyIssues: Array<{
+    id: string;
+    field: string;
+    issue: string;
+    severity: 'critical' | 'major' | 'minor';
+    suggestedFix?: string;
+  }>;
+  neighborhoodIssues: Array<{
+    id: string;
+    field: string;
+    issue: string;
+    severity: 'critical' | 'major' | 'minor';
+    suggestedFix?: string;
+  }>;
+  salesIssues: Array<{
+    id: string;
+    field: string;
+    issue: string;
+    severity: 'critical' | 'major' | 'minor';
+    suggestedFix?: string;
+  }>;
+  validationRules: {
+    passed: number;
+    failed: number;
+    total: number;
+  };
+  completenessMetrics: {
+    properties: {
+      complete: number;
+      partial: number;
+      minimal: number;
+      total: number;
+    };
+    neighborhoods: {
+      complete: number;
+      partial: number;
+      minimal: number;
+      total: number;
+    };
+    sales: {
+      complete: number;
+      partial: number;
+      minimal: number;
+      total: number;
+    };
   };
 }
 
-const DataQualityPage = () => {
+const DataQualityPage: React.FC = () => {
+  const [activeTab, setActiveTab] = useState('overview');
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState('dashboard');
-  const [categoryFilter, setCategoryFilter] = useState<string | null>(null);
-  const [severityFilter, setSeverityFilter] = useState<string | null>(null);
-
-  // Fetch quality report
-  const { 
-    data: reportData, 
-    isLoading: reportLoading, 
-    isError: reportError,
-    refetch: refetchReport
-  } = useQuery({ 
-    queryKey: ['/api/data-quality/report'], 
-    staleTime: 5 * 60 * 1000 // 5 minutes
-  });
-
-  // Fetch quality issues with filters
-  const {
-    data: issuesData,
-    isLoading: issuesLoading,
-    refetch: refetchIssues
-  } = useQuery({
-    queryKey: ['/api/data-quality/issues', categoryFilter, severityFilter],
+  
+  // Fetch data quality report
+  const { data: report, isLoading, isError, refetch } = useQuery({
+    queryKey: ['/api/data-quality/report'],
     queryFn: async () => {
-      let url = '/api/data-quality/issues';
-      const params = new URLSearchParams();
-      
-      if (categoryFilter) params.append('category', categoryFilter);
-      if (severityFilter) params.append('severity', severityFilter);
-      
-      if (params.toString()) url += `?${params.toString()}`;
-      
-      const response = await fetch(url);
-      if (!response.ok) throw new Error('Failed to fetch quality issues');
-      return response.json();
+      const response = await apiRequest('/api/data-quality/report', { method: 'GET' });
+      return response as DataQualityReport;
     },
-    enabled: activeTab === 'issues',
-    staleTime: 5 * 60 * 1000
   });
 
-  // Get severity badge style
-  const getSeverityBadge = (severity: string) => {
-    switch (severity) {
-      case SeverityLevel.CRITICAL:
-        return <Badge variant="destructive">Critical</Badge>;
-      case SeverityLevel.ERROR:
-        return <Badge variant="destructive" className="bg-red-500">Error</Badge>;
-      case SeverityLevel.WARNING:
-        return <Badge variant="default" className="bg-amber-500">Warning</Badge>;
-      case SeverityLevel.INFO:
-        return <Badge variant="secondary">Info</Badge>;
-      default:
-        return <Badge variant="outline">{severity}</Badge>;
-    }
+  // Handle refresh button click
+  const handleRefresh = () => {
+    refetch();
+    toast({
+      title: 'Refreshing data quality report',
+      description: 'The latest data quality metrics are being calculated.',
+    });
   };
 
-  // Get category display name
-  const getCategoryName = (category: string) => {
-    switch (category) {
-      case DataCategory.PROPERTY:
-        return 'Property';
-      case DataCategory.SALE:
-        return 'Sale';
-      case DataCategory.NEIGHBORHOOD:
-        return 'Neighborhood';
-      case DataCategory.MARKET:
-        return 'Market';
-      default:
-        return category;
-    }
+  // Handle download report
+  const handleDownload = () => {
+    // Create CSV content
+    if (!report) return;
+    
+    let csvContent = "data:text/csv;charset=utf-8,";
+    csvContent += "Data Quality Report - " + new Date(report.timestamp).toLocaleString() + "\n\n";
+    
+    // Overall metrics
+    csvContent += "Overall Quality Score," + report.overallScore + "%\n";
+    csvContent += "Properties Score," + report.propertiesScore + "%\n";
+    csvContent += "Neighborhoods Score," + report.neighborhoodsScore + "%\n";
+    csvContent += "Sales Score," + report.salesScore + "%\n\n";
+    
+    // Totals
+    csvContent += "Total Properties," + report.totals.properties + "\n";
+    csvContent += "Total Neighborhoods," + report.totals.neighborhoods + "\n";
+    csvContent += "Total Sales," + report.totals.sales + "\n\n";
+    
+    // Issues
+    csvContent += "Critical Issues," + report.issues.critical + "\n";
+    csvContent += "Major Issues," + report.issues.major + "\n";
+    csvContent += "Minor Issues," + report.issues.minor + "\n\n";
+    
+    // Property Issues
+    csvContent += "Property Issues\n";
+    csvContent += "ID,Field,Issue,Severity,Suggested Fix\n";
+    report.propertyIssues.forEach(issue => {
+      csvContent += `${issue.id},${issue.field},"${issue.issue}",${issue.severity},"${issue.suggestedFix || ''}"\n`;
+    });
+    csvContent += "\n";
+    
+    // Neighborhood Issues
+    csvContent += "Neighborhood Issues\n";
+    csvContent += "ID,Field,Issue,Severity,Suggested Fix\n";
+    report.neighborhoodIssues.forEach(issue => {
+      csvContent += `${issue.id},${issue.field},"${issue.issue}",${issue.severity},"${issue.suggestedFix || ''}"\n`;
+    });
+    csvContent += "\n";
+    
+    // Sales Issues
+    csvContent += "Sales Issues\n";
+    csvContent += "ID,Field,Issue,Severity,Suggested Fix\n";
+    report.salesIssues.forEach(issue => {
+      csvContent += `${issue.id},${issue.field},"${issue.issue}",${issue.severity},"${issue.suggestedFix || ''}"\n`;
+    });
+    
+    // Create download link
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "data_quality_report.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: 'Download complete',
+      description: 'Data quality report has been downloaded as CSV.',
+    });
   };
 
-  // Regenerate quality report
-  const handleRegenerateReport = async () => {
-    try {
-      const response = await fetch('/api/data-quality/regenerate', {
-        method: 'POST'
-      });
-      
-      if (!response.ok) throw new Error('Failed to regenerate report');
-      
-      toast({
-        title: 'Report regenerated',
-        description: 'Data quality report has been successfully regenerated',
-      });
-      
-      // Refetch data
-      refetchReport();
-      refetchIssues();
-    } catch (error) {
-      toast({
-        variant: 'destructive',
-        title: 'Failed to regenerate report',
-        description: error instanceof Error ? error.message : 'Unknown error occurred',
-      });
-    }
-  };
-
-  // Get quality score color
-  const getScoreColor = (score: number) => {
-    if (score >= 90) return 'bg-green-500';
-    if (score >= 70) return 'bg-lime-500';
-    if (score >= 50) return 'bg-amber-500';
-    if (score >= 30) return 'bg-orange-500';
-    return 'bg-red-500';
-  };
-
-  if (reportLoading) {
+  // Loading state
+  if (isLoading) {
     return (
-      <div className="flex items-center justify-center h-[calc(100vh-8rem)]">
-        <div className="text-center">
-          <Loader2 className="h-8 w-8 animate-spin mx-auto mb-4" />
-          <h3 className="text-lg font-medium">Loading quality report...</h3>
-          <p className="text-sm text-muted-foreground">Please wait while we gather your data quality metrics</p>
+      <div className="container mx-auto p-8">
+        <h1 className="text-3xl font-bold mb-6">Data Quality Assessment</h1>
+        <div className="flex items-center justify-center h-64">
+          <div className="flex flex-col items-center">
+            <RefreshCw className="animate-spin h-8 w-8 mb-2" />
+            <p>Loading data quality report...</p>
+          </div>
         </div>
       </div>
     );
   }
 
-  if (reportError) {
+  // Error state
+  if (isError || !report) {
     return (
-      <div className="container mx-auto py-8">
-        <Alert variant="destructive" className="mb-8">
-          <AlertCircle className="h-4 w-4" />
-          <AlertTitle>Error</AlertTitle>
-          <AlertDescription>Failed to load data quality report. Please try again later.</AlertDescription>
-        </Alert>
-        <Button onClick={() => refetchReport()}>Retry</Button>
-      </div>
-    );
-  }
-
-  const report: DataQualityReport = reportData?.report;
-
-  return (
-    <div className="container mx-auto py-8">
-      <div className="flex items-center justify-between mb-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight">Data Quality Assessment</h1>
-          <p className="text-muted-foreground">
-            Monitor and improve the quality of your property data based on IAAO standards
-          </p>
-        </div>
-        <Button onClick={handleRegenerateReport} className="gap-2">
-          <RefreshCw className="h-4 w-4" />
-          Regenerate Report
-        </Button>
-      </div>
-
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
-          <TabsTrigger value="dashboard">
-            <BarChart2 className="h-4 w-4 mr-2" />
-            Dashboard
-          </TabsTrigger>
-          <TabsTrigger value="issues">
-            <AlertCircle className="h-4 w-4 mr-2" />
-            Quality Issues
-          </TabsTrigger>
-          <TabsTrigger value="records">
-            <FileSearch className="h-4 w-4 mr-2" />
-            Record Validation
-          </TabsTrigger>
-        </TabsList>
-
-        {/* Dashboard Tab */}
-        <TabsContent value="dashboard" className="mt-6">
-          {report && (
-            <>
-              <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4 mb-8">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Overall Quality Score</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-4xl font-bold">{report.scores.overall.toFixed(1)}/100</div>
-                    <Progress value={report.scores.overall} className="mt-2" />
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Based on {report.stats.recordsProcessed} records
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Total Issues</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-4xl font-bold">{report.issues.length}</div>
-                    <div className="mt-2 text-sm">
-                      <span className="text-red-500 font-medium mr-2">
-                        Critical: {report.stats.issuesBySeverity[SeverityLevel.CRITICAL] || 0}
-                      </span>
-                      <span className="text-amber-500 font-medium">
-                        Warnings: {report.stats.issuesBySeverity[SeverityLevel.WARNING] || 0}
-                      </span>
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Last Updated</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {new Date(report.timestamp).toLocaleString()}
-                    </div>
-                    <p className="text-xs text-muted-foreground mt-2">
-                      Generate a new report to refresh data
-                    </p>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm font-medium">Data Categories</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">{report.scores.byCategory.length}</div>
-                    <div className="grid grid-cols-2 gap-1 mt-2 text-xs">
-                      {report.scores.byCategory.map((category) => (
-                        <div key={category.category} className="flex items-center">
-                          <div className={`w-2 h-2 rounded-full mr-1 ${getScoreColor(category.score)}`} />
-                          <span>{getCategoryName(category.category)}</span>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <div className="grid gap-6 md:grid-cols-2 mb-8">
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Quality by Category</CardTitle>
-                    <CardDescription>
-                      Scores for different data types based on IAAO standards
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {report.scores.byCategory.map((category) => (
-                        <div key={category.category}>
-                          <div className="flex items-center justify-between mb-1">
-                            <span className="text-sm font-medium">{getCategoryName(category.category)}</span>
-                            <span className="text-sm font-medium">{category.score.toFixed(1)}/100</span>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            <Progress value={category.score} className="flex-1" />
-                            <span className="text-xs text-muted-foreground w-24">
-                              {category.issueCount} issues
-                              {category.criticalCount > 0 && ` (${category.criticalCount} critical)`}
-                            </span>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-
-                <Card>
-                  <CardHeader>
-                    <CardTitle>Issues by Severity</CardTitle>
-                    <CardDescription>
-                      Distribution of quality issues by severity level
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="space-y-4">
-                      {Object.entries(report.stats.issuesBySeverity).map(([severity, count]) => (
-                        <div key={severity}>
-                          <div className="flex items-center justify-between mb-1">
-                            <div className="flex items-center">
-                              {getSeverityBadge(severity)}
-                            </div>
-                            <span className="text-sm font-medium">{count} issues</span>
-                          </div>
-                          <Progress 
-                            value={(count / report.issues.length) * 100} 
-                            className={`h-2 ${severity === SeverityLevel.CRITICAL ? 'bg-red-100' : 
-                              severity === SeverityLevel.ERROR ? 'bg-orange-100' : 
-                              severity === SeverityLevel.WARNING ? 'bg-amber-100' : 'bg-gray-100'}`}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-            </>
-          )}
-        </TabsContent>
-
-        {/* Issues Tab */}
-        <TabsContent value="issues" className="mt-6">
-          <div className="flex flex-col sm:flex-row gap-4 mb-6">
-            <div className="w-full max-w-xs">
-              <Select
-                value={categoryFilter || ''}
-                onValueChange={(value) => setCategoryFilter(value || null)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by category" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Categories</SelectItem>
-                  <SelectItem value={DataCategory.PROPERTY}>Property</SelectItem>
-                  <SelectItem value={DataCategory.SALE}>Sale</SelectItem>
-                  <SelectItem value={DataCategory.NEIGHBORHOOD}>Neighborhood</SelectItem>
-                  <SelectItem value={DataCategory.MARKET}>Market</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="w-full max-w-xs">
-              <Select
-                value={severityFilter || ''}
-                onValueChange={(value) => setSeverityFilter(value || null)}
-              >
-                <SelectTrigger>
-                  <SelectValue placeholder="Filter by severity" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="">All Severities</SelectItem>
-                  <SelectItem value={SeverityLevel.CRITICAL}>Critical</SelectItem>
-                  <SelectItem value={SeverityLevel.ERROR}>Error</SelectItem>
-                  <SelectItem value={SeverityLevel.WARNING}>Warning</SelectItem>
-                  <SelectItem value={SeverityLevel.INFO}>Info</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <Button variant="outline" onClick={() => {
-              setCategoryFilter(null);
-              setSeverityFilter(null);
-            }}>
-              Clear Filters
+      <div className="container mx-auto p-8">
+        <h1 className="text-3xl font-bold mb-6">Data Quality Assessment</h1>
+        <Card className="mb-6">
+          <CardHeader className="bg-destructive/10">
+            <CardTitle className="flex items-center text-destructive">
+              <AlertCircle className="mr-2" /> 
+              Error Loading Data Quality Report
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <p>There was a problem loading the data quality report. This could be due to:</p>
+            <ul className="list-disc pl-6 mt-2">
+              <li>The data quality service is not available</li>
+              <li>There is no data in the database to analyze</li>
+              <li>A temporary network error occurred</li>
+            </ul>
+          </CardContent>
+          <CardFooter>
+            <Button onClick={handleRefresh} className="flex items-center">
+              <RefreshCw className="mr-2 h-4 w-4" /> Try Again
             </Button>
-          </div>
+          </CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
-          {issuesLoading ? (
-            <div className="flex items-center justify-center h-64">
-              <Loader2 className="h-8 w-8 animate-spin" />
+  // Render with data
+  return (
+    <div className="container mx-auto p-8">
+      <div className="flex justify-between items-center mb-6">
+        <h1 className="text-3xl font-bold">Data Quality Assessment</h1>
+        <div className="flex gap-2">
+          <Button variant="outline" onClick={handleRefresh} className="flex items-center">
+            <RefreshCw className="mr-2 h-4 w-4" /> Refresh
+          </Button>
+          <Button variant="outline" onClick={handleDownload} className="flex items-center">
+            <Download className="mr-2 h-4 w-4" /> Export CSV
+          </Button>
+        </div>
+      </div>
+      
+      <div className="text-sm text-muted-foreground mb-6">
+        Last updated: {new Date(report.timestamp).toLocaleString()}
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Overall Score</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold mb-2">{report.overallScore}%</div>
+            <Progress value={report.overallScore} className="h-2" />
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Properties</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold mb-2">{report.propertiesScore}%</div>
+            <Progress value={report.propertiesScore} className="h-2" />
+            <div className="text-xs text-muted-foreground mt-2">
+              {report.totals.properties} records
             </div>
-          ) : (
-            <Table>
-              <TableCaption>
-                {issuesData?.issues.length === 0 
-                  ? 'No quality issues found with the current filters' 
-                  : `Showing ${issuesData?.issues.length} quality issues`}
-              </TableCaption>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Severity</TableHead>
-                  <TableHead>Category</TableHead>
-                  <TableHead>Field</TableHead>
-                  <TableHead>Issue</TableHead>
-                  <TableHead>Record ID</TableHead>
-                  <TableHead>Suggestion</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {issuesData?.issues.map((issue: DataQualityIssue) => (
-                  <TableRow key={issue.id}>
-                    <TableCell>{getSeverityBadge(issue.severity)}</TableCell>
-                    <TableCell>{getCategoryName(issue.category)}</TableCell>
-                    <TableCell>{issue.field}</TableCell>
-                    <TableCell>{issue.message}</TableCell>
-                    <TableCell>{issue.recordId || 'N/A'}</TableCell>
-                    <TableCell>{issue.remediation || 'No suggestion'}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          )}
-        </TabsContent>
-
-        {/* Record Validation Tab */}
-        <TabsContent value="records" className="mt-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>Validate Property</CardTitle>
-                <CardDescription>
-                  Check a specific property for quality issues
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="propertyId" className="text-sm font-medium">
-                        Property ID
-                      </label>
-                      <input 
-                        id="propertyId"
-                        type="text" 
-                        className="w-full p-2 border rounded-md"
-                        placeholder="Enter property ID" 
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button type="submit" className="w-full">Validate</Button>
-                    </div>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader>
-                <CardTitle>Validate Sale</CardTitle>
-                <CardDescription>
-                  Check a specific sales transaction for quality issues
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <form className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-2">
-                      <label htmlFor="saleId" className="text-sm font-medium">
-                        Sale ID
-                      </label>
-                      <input 
-                        id="saleId"
-                        type="text" 
-                        className="w-full p-2 border rounded-md"
-                        placeholder="Enter sale ID" 
-                      />
-                    </div>
-                    <div className="flex items-end">
-                      <Button type="submit" className="w-full">Validate</Button>
-                    </div>
-                  </div>
-                </form>
-              </CardContent>
-            </Card>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Neighborhoods</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold mb-2">{report.neighborhoodsScore}%</div>
+            <Progress value={report.neighborhoodsScore} className="h-2" />
+            <div className="text-xs text-muted-foreground mt-2">
+              {report.totals.neighborhoods} records
+            </div>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-lg">Sales</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold mb-2">{report.salesScore}%</div>
+            <Progress value={report.salesScore} className="h-2" />
+            <div className="text-xs text-muted-foreground mt-2">
+              {report.totals.sales} records
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+      
+      <Card className="mb-8">
+        <CardHeader>
+          <CardTitle>Data Issues Summary</CardTitle>
+          <CardDescription>
+            Overview of identified data quality issues by severity
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="flex items-center">
+              <div className="mr-4 rounded-full bg-destructive/20 p-2">
+                <XCircle className="h-6 w-6 text-destructive" />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-muted-foreground">Critical Issues</div>
+                <div className="text-2xl font-bold">{report.issues.critical}</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center">
+              <div className="mr-4 rounded-full bg-amber-500/20 p-2">
+                <AlertTriangle className="h-6 w-6 text-amber-500" />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-muted-foreground">Major Issues</div>
+                <div className="text-2xl font-bold">{report.issues.major}</div>
+              </div>
+            </div>
+            
+            <div className="flex items-center">
+              <div className="mr-4 rounded-full bg-blue-500/20 p-2">
+                <AlertCircle className="h-6 w-6 text-blue-500" />
+              </div>
+              <div>
+                <div className="text-sm font-medium text-muted-foreground">Minor Issues</div>
+                <div className="text-2xl font-bold">{report.issues.minor}</div>
+              </div>
+            </div>
           </div>
+          
+          <div className="mt-6">
+            <div className="text-sm font-medium mb-2">Validation Rules Status</div>
+            <div className="flex items-center">
+              <Progress 
+                value={(report.validationRules.passed / report.validationRules.total) * 100} 
+                className="h-2 flex-1 mr-4" 
+              />
+              <div className="text-sm">
+                <span className="font-medium">{report.validationRules.passed}</span> 
+                <span className="text-muted-foreground"> of </span>
+                <span className="font-medium">{report.validationRules.total}</span>
+                <span className="text-muted-foreground"> rules passed</span>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+      
+      <Tabs defaultValue="overview" value={activeTab} onValueChange={setActiveTab} className="mb-8">
+        <TabsList className="grid grid-cols-4 mb-6">
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          <TabsTrigger value="properties">Properties</TabsTrigger>
+          <TabsTrigger value="neighborhoods">Neighborhoods</TabsTrigger>
+          <TabsTrigger value="sales">Sales</TabsTrigger>
+        </TabsList>
+        
+        <TabsContent value="overview">
+          <Card>
+            <CardHeader>
+              <CardTitle>Data Completeness Overview</CardTitle>
+              <CardDescription>
+                Assessment of field completeness across all data categories
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Property Data</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between mb-1 text-sm">
+                          <span>Complete Records</span>
+                          <span className="font-medium">{report.completenessMetrics.properties.complete}</span>
+                        </div>
+                        <Progress 
+                          value={(report.completenessMetrics.properties.complete / report.completenessMetrics.properties.total) * 100} 
+                          className="h-2" 
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between mb-1 text-sm">
+                          <span>Partial Records</span>
+                          <span className="font-medium">{report.completenessMetrics.properties.partial}</span>
+                        </div>
+                        <Progress 
+                          value={(report.completenessMetrics.properties.partial / report.completenessMetrics.properties.total) * 100} 
+                          className="h-2" 
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between mb-1 text-sm">
+                          <span>Minimal Records</span>
+                          <span className="font-medium">{report.completenessMetrics.properties.minimal}</span>
+                        </div>
+                        <Progress 
+                          value={(report.completenessMetrics.properties.minimal / report.completenessMetrics.properties.total) * 100} 
+                          className="h-2" 
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Neighborhood Data</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between mb-1 text-sm">
+                          <span>Complete Records</span>
+                          <span className="font-medium">{report.completenessMetrics.neighborhoods.complete}</span>
+                        </div>
+                        <Progress 
+                          value={(report.completenessMetrics.neighborhoods.complete / report.completenessMetrics.neighborhoods.total) * 100} 
+                          className="h-2" 
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between mb-1 text-sm">
+                          <span>Partial Records</span>
+                          <span className="font-medium">{report.completenessMetrics.neighborhoods.partial}</span>
+                        </div>
+                        <Progress 
+                          value={(report.completenessMetrics.neighborhoods.partial / report.completenessMetrics.neighborhoods.total) * 100} 
+                          className="h-2" 
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between mb-1 text-sm">
+                          <span>Minimal Records</span>
+                          <span className="font-medium">{report.completenessMetrics.neighborhoods.minimal}</span>
+                        </div>
+                        <Progress 
+                          value={(report.completenessMetrics.neighborhoods.minimal / report.completenessMetrics.neighborhoods.total) * 100} 
+                          className="h-2" 
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+                
+                <Card>
+                  <CardHeader className="pb-2">
+                    <CardTitle className="text-lg">Sales Data</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="space-y-4">
+                      <div>
+                        <div className="flex justify-between mb-1 text-sm">
+                          <span>Complete Records</span>
+                          <span className="font-medium">{report.completenessMetrics.sales.complete}</span>
+                        </div>
+                        <Progress 
+                          value={(report.completenessMetrics.sales.complete / report.completenessMetrics.sales.total) * 100} 
+                          className="h-2" 
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between mb-1 text-sm">
+                          <span>Partial Records</span>
+                          <span className="font-medium">{report.completenessMetrics.sales.partial}</span>
+                        </div>
+                        <Progress 
+                          value={(report.completenessMetrics.sales.partial / report.completenessMetrics.sales.total) * 100} 
+                          className="h-2" 
+                        />
+                      </div>
+                      
+                      <div>
+                        <div className="flex justify-between mb-1 text-sm">
+                          <span>Minimal Records</span>
+                          <span className="font-medium">{report.completenessMetrics.sales.minimal}</span>
+                        </div>
+                        <Progress 
+                          value={(report.completenessMetrics.sales.minimal / report.completenessMetrics.sales.total) * 100} 
+                          className="h-2" 
+                        />
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              </div>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="properties">
+          <Card>
+            <CardHeader>
+              <CardTitle>Property Data Issues</CardTitle>
+              <CardDescription>
+                Detailed listing of identified issues with property data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Property ID</TableHead>
+                    <TableHead>Field</TableHead>
+                    <TableHead>Issue</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Suggested Fix</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.propertyIssues.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center">
+                        <div className="py-6 flex flex-col items-center">
+                          <CheckCircle className="text-green-500 h-8 w-8 mb-2" />
+                          <span>No issues found with property data!</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    report.propertyIssues.map((issue, i) => (
+                      <TableRow key={`property-issue-${i}`}>
+                        <TableCell className="font-mono">{issue.id}</TableCell>
+                        <TableCell>{issue.field}</TableCell>
+                        <TableCell>{issue.issue}</TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            issue.severity === 'critical' ? 'destructive' : 
+                            issue.severity === 'major' ? 'warning' : 'default'
+                          }>
+                            {issue.severity}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{issue.suggestedFix || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="neighborhoods">
+          <Card>
+            <CardHeader>
+              <CardTitle>Neighborhood Data Issues</CardTitle>
+              <CardDescription>
+                Detailed listing of identified issues with neighborhood data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Neighborhood ID</TableHead>
+                    <TableHead>Field</TableHead>
+                    <TableHead>Issue</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Suggested Fix</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.neighborhoodIssues.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center">
+                        <div className="py-6 flex flex-col items-center">
+                          <CheckCircle className="text-green-500 h-8 w-8 mb-2" />
+                          <span>No issues found with neighborhood data!</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    report.neighborhoodIssues.map((issue, i) => (
+                      <TableRow key={`neighborhood-issue-${i}`}>
+                        <TableCell className="font-mono">{issue.id}</TableCell>
+                        <TableCell>{issue.field}</TableCell>
+                        <TableCell>{issue.issue}</TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            issue.severity === 'critical' ? 'destructive' : 
+                            issue.severity === 'major' ? 'warning' : 'default'
+                          }>
+                            {issue.severity}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{issue.suggestedFix || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="sales">
+          <Card>
+            <CardHeader>
+              <CardTitle>Sales Data Issues</CardTitle>
+              <CardDescription>
+                Detailed listing of identified issues with sales transaction data
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Sale ID</TableHead>
+                    <TableHead>Field</TableHead>
+                    <TableHead>Issue</TableHead>
+                    <TableHead>Severity</TableHead>
+                    <TableHead>Suggested Fix</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.salesIssues.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={5} className="text-center">
+                        <div className="py-6 flex flex-col items-center">
+                          <CheckCircle className="text-green-500 h-8 w-8 mb-2" />
+                          <span>No issues found with sales data!</span>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ) : (
+                    report.salesIssues.map((issue, i) => (
+                      <TableRow key={`sales-issue-${i}`}>
+                        <TableCell className="font-mono">{issue.id}</TableCell>
+                        <TableCell>{issue.field}</TableCell>
+                        <TableCell>{issue.issue}</TableCell>
+                        <TableCell>
+                          <Badge variant={
+                            issue.severity === 'critical' ? 'destructive' : 
+                            issue.severity === 'major' ? 'warning' : 'default'
+                          }>
+                            {issue.severity}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{issue.suggestedFix || 'N/A'}</TableCell>
+                      </TableRow>
+                    ))
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
         </TabsContent>
       </Tabs>
     </div>

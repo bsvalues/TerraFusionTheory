@@ -8,7 +8,10 @@
 import { Request, Response } from 'express';
 import { ServiceError, ValidationError } from '../errors';
 import { LogCategory, LogLevel } from '@shared/schema';
-import { optimizedLogger } from '../services/optimized-logging';
+import { OptimizedLogger } from '../services/optimized-logging';
+
+// Create a shared logger instance
+const logger = OptimizedLogger.getInstance();
 
 /**
  * List all available AI agents in the system
@@ -45,9 +48,9 @@ export async function listAllAgents(req: Request, res: Response) {
       agents
     });
   } catch (error) {
-    optimizedLogger.error(
-      LogCategory.AI,
+    logger.error(
       `Error listing agents: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      LogCategory.AI,
       { error }
     );
     
@@ -86,7 +89,7 @@ export async function getRealEstateAgent(req: Request, res: Response) {
       agent
     });
   } catch (error) {
-    optimizedLogger.error(
+    logger.error(
       LogCategory.AI,
       `Error retrieving real estate agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { error }
@@ -127,7 +130,7 @@ export async function getDeveloperAgent(req: Request, res: Response) {
       agent
     });
   } catch (error) {
-    optimizedLogger.error(
+    logger.error(
       LogCategory.AI,
       `Error retrieving developer agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { error }
@@ -152,7 +155,7 @@ export async function askRealEstateAgent(req: Request, res: Response) {
   
   try {
     // Log with correct type for LogCategory
-    optimizedLogger.info(
+    logger.info(
       LogCategory.AI, 
       `User asked real estate agent: ${question.substring(0, 100)}${question.length > 100 ? '...' : ''}`,
       { userSessionId: req.sessionID }
@@ -187,7 +190,7 @@ export async function askRealEstateAgent(req: Request, res: Response) {
       response: data.result || data.response || "I'm not sure how to answer that question about real estate."
     });
   } catch (error) {
-    optimizedLogger.error(
+    logger.error(
       LogCategory.AI, 
       `Error processing real estate agent query: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { error, question }
@@ -211,7 +214,7 @@ export async function askDeveloperAgent(req: Request, res: Response) {
   }
   
   try {
-    optimizedLogger.info(
+    logger.info(
       LogCategory.AI, 
       `User asked developer agent: ${question.substring(0, 100)}${question.length > 100 ? '...' : ''}`,
       { userSessionId: req.sessionID }
@@ -246,7 +249,7 @@ export async function askDeveloperAgent(req: Request, res: Response) {
       response: data.result || data.response || "I'm not sure how to answer that technical question."
     });
   } catch (error) {
-    optimizedLogger.error(
+    logger.error(
       LogCategory.AI, 
       `Error processing developer agent query: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { error, question }
@@ -271,7 +274,7 @@ export async function collaborateAgents(req: Request, res: Response) {
   }
   
   try {
-    optimizedLogger.info(
+    logger.info(
       LogCategory.AI, 
       `User requested agent collaboration: ${question.substring(0, 100)}${question.length > 100 ? '...' : ''}`,
       { userSessionId: req.sessionID }
@@ -306,7 +309,7 @@ export async function collaborateAgents(req: Request, res: Response) {
       response: data.result || data.response || "I'm sorry, I couldn't process your request at this time."
     });
   } catch (error) {
-    optimizedLogger.error(
+    logger.error(
       LogCategory.AI, 
       `Error processing agent collaboration: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { error, question }
@@ -330,7 +333,7 @@ export async function searchAgentMemory(req: Request, res: Response) {
   }
   
   try {
-    optimizedLogger.info(
+    logger.info(
       LogCategory.AI,
       `Searching agent memory: ${query}`,
       { userSessionId: req.sessionID }
@@ -361,7 +364,7 @@ export async function searchAgentMemory(req: Request, res: Response) {
       results: data.results || []
     });
   } catch (error) {
-    optimizedLogger.error(
+    logger.error(
       LogCategory.AI,
       `Error searching agent memory: ${error instanceof Error ? error.message : 'Unknown error'}`,
       { error, query }

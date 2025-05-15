@@ -1,424 +1,406 @@
 /**
  * Data Quality Controller
  * 
- * Provides endpoints for data quality assessment, reporting, and remediation.
- * Implements IAAO (International Association of Assessing Officers) standards
- * for property data validation and quality measurement.
+ * Implements API endpoints for assessing and reporting on data quality
+ * based on IAAO standards and industry best practices.
  */
 
 import { Request, Response } from 'express';
-import { OptimizedLogger } from '../services/optimized-logging';
-import { 
-  DataQualityFramework, 
-  DataCategory, 
-  SeverityLevel,
-  DataQualityIssue,
-  DataQualityReport
-} from '../../shared/validation/data-quality-framework';
-import { initializeIAAORules } from '../../shared/validation/iaao-validation-rules';
 import { db } from '../db';
-import { properties, propertySales as sales, neighborhoods } from '@shared/schema';
-import { eq } from 'drizzle-orm';
+import { storage } from '../storage';
+import { properties, propertySales as sales, neighborhoods } from '../../shared/schema';
+import { 
+  ValidationEngine, 
+  ValidationScope, 
+  ValidationCategory,
+  ValidationSeverity,
+  ValidationIssue,
+  DataQualityReport,
+  DataQualityMetrics,
+  validationEngine
+} from '../../shared/validation/data-quality-framework';
+import { OptimizedLogger } from '../services/optimized-logging';
+import { LogCategory } from '../../shared/schema';
 
+// Create logger for the data quality controller
 const logger = OptimizedLogger.getInstance();
 
-// Initialize the quality framework
-const framework = DataQualityFramework.getInstance();
-let isInitialized = false;
-
 /**
- * Initialize the data quality module
+ * Get a data quality report
  */
-export async function initializeDataQuality(): Promise<boolean> {
+export async function getDataQualityReport(req: Request, res: Response) {
   try {
-    if (!isInitialized) {
-      // Register IAAO validation rules
-      initializeIAAORules();
-      isInitialized = true;
-      logger.info('Data quality module initialized with IAAO rules');
-    }
-    return true;
-  } catch (error: any) {
-    logger.error(`Failed to initialize data quality module: ${error.message}`);
-    return false;
-  }
-}
-
-/**
- * Get data quality report
- */
-export async function getDataQualityReport(req: Request, res: Response): Promise<void> {
-  try {
-    if (!isInitialized) {
-      await initializeDataQuality();
-    }
+    logger.info('Generating data quality report', LogCategory.API);
     
-    // Get latest report if available
-    const latestReport = framework.getLatestReport();
+    // Get data for validation
+    const [propertiesData, salesData, neighborhoodsData] = await Promise.all([
+      fetchProperties(),
+      fetchSales(),
+      fetchNeighborhoods()
+    ]);
     
-    // If no report or report is older than 1 hour, generate a new one
-    if (!latestReport || Date.now() - latestReport.timestamp > 3600000) {
-      const newReport = await generateQualityReport();
-      res.json({
-        status: 'success',
-        report: newReport,
-        freshReport: true
-      });
-    } else {
-      res.json({
-        status: 'success',
-        report: latestReport,
-        freshReport: false
-      });
-    }
-  } catch (error: any) {
-    logger.error(`Error getting data quality report: ${error.message}`);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to get data quality report',
-      error: error.message
-    });
-  }
-}
-
-/**
- * Generate a full data quality report
- */
-async function generateQualityReport(): Promise<DataQualityReport> {
-  logger.info('Generating new data quality report');
-  
-  // Get all issues
-  const propertyIssues = await validateProperties();
-  const saleIssues = await validateSales();
-  const neighborhoodIssues = await validateNeighborhoods();
-  
-  // Count records by category
-  let propertyCount = 0;
-  let saleCount = 0;
-  let neighborhoodCount = 0;
-  
-  try {
-    // Get record counts
-    const propertyResult = await db.select().from(properties);
-    const saleResult = await db.select().from(sales);
-    const neighborhoodResult = await db.select().from(neighborhoods);
-    
-    propertyCount = propertyResult.length;
-    saleCount = saleResult.length;
-    neighborhoodCount = neighborhoodResult.length;
-  } catch (error) {
-    logger.error('Error counting records for quality report');
-  }
-  
-  // Combine all issues
-  const allIssues = [
-    ...propertyIssues,
-    ...saleIssues,
-    ...neighborhoodIssues
-  ];
-  
-  // Record counts by category
-  const recordsByCategory: Record<DataCategory, number> = {
-    [DataCategory.PROPERTY]: propertyCount,
-    [DataCategory.SALE]: saleCount,
-    [DataCategory.NEIGHBORHOOD]: neighborhoodCount,
-    [DataCategory.MARKET]: 1 // Always at least one market analysis
-  };
-  
-  // Generate report
-  const report = framework.generateReport(allIssues, recordsByCategory);
-  
-  logger.info(`Generated quality report with ${allIssues.length} issues`);
-  return report;
-}
-
-/**
- * Validate all properties
- */
-async function validateProperties(): Promise<DataQualityIssue[]> {
-  try {
-    // Get properties from database
-    const propertyData = await db.select().from(properties);
-    
-    // Validate properties
-    const issues = framework.validateRecords(
-      propertyData,
-      DataCategory.PROPERTY,
-      (record) => record.id
+    // Validate the data
+    const propertyResults = validationEngine.validateEntities(
+      propertiesData, 
+      ValidationScope.PROPERTY,
+      'id'
     );
     
-    logger.info(`Validated ${propertyData.length} properties, found ${issues.length} issues`);
-    return issues;
-  } catch (error: any) {
-    logger.error(`Error validating properties: ${error.message}`);
-    return [];
-  }
-}
-
-/**
- * Validate all sales
- */
-async function validateSales(): Promise<DataQualityIssue[]> {
-  try {
-    // Get sales from database
-    const salesData = await db.select().from(sales);
-    
-    // Validate sales
-    const issues = framework.validateRecords(
+    const saleResults = validationEngine.validateEntities(
       salesData,
-      DataCategory.SALE,
-      (record) => record.id
+      ValidationScope.SALE,
+      'id'
     );
     
-    logger.info(`Validated ${salesData.length} sales, found ${issues.length} issues`);
-    return issues;
-  } catch (error: any) {
-    logger.error(`Error validating sales: ${error.message}`);
-    return [];
+    const neighborhoodResults = validationEngine.validateEntities(
+      neighborhoodsData,
+      ValidationScope.NEIGHBORHOOD,
+      'id'
+    );
+    
+    // Combine all results
+    const allResults = [
+      ...propertyResults,
+      ...saleResults,
+      ...neighborhoodResults
+    ];
+    
+    // Generate report
+    const report = validationEngine.generateReport(allResults, {
+      properties: propertiesData.length,
+      sales: salesData.length,
+      neighborhoods: neighborhoodsData.length
+    });
+    
+    // Format the response
+    const formattedReport = formatReportForResponse(report);
+    
+    // Return the report
+    res.json(formattedReport);
+    logger.info('Data quality report generated successfully', LogCategory.API);
+  } catch (error) {
+    logger.error(`Error generating data quality report: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+      LogCategory.API, 
+      { error }
+    );
+    
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to generate data quality report',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
 }
 
 /**
- * Validate all neighborhoods
+ * Get data quality metrics only
  */
-async function validateNeighborhoods(): Promise<DataQualityIssue[]> {
+export async function getDataQualityMetrics(req: Request, res: Response) {
   try {
-    // Get neighborhoods from database
-    const neighborhoodData = await db.select().from(neighborhoods);
+    logger.info('Retrieving data quality metrics', LogCategory.API);
     
-    // Validate neighborhoods
-    const issues = framework.validateRecords(
-      neighborhoodData,
-      DataCategory.NEIGHBORHOOD,
-      (record) => record.id
+    // Get data for validation
+    const [propertiesData, salesData, neighborhoodsData] = await Promise.all([
+      fetchProperties(),
+      fetchSales(),
+      fetchNeighborhoods()
+    ]);
+    
+    // Validate the data
+    const propertyResults = validationEngine.validateEntities(
+      propertiesData, 
+      ValidationScope.PROPERTY,
+      'id'
     );
     
-    logger.info(`Validated ${neighborhoodData.length} neighborhoods, found ${issues.length} issues`);
-    return issues;
-  } catch (error: any) {
-    logger.error(`Error validating neighborhoods: ${error.message}`);
-    return [];
-  }
-}
-
-/**
- * Validate a single property
- */
-export async function validateProperty(req: Request, res: Response): Promise<void> {
-  try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({
-        status: 'error',
-        message: 'Property ID is required'
-      });
-      return;
-    }
-    
-    // Get property from database
-    const [property] = await db.select().from(properties).where(eq(properties.id, parseInt(id)));
-    
-    if (!property) {
-      res.status(404).json({
-        status: 'error',
-        message: `Property with ID ${id} not found`
-      });
-      return;
-    }
-    
-    // Validate property
-    const issues = framework.validateRecord(
-      property,
-      DataCategory.PROPERTY,
-      property.id
+    const saleResults = validationEngine.validateEntities(
+      salesData,
+      ValidationScope.SALE,
+      'id'
     );
     
+    const neighborhoodResults = validationEngine.validateEntities(
+      neighborhoodsData,
+      ValidationScope.NEIGHBORHOOD,
+      'id'
+    );
+    
+    // Combine all results
+    const allResults = [
+      ...propertyResults,
+      ...saleResults,
+      ...neighborhoodResults
+    ];
+    
+    // Calculate metrics
+    const metrics = validationEngine.calculateQualityMetrics(allResults, {
+      properties: propertiesData.length,
+      sales: salesData.length,
+      neighborhoods: neighborhoodsData.length
+    });
+    
+    // Return the metrics
     res.json({
       status: 'success',
-      property,
+      metrics,
+      timestamp: new Date()
+    });
+    logger.info('Data quality metrics retrieved successfully', LogCategory.API);
+  } catch (error) {
+    logger.error(`Error retrieving data quality metrics: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+      LogCategory.API, 
+      { error }
+    );
+    
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to retrieve data quality metrics',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+/**
+ * Get issues by scope
+ */
+export async function getIssuesByScope(req: Request, res: Response) {
+  try {
+    const scope = req.params.scope;
+    
+    // Validate scope parameter
+    if (!Object.values(ValidationScope).includes(scope as ValidationScope)) {
+      return res.status(400).json({
+        status: 'error',
+        message: `Invalid scope: ${scope}. Must be one of: ${Object.values(ValidationScope).join(', ')}`
+      });
+    }
+    
+    logger.info(`Retrieving data quality issues for scope: ${scope}`, LogCategory.API);
+    
+    // Get data for the specific scope
+    let data: any[] = [];
+    switch (scope) {
+      case ValidationScope.PROPERTY:
+        data = await fetchProperties();
+        break;
+      case ValidationScope.SALE:
+        data = await fetchSales();
+        break;
+      case ValidationScope.NEIGHBORHOOD:
+        data = await fetchNeighborhoods();
+        break;
+    }
+    
+    // Validate the data
+    const results = validationEngine.validateEntities(
+      data,
+      scope as ValidationScope,
+      'id'
+    );
+    
+    // Extract all issues
+    const issues = results.flatMap(r => r.issues);
+    
+    // Return the issues
+    res.json({
+      status: 'success',
+      scope,
+      count: issues.length,
       issues,
-      issueCount: issues.length
+      timestamp: new Date()
     });
-  } catch (error: any) {
-    logger.error(`Error validating property: ${error.message}`);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to validate property',
-      error: error.message
-    });
-  }
-}
-
-/**
- * Validate a single sale
- */
-export async function validateSale(req: Request, res: Response): Promise<void> {
-  try {
-    const { id } = req.params;
-    
-    if (!id) {
-      res.status(400).json({
-        status: 'error',
-        message: 'Sale ID is required'
-      });
-      return;
-    }
-    
-    // Get sale from database
-    const [sale] = await db.select().from(sales).where(eq(sales.id, parseInt(id)));
-    
-    if (!sale) {
-      res.status(404).json({
-        status: 'error',
-        message: `Sale with ID ${id} not found`
-      });
-      return;
-    }
-    
-    // Validate sale
-    const issues = framework.validateRecord(
-      sale,
-      DataCategory.SALE,
-      sale.id
+    logger.info(`Retrieved ${issues.length} issues for scope: ${scope}`, LogCategory.API);
+  } catch (error) {
+    logger.error(`Error retrieving issues by scope: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+      LogCategory.API, 
+      { error }
     );
     
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to retrieve issues by scope',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+}
+
+/**
+ * Get validation rules
+ */
+export async function getValidationRules(req: Request, res: Response) {
+  try {
+    logger.info('Retrieving validation rules', LogCategory.API);
+    
+    // Get all rules from the validation engine
+    const rules = validationEngine.getRules();
+    
+    // Return the rules
     res.json({
       status: 'success',
-      sale,
-      issues,
-      issueCount: issues.length
+      count: rules.length,
+      rules,
+      timestamp: new Date()
     });
-  } catch (error: any) {
-    logger.error(`Error validating sale: ${error.message}`);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to validate sale',
-      error: error.message
-    });
-  }
-}
-
-/**
- * Get quality issues for a specific category
- */
-export async function getQualityIssues(req: Request, res: Response): Promise<void> {
-  try {
-    const { category, severity } = req.query;
-    
-    // Get latest report
-    const latestReport = framework.getLatestReport();
-    
-    if (!latestReport) {
-      // Generate a new report if none exists
-      const newReport = await generateQualityReport();
-      
-      filterAndReturnIssues(newReport, res, category as string, severity as string);
-      return;
-    }
-    
-    filterAndReturnIssues(latestReport, res, category as string, severity as string);
-  } catch (error: any) {
-    logger.error(`Error getting quality issues: ${error.message}`);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to get quality issues',
-      error: error.message
-    });
-  }
-}
-
-/**
- * Filter issues and return them
- */
-function filterAndReturnIssues(
-  report: DataQualityReport,
-  res: Response,
-  category?: string | undefined,
-  severity?: string | undefined
-): void {
-  let filteredIssues = [...report.issues];
-  
-  // Filter by category if specified
-  if (category && Object.values(DataCategory).includes(category as DataCategory)) {
-    filteredIssues = filteredIssues.filter(
-      issue => issue.category === category
+    logger.info(`Retrieved ${rules.length} validation rules`, LogCategory.API);
+  } catch (error) {
+    logger.error(`Error retrieving validation rules: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+      LogCategory.API, 
+      { error }
     );
+    
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to retrieve validation rules',
+      error: error instanceof Error ? error.message : 'Unknown error'
+    });
   }
-  
-  // Filter by severity if specified
-  if (severity && Object.values(SeverityLevel).includes(severity as SeverityLevel)) {
-    filteredIssues = filteredIssues.filter(
-      issue => issue.severity === severity
+}
+
+/**
+ * Fetch properties from the database
+ */
+async function fetchProperties(): Promise<any[]> {
+  try {
+    // Return properties from the database
+    return await db.select().from(properties);
+  } catch (error) {
+    logger.error(`Error fetching properties: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+      LogCategory.DATABASE
     );
+    throw error;
+  }
+}
+
+/**
+ * Fetch sales from the database
+ */
+async function fetchSales(): Promise<any[]> {
+  try {
+    // Return sales from the database
+    return await db.select().from(sales);
+  } catch (error) {
+    logger.error(`Error fetching sales: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+      LogCategory.DATABASE
+    );
+    throw error;
+  }
+}
+
+/**
+ * Fetch neighborhoods from the database
+ */
+async function fetchNeighborhoods(): Promise<any[]> {
+  try {
+    // Return neighborhoods from the database
+    return await db.select().from(neighborhoods);
+  } catch (error) {
+    logger.error(`Error fetching neighborhoods: ${error instanceof Error ? error.message : 'Unknown error'}`, 
+      LogCategory.DATABASE
+    );
+    throw error;
+  }
+}
+
+/**
+ * Format data quality report for API response
+ */
+function formatReportForResponse(report: DataQualityReport): any {
+  // Extract issues by scope and severity
+  const propertyIssues = report.issues.filter(i => i.scope === ValidationScope.PROPERTY)
+    .map(formatIssue);
+  
+  const neighborhoodIssues = report.issues.filter(i => i.scope === ValidationScope.NEIGHBORHOOD)
+    .map(formatIssue);
+  
+  const salesIssues = report.issues.filter(i => i.scope === ValidationScope.SALE)
+    .map(formatIssue);
+  
+  // Count issues by severity
+  const criticalIssues = report.issues.filter(i => i.severity === ValidationSeverity.CRITICAL).length;
+  const majorIssues = report.issues.filter(i => i.severity === ValidationSeverity.MAJOR).length;
+  const minorIssues = report.issues.filter(i => i.severity === ValidationSeverity.MINOR).length;
+  
+  // Format response
+  return {
+    overallScore: report.metrics.overallScore,
+    propertiesScore: report.metrics.propertiesScore,
+    neighborhoodsScore: report.metrics.neighborhoodsScore,
+    salesScore: report.metrics.salesScore,
+    timestamp: report.timestamp.toISOString(),
+    totals: {
+      properties: report.metrics.totalProperties,
+      neighborhoods: report.metrics.totalNeighborhoods,
+      sales: report.metrics.totalSales
+    },
+    issues: {
+      critical: criticalIssues,
+      major: majorIssues,
+      minor: minorIssues
+    },
+    propertyIssues,
+    neighborhoodIssues,
+    salesIssues,
+    validationRules: {
+      passed: report.metrics.rulesPassed,
+      failed: report.metrics.rulesFailed,
+      total: report.metrics.totalRules
+    },
+    completenessMetrics: {
+      properties: calculateCompletenessMetrics(report.metrics, ValidationScope.PROPERTY),
+      neighborhoods: calculateCompletenessMetrics(report.metrics, ValidationScope.NEIGHBORHOOD),
+      sales: calculateCompletenessMetrics(report.metrics, ValidationScope.SALE)
+    }
+  };
+}
+
+/**
+ * Format a validation issue for API response
+ */
+function formatIssue(issue: ValidationIssue): any {
+  return {
+    id: issue.entityId,
+    field: issue.field,
+    issue: issue.message,
+    severity: issue.severity,
+    suggestedFix: issue.suggestedFix
+  };
+}
+
+/**
+ * Calculate completeness metrics based on the report metrics
+ */
+function calculateCompletenessMetrics(metrics: DataQualityMetrics, scope: ValidationScope): any {
+  // This would typically be based on actual completeness statistics
+  // Here we're making a simplified estimation based on quality scores
+  
+  let total = 0;
+  let score = 0;
+  
+  switch (scope) {
+    case ValidationScope.PROPERTY:
+      total = metrics.totalProperties;
+      score = metrics.propertiesScore;
+      break;
+    case ValidationScope.NEIGHBORHOOD:
+      total = metrics.totalNeighborhoods;
+      score = metrics.neighborhoodsScore;
+      break;
+    case ValidationScope.SALE:
+      total = metrics.totalSales;
+      score = metrics.salesScore;
+      break;
   }
   
-  res.json({
-    status: 'success',
-    issues: filteredIssues,
-    totalIssues: report.issues.length,
-    filteredCount: filteredIssues.length,
-    filters: {
-      category,
-      severity
-    }
-  });
-}
-
-/**
- * Get quality statistics
- */
-export async function getQualityStats(req: Request, res: Response): Promise<void> {
-  try {
-    // Get latest report or generate new one
-    const latestReport = framework.getLatestReport();
-    
-    if (!latestReport) {
-      // Generate a new report if none exists
-      const newReport = await generateQualityReport();
-      
-      res.json({
-        status: 'success',
-        stats: newReport.stats,
-        scores: newReport.scores,
-        freshReport: true
-      });
-      return;
-    }
-    
-    res.json({
-      status: 'success',
-      stats: latestReport.stats,
-      scores: latestReport.scores,
-      freshReport: false
-    });
-  } catch (error: any) {
-    logger.error(`Error getting quality stats: ${error.message}`);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to get quality statistics',
-      error: error.message
-    });
-  }
-}
-
-/**
- * Force regeneration of quality report
- */
-export async function regenerateQualityReport(req: Request, res: Response): Promise<void> {
-  try {
-    const newReport = await generateQualityReport();
-    
-    res.json({
-      status: 'success',
-      report: newReport
-    });
-  } catch (error: any) {
-    logger.error(`Error regenerating quality report: ${error.message}`);
-    res.status(500).json({
-      status: 'error',
-      message: 'Failed to regenerate quality report',
-      error: error.message
-    });
-  }
+  // Estimate completeness categories based on score
+  // This is just an example - real implementation would use more sophisticated logic
+  const complete = Math.round(total * (score / 100) * 0.7);
+  const partial = Math.round(total * (score / 100) * 0.2);
+  const minimal = total - complete - partial;
+  
+  return {
+    complete,
+    partial,
+    minimal,
+    total
+  };
 }

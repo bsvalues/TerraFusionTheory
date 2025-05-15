@@ -1,50 +1,38 @@
 /**
  * Data Quality Routes
  * 
- * Provides API endpoints for data quality assessment, reporting,
- * and validation based on IAAO standards.
+ * This module defines the API routes for the data quality assessment
+ * and reporting system.
  */
 
 import { Router } from 'express';
-import { asyncHandler } from '../middleware/errorHandler';
 import * as dataQualityController from '../controllers/data-quality.controller';
+import { asyncHandler } from '../middleware/errorHandler';
 
 const router = Router();
 
 /**
  * @route GET /api/data-quality/report
- * @description Get data quality report
+ * @description Get a comprehensive data quality report
  */
 router.get('/report', asyncHandler(dataQualityController.getDataQualityReport));
 
 /**
- * @route GET /api/data-quality/issues
- * @description Get quality issues, optionally filtered by category and severity
+ * @route GET /api/data-quality/metrics
+ * @description Get data quality metrics only
  */
-router.get('/issues', asyncHandler(dataQualityController.getQualityIssues));
+router.get('/metrics', asyncHandler(dataQualityController.getDataQualityMetrics));
 
 /**
- * @route GET /api/data-quality/stats
- * @description Get quality statistics
+ * @route GET /api/data-quality/issues/:scope
+ * @description Get data quality issues by scope (property, sale, neighborhood)
  */
-router.get('/stats', asyncHandler(dataQualityController.getQualityStats));
+router.get('/issues/:scope', asyncHandler(dataQualityController.getIssuesByScope));
 
 /**
- * @route POST /api/data-quality/regenerate
- * @description Force regeneration of quality report
+ * @route GET /api/data-quality/rules
+ * @description Get all validation rules
  */
-router.post('/regenerate', asyncHandler(dataQualityController.regenerateQualityReport));
-
-/**
- * @route GET /api/data-quality/property/:id
- * @description Validate a specific property
- */
-router.get('/property/:id', asyncHandler(dataQualityController.validateProperty));
-
-/**
- * @route GET /api/data-quality/sale/:id
- * @description Validate a specific sale
- */
-router.get('/sale/:id', asyncHandler(dataQualityController.validateSale));
+router.get('/rules', asyncHandler(dataQualityController.getValidationRules));
 
 export const dataQualityRoutes = router;

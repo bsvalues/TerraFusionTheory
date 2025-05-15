@@ -1,50 +1,107 @@
 /**
  * ACI Real Estate Connector
  * 
- * This service manages the integration with real estate-specific tools via the ACI platform.
- * It provides a unified interface for accessing property data, map services, and market analysis
- * tools while handling authentication, caching, and error handling.
+ * This connector integrates with the ACI API to provide real estate market data.
+ * It handles authentication, API calls, and data transformation.
  */
 
 import axios from 'axios';
-import { spawn } from 'child_process';
-import * as fs from 'fs';
-import * as path from 'path';
 import { OptimizedLogger } from '../optimized-logging';
 import { LogCategory } from '../../../shared/schema';
 
+// Create logger for this connector
 const logger = OptimizedLogger.getInstance();
 
-// Available real estate-related ACI apps
-export enum RealEstateApp {
-  GOOGLE_MAPS = 'GOOGLE_MAPS',
-  GOOGLE_PLACES = 'GOOGLE_PLACES',
-  CENSUS = 'CENSUS',
-  OPEN_WEATHER_MAP = 'OPEN_WEATHER_MAP',
-  PROPERTY_SHARK = 'PROPERTY_SHARK',
-  WALK_SCORE = 'WALK_SCORE'
+// Constants
+const ACI_BASE_URL = 'https://api.aciwebservices.com';
+const API_KEY = process.env.ACI_API_KEY || '';
+const SERVICE_ENDPOINT = '/aciwebservices/valuation';
+const NEIGHBORHOOD_ENDPOINT = '/aciwebservices/neighborhood';
+const GEOCODING_ENDPOINT = '/aciwebservices/geocode';
+const CLIMATE_ENDPOINT = '/aciwebservices/climate';
+const MAP_ENDPOINT = '/aciwebservices/map';
+
+// Interface for geocoding results
+interface GeocodingResult {
+  latitude: number;
+  longitude: number;
+  confidence: string;
+  formattedAddress: string;
 }
 
-// Cache for API responses to reduce redundant calls
-type CacheEntry = {
-  data: any;
-  timestamp: number;
-  expiresIn: number; // milliseconds
-};
+// Interface for property data
+interface PropertyData {
+  address: string;
+  city: string;
+  state: string;
+  zip: string;
+  county: string;
+  propertyType: string;
+  yearBuilt: number | null;
+  squareFeet: number | null;
+  lotSize: number | null;
+  bedrooms: number | null;
+  bathrooms: number | null;
+  lastSaleDate: string | null;
+  lastSalePrice: number | null;
+  estimatedValue: number | null;
+  assessedValue: number | null;
+  taxAmount: number | null;
+  zoning: string | null;
+  latitude: number | null;
+  longitude: number | null;
+  parcelId: string | null;
+  additionalDetails: Record<string, any>;
+}
 
+// Interface for neighborhood data
+interface NeighborhoodData {
+  name: string;
+  medianHomeValue: number | null;
+  averageHomeValue: number | null;
+  averageYearBuilt: number | null;
+  totalProperties: number | null;
+  schoolRating: number | null;
+  crimeIndex: number | null;
+  walkScore: number | null;
+  transitScore: number | null;
+  demographics: Record<string, any>;
+  trends: Record<string, any>;
+  boundaries: any; // GeoJSON polygon
+}
+
+// Interface for climate data
+interface ClimateData {
+  annualPrecipitation: number;
+  annualSnowfall: number | null;
+  averageTemperature: number;
+  averageHighTemperature: number;
+  averageLowTemperature: number;
+  floodRisk: string;
+  droughtRisk: string;
+  fireRisk: string;
+  stormRisk: string;
+  naturalDisasterHistory: Record<string, any>;
+}
+
+// Create component logger
+// Logger is already defined at the top of the file
+
+/**
+ * ACI Real Estate Connector
+ * Provides methods to interact with ACI API for real estate data
+ */
 export class ACIRealEstateConnector {
   private static instance: ACIRealEstateConnector;
-  private cache: Map<string, CacheEntry> = new Map();
-  private cacheExpiryDefault = 30 * 60 * 1000; // 30 minutes
-  private isInitialized = false;
-  private connectedApps: Set<string> = new Set();
-
+  private apiKey: string;
+  private initialized: boolean = false;
+  
   private constructor() {
-    // Private constructor for singleton pattern
+    this.apiKey = API_KEY;
   }
-
+  
   /**
-   * Get the singleton instance of the connector
+   * Get the singleton instance
    */
   public static getInstance(): ACIRealEstateConnector {
     if (!ACIRealEstateConnector.instance) {
@@ -52,352 +109,291 @@ export class ACIRealEstateConnector {
     }
     return ACIRealEstateConnector.instance;
   }
-
+  
   /**
-   * Initialize the connector by checking available services
+   * Initialize the connector with API credentials
    */
   public async initialize(): Promise<boolean> {
+    // Check if API key is available
+    if (!this.apiKey) {
+      logger.error('ACI API key is not configured');
+      return false;
+    }
+    
     try {
-      // Check if ACI is available and configured
-      const response = await axios.get('/api/aci/status');
-      
-      if (response.data.status === 'success' && response.data.initialized) {
-        this.isInitialized = true;
-        
-        // Get linked accounts
-        const linkedAccounts = await this.getLinkedAccounts();
-        
-        // Register available apps
-        if (Array.isArray(linkedAccounts)) {
-          linkedAccounts.forEach(account => {
-            if (account.app_name) {
-              this.connectedApps.add(account.app_name);
-            }
-          });
-        }
-        
-        logger.info(`ACIRealEstateConnector initialized with ${this.connectedApps.size} connected apps`);
-        return true;
-      } else {
-        logger.warning('ACI is not properly initialized', LogCategory.API);
-        return false;
-      }
-    } catch (error: any) {
-      logger.error(`Failed to initialize ACIRealEstateConnector: ${error.message}`);
+      // Validate API key with a simple request
+      await this.validateApiKey();
+      this.initialized = true;
+      logger.info('ACI Real Estate Connector initialized successfully');
+      return true;
+    } catch (error) {
+      logger.error(`Failed to initialize ACI connector: ${error instanceof Error ? error.message : String(error)}`);
       return false;
     }
   }
-
+  
   /**
-   * Get linked accounts from ACI
+   * Validate API key by making a test request
    */
-  private async getLinkedAccounts(): Promise<any[]> {
+  private async validateApiKey(): Promise<void> {
     try {
-      const response = await axios.get('/api/aci/accounts');
-      
-      if (response.data.status === 'success' && Array.isArray(response.data.accounts)) {
-        return response.data.accounts;
-      }
-      
-      return [];
-    } catch (error) {
-      logger.error('Failed to get linked accounts');
-      return [];
-    }
-  }
-
-  /**
-   * Check if an app is connected and available
-   */
-  public isAppConnected(appName: string): boolean {
-    return this.connectedApps.has(appName);
-  }
-
-  /**
-   * Execute a function from a specific app
-   */
-  public async executeFunction(
-    appName: string,
-    functionName: string,
-    parameters: Record<string, any>
-  ): Promise<any> {
-    const cacheKey = this.getCacheKey(appName, functionName, parameters);
-    
-    // Check cache first
-    const cachedResult = this.getFromCache(cacheKey);
-    if (cachedResult) {
-      logger.debug(`Using cached result for ${appName}.${functionName}`);
-      return cachedResult;
-    }
-    
-    try {
-      const response = await axios.post('/api/aci/execute', {
-        app_name: appName,
-        function_name: functionName,
-        parameters
+      const response = await axios.get(`${ACI_BASE_URL}/status`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        }
       });
       
-      if (response.data.status === 'success') {
-        // Store in cache
-        this.addToCache(cacheKey, response.data.result);
-        return response.data.result;
-      } else {
-        throw new Error(`Error executing ${appName}.${functionName}: ${response.data.message}`);
+      if (response.status !== 200) {
+        throw new Error(`API validation failed with status ${response.status}`);
       }
-    } catch (error: any) {
-      const errorMessage = error.response?.data?.message || error.message;
-      logger.error(`Failed to execute ${appName}.${functionName}: ${errorMessage}`);
-      throw new Error(`Failed to execute ${appName}.${functionName}: ${errorMessage}`);
+    } catch (error) {
+      logger.error(`API key validation failed: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error('Failed to validate ACI API key');
     }
   }
-
+  
   /**
-   * Generate a cache key from function parameters
+   * Get property data for a given address
    */
-  private getCacheKey(
-    appName: string,
-    functionName: string,
-    parameters: Record<string, any>
-  ): string {
-    return `${appName}_${functionName}_${JSON.stringify(parameters)}`;
-  }
-
-  /**
-   * Get data from cache if valid
-   */
-  private getFromCache(key: string): any | null {
-    const entry = this.cache.get(key);
-    
-    if (!entry) {
-      return null;
+  public async getPropertyData(address: string): Promise<PropertyData> {
+    if (!this.initialized) {
+      throw new Error('ACI connector is not initialized');
     }
     
-    const now = Date.now();
-    if (now - entry.timestamp > entry.expiresIn) {
-      // Cache expired
-      this.cache.delete(key);
-      return null;
-    }
-    
-    return entry.data;
-  }
-
-  /**
-   * Add data to cache
-   */
-  private addToCache(key: string, data: any, expiresIn: number = this.cacheExpiryDefault): void {
-    this.cache.set(key, {
-      data,
-      timestamp: Date.now(),
-      expiresIn
-    });
-    
-    // Clean cache if it gets too large (>1000 entries)
-    if (this.cache.size > 1000) {
-      this.cleanCache();
-    }
-  }
-
-  /**
-   * Clean expired cache entries
-   */
-  private cleanCache(): void {
-    const now = Date.now();
-    for (const [key, entry] of this.cache.entries()) {
-      if (now - entry.timestamp > entry.expiresIn) {
-        this.cache.delete(key);
-      }
-    }
-  }
-
-  /**
-   * Link an account with an API key
-   */
-  public async linkApiKey(appName: string, apiKey: string): Promise<boolean> {
     try {
-      const response = await axios.post('/api/aci/link/api-key', {
-        app_name: appName,
-        api_key: apiKey
+      logger.info(`Fetching property data for address: ${address}`);
+      
+      // First geocode the address to get coordinates
+      const coordinates = await this.geocodeAddress(address);
+      
+      // Then get the property data using the coordinates
+      const response = await axios.get(`${ACI_BASE_URL}${SERVICE_ENDPOINT}`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          address: address,
+          lat: coordinates.latitude,
+          lng: coordinates.longitude,
+          includeDetails: true
+        }
       });
       
-      if (response.data.status === 'success') {
-        this.connectedApps.add(appName);
-        return true;
+      // Transform the response into our PropertyData interface
+      return this.transformPropertyData(response.data);
+    } catch (error) {
+      logger.error(`Error fetching property data: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to get property data: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  /**
+   * Transform raw API property data into our interface
+   */
+  private transformPropertyData(rawData: any): PropertyData {
+    return {
+      address: rawData.address || '',
+      city: rawData.city || '',
+      state: rawData.state || '',
+      zip: rawData.zipCode || '',
+      county: rawData.county || '',
+      propertyType: rawData.propertyType || '',
+      yearBuilt: rawData.yearBuilt ? parseInt(rawData.yearBuilt) : null,
+      squareFeet: rawData.squareFeet ? parseFloat(rawData.squareFeet) : null,
+      lotSize: rawData.lotSize ? parseFloat(rawData.lotSize) : null,
+      bedrooms: rawData.bedrooms ? parseInt(rawData.bedrooms) : null,
+      bathrooms: rawData.bathrooms ? parseFloat(rawData.bathrooms) : null,
+      lastSaleDate: rawData.lastSaleDate || null,
+      lastSalePrice: rawData.lastSalePrice ? parseFloat(rawData.lastSalePrice) : null,
+      estimatedValue: rawData.estimatedValue ? parseFloat(rawData.estimatedValue) : null,
+      assessedValue: rawData.assessedValue ? parseFloat(rawData.assessedValue) : null,
+      taxAmount: rawData.taxAmount ? parseFloat(rawData.taxAmount) : null,
+      zoning: rawData.zoning || null,
+      latitude: rawData.latitude ? parseFloat(rawData.latitude) : null,
+      longitude: rawData.longitude ? parseFloat(rawData.longitude) : null,
+      parcelId: rawData.parcelId || null,
+      additionalDetails: rawData.additionalDetails || {}
+    };
+  }
+  
+  /**
+   * Get neighborhood data for given coordinates
+   */
+  public async getNeighborhoodData(latitude: number, longitude: number): Promise<NeighborhoodData> {
+    if (!this.initialized) {
+      throw new Error('ACI connector is not initialized');
+    }
+    
+    try {
+      logger.info(`Fetching neighborhood data for coordinates: ${latitude}, ${longitude}`);
+      
+      const response = await axios.get(`${ACI_BASE_URL}${NEIGHBORHOOD_ENDPOINT}`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          lat: latitude,
+          lng: longitude,
+          includeDetails: true,
+          includeBoundaries: true
+        }
+      });
+      
+      // Transform the response into our NeighborhoodData interface
+      return this.transformNeighborhoodData(response.data);
+    } catch (error) {
+      logger.error(`Error fetching neighborhood data: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to get neighborhood data: ${error instanceof Error ? error.message : String(error)}`);
+    }
+  }
+  
+  /**
+   * Transform raw API neighborhood data into our interface
+   */
+  private transformNeighborhoodData(rawData: any): NeighborhoodData {
+    return {
+      name: rawData.neighborhoodName || 'Unknown',
+      medianHomeValue: rawData.medianHomeValue ? parseFloat(rawData.medianHomeValue) : null,
+      averageHomeValue: rawData.averageHomeValue ? parseFloat(rawData.averageHomeValue) : null,
+      averageYearBuilt: rawData.averageYearBuilt ? parseFloat(rawData.averageYearBuilt) : null,
+      totalProperties: rawData.totalProperties ? parseInt(rawData.totalProperties) : null,
+      schoolRating: rawData.schoolRating ? parseFloat(rawData.schoolRating) : null,
+      crimeIndex: rawData.crimeIndex ? parseFloat(rawData.crimeIndex) : null,
+      walkScore: rawData.walkScore ? parseFloat(rawData.walkScore) : null,
+      transitScore: rawData.transitScore ? parseFloat(rawData.transitScore) : null,
+      demographics: rawData.demographics || {},
+      trends: rawData.trends || {},
+      boundaries: rawData.boundaries || null
+    };
+  }
+  
+  /**
+   * Geocode an address to get coordinates
+   */
+  public async geocodeAddress(address: string): Promise<GeocodingResult> {
+    if (!this.initialized) {
+      throw new Error('ACI connector is not initialized');
+    }
+    
+    try {
+      logger.info(`Geocoding address: ${address}`);
+      
+      const response = await axios.get(`${ACI_BASE_URL}${GEOCODING_ENDPOINT}`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          address: address
+        }
+      });
+      
+      if (!response.data || !response.data.latitude || !response.data.longitude) {
+        throw new Error('Geocoding failed, no coordinates returned');
       }
       
-      return false;
+      return {
+        latitude: parseFloat(response.data.latitude),
+        longitude: parseFloat(response.data.longitude),
+        confidence: response.data.confidence || 'unknown',
+        formattedAddress: response.data.formattedAddress || address
+      };
     } catch (error) {
-      logger.error(`Failed to link API key for ${appName}`);
-      return false;
+      logger.error(`Error geocoding address: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to geocode address: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
-
+  
   /**
-   * Get property data from available services
+   * Get climate data for given coordinates
    */
-  public async getPropertyData(address: string, parameters: Record<string, any> = {}): Promise<any> {
-    // First try PropertyShark if available
-    if (this.isAppConnected(RealEstateApp.PROPERTY_SHARK)) {
-      try {
-        return await this.executeFunction(
-          RealEstateApp.PROPERTY_SHARK,
-          'PROPERTY_DETAILS',
-          { address, ...parameters }
-        );
-      } catch (error) {
-        logger.error(`PropertyShark lookup failed, trying alternative sources`);
-        // Continue to try other sources
-      }
+  public async getClimateData(latitude: number, longitude: number): Promise<ClimateData> {
+    if (!this.initialized) {
+      throw new Error('ACI connector is not initialized');
     }
     
-    // Otherwise, use Google Places to get some basic info
-    if (this.isAppConnected(RealEstateApp.GOOGLE_PLACES)) {
-      try {
-        return await this.executeFunction(
-          RealEstateApp.GOOGLE_PLACES,
-          'SEARCH',
-          { query: address, ...parameters }
-        );
-      } catch (error) {
-        logger.error(`Google Places lookup failed`);
-        throw new Error(`Failed to get property data for ${address}`);
-      }
-    }
-    
-    throw new Error('No compatible property data services available');
-  }
-
-  /**
-   * Get geographic coordinates for an address
-   */
-  public async geocodeAddress(address: string): Promise<{ lat: number, lng: number }> {
-    if (this.isAppConnected(RealEstateApp.GOOGLE_MAPS)) {
-      try {
-        const result = await this.executeFunction(
-          RealEstateApp.GOOGLE_MAPS,
-          'GEOCODE',
-          { address }
-        );
-        
-        if (result && result.results && result.results.length > 0) {
-          const location = result.results[0].geometry.location;
-          return { 
-            lat: location.lat, 
-            lng: location.lng 
-          };
+    try {
+      logger.info(`Fetching climate data for coordinates: ${latitude}, ${longitude}`);
+      
+      const response = await axios.get(`${ACI_BASE_URL}${CLIMATE_ENDPOINT}`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          lat: latitude,
+          lng: longitude
         }
-      } catch (error) {
-        logger.error(`Geocoding failed for address: ${address}`);
-      }
+      });
+      
+      // Transform the response into our ClimateData interface
+      return this.transformClimateData(response.data);
+    } catch (error) {
+      logger.error(`Error fetching climate data: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to get climate data: ${error instanceof Error ? error.message : String(error)}`);
     }
-    
-    throw new Error(`Failed to geocode address: ${address}`);
   }
-
+  
   /**
-   * Get neighborhood data for a location
+   * Transform raw API climate data into our interface
    */
-  public async getNeighborhoodData(lat: number, lng: number): Promise<any> {
-    const results: Record<string, any> = {};
-    
-    // Get Walk Score if available
-    if (this.isAppConnected(RealEstateApp.WALK_SCORE)) {
-      try {
-        results.walkScore = await this.executeFunction(
-          RealEstateApp.WALK_SCORE,
-          'GET_SCORE',
-          { lat, lng }
-        );
-      } catch (error) {
-        logger.error(`Failed to get Walk Score`);
-      }
-    }
-    
-    // Get nearby places
-    if (this.isAppConnected(RealEstateApp.GOOGLE_PLACES)) {
-      try {
-        results.nearbyPlaces = await this.executeFunction(
-          RealEstateApp.GOOGLE_PLACES,
-          'NEARBY_SEARCH',
-          { 
-            location: `${lat},${lng}`,
-            radius: 1000, // 1km radius
-            type: 'restaurant|school|park|shopping_mall'
-          }
-        );
-      } catch (error) {
-        logger.error(`Failed to get nearby places`);
-      }
-    }
-    
-    // Get census data
-    if (this.isAppConnected(RealEstateApp.CENSUS)) {
-      try {
-        results.censusData = await this.executeFunction(
-          RealEstateApp.CENSUS,
-          'GET_DATA',
-          { lat, lng }
-        );
-      } catch (error) {
-        logger.error(`Failed to get census data`);
-      }
-    }
-    
-    return results;
+  private transformClimateData(rawData: any): ClimateData {
+    return {
+      annualPrecipitation: rawData.annualPrecipitation ? parseFloat(rawData.annualPrecipitation) : 0,
+      annualSnowfall: rawData.annualSnowfall ? parseFloat(rawData.annualSnowfall) : null,
+      averageTemperature: rawData.averageTemperature ? parseFloat(rawData.averageTemperature) : 0,
+      averageHighTemperature: rawData.averageHighTemperature ? parseFloat(rawData.averageHighTemperature) : 0,
+      averageLowTemperature: rawData.averageLowTemperature ? parseFloat(rawData.averageLowTemperature) : 0,
+      floodRisk: rawData.floodRisk || 'Unknown',
+      droughtRisk: rawData.droughtRisk || 'Unknown',
+      fireRisk: rawData.fireRisk || 'Unknown',
+      stormRisk: rawData.stormRisk || 'Unknown',
+      naturalDisasterHistory: rawData.naturalDisasterHistory || {}
+    };
   }
-
+  
   /**
-   * Get climate and weather risk data
-   */
-  public async getClimateData(lat: number, lng: number): Promise<any> {
-    if (this.isAppConnected(RealEstateApp.OPEN_WEATHER_MAP)) {
-      try {
-        return await this.executeFunction(
-          RealEstateApp.OPEN_WEATHER_MAP,
-          'ONE_CALL',
-          { lat, lng, exclude: 'minutely,hourly' }
-        );
-      } catch (error) {
-        logger.error(`Failed to get climate data`);
-        throw new Error(`Failed to get climate data for location (${lat}, ${lng})`);
-      }
-    }
-    
-    throw new Error('Weather data service not available');
-  }
-
-  /**
-   * Get a static map image for a location
+   * Get static map for given coordinates
    */
   public async getStaticMap(
-    lat: number, 
-    lng: number, 
+    latitude: number, 
+    longitude: number, 
     zoom: number = 15, 
     width: number = 600, 
     height: number = 400
   ): Promise<string> {
-    if (this.isAppConnected(RealEstateApp.GOOGLE_MAPS)) {
-      try {
-        const result = await this.executeFunction(
-          RealEstateApp.GOOGLE_MAPS,
-          'STATIC_MAP',
-          { 
-            center: `${lat},${lng}`,
-            zoom,
-            size: `${width}x${height}`,
-            maptype: 'roadmap',
-            markers: `color:red|${lat},${lng}`
-          }
-        );
-        
-        if (result && result.image_url) {
-          return result.image_url;
-        }
-      } catch (error) {
-        logger.error(`Failed to get static map`);
-      }
+    if (!this.initialized) {
+      throw new Error('ACI connector is not initialized');
     }
     
-    throw new Error('Map service not available');
+    try {
+      logger.info(`Generating static map for coordinates: ${latitude}, ${longitude}`);
+      
+      const response = await axios.get(`${ACI_BASE_URL}${MAP_ENDPOINT}`, {
+        headers: {
+          'Authorization': `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json'
+        },
+        params: {
+          lat: latitude,
+          lng: longitude,
+          zoom: zoom,
+          width: width,
+          height: height,
+          format: 'png'
+        },
+        responseType: 'arraybuffer'
+      });
+      
+      // Convert the image to base64 for embedding
+      const base64 = Buffer.from(response.data, 'binary').toString('base64');
+      return `data:image/png;base64,${base64}`;
+    } catch (error) {
+      logger.error(`Error generating static map: ${error instanceof Error ? error.message : String(error)}`);
+      throw new Error(`Failed to generate static map: ${error instanceof Error ? error.message : String(error)}`);
+    }
   }
 }

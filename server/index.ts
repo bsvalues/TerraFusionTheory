@@ -34,8 +34,7 @@ app.use(express.urlencoded({ extended: false }));
 
 // Initialize optimized logging system
 initializeOptimizedLogger({
-  debugMode: process.env.NODE_ENV === 'development',
-  minLogLevel: process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG
+  debugMode: process.env.NODE_ENV === 'development'
 });
 
 // Set up session middleware
