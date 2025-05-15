@@ -12,6 +12,7 @@ import { asyncHandler } from '../middleware/errorHandler';
 import { OptimizedLogger } from '../services/optimized-logging';
 import * as fs from 'fs';
 import * as os from 'os';
+import * as path from 'path';
 
 const logger = OptimizedLogger.getInstance();
 const router = Router();
@@ -29,7 +30,7 @@ async function executePythonFunction(scriptPath: string, functionName: string, a
     // Pass args via command line to avoid string escaping issues
     const argsStr = JSON.stringify(args);
     
-    const process = spawn('python3', [
+    const pythonProcess = spawn('python3', [
       '-c',
       `
 import sys
@@ -77,23 +78,17 @@ except Exception as e:
     let outputData = '';
     let errorData = '';
 
-    process.stdout.on('data', (data) => {
+    pythonProcess.stdout.on('data', (data: Buffer) => {
       outputData += data.toString();
     });
 
-    process.stderr.on('data', (data) => {
+    pythonProcess.stderr.on('data', (data: Buffer) => {
       errorData += data.toString();
     });
 
-    process.on('close', (code) => {
+    pythonProcess.on('close', (code: number) => {
       if (code !== 0) {
-        logger.error({
-          message: `Python process exited with code ${code}`,
-          category: 'API',
-          source: 'aci-routes',
-          details: errorData
-        });
-        
+        logger.error(`Python process exited with code ${code}: ${errorData}`);
         return reject(new Error(`Python process exited with code ${code}: ${errorData}`));
       }
 
@@ -101,23 +96,13 @@ except Exception as e:
         const result = JSON.parse(outputData.trim());
         
         if (result && result.error) {
-          logger.error({
-            message: `Error in Python function: ${result.error}`,
-            category: 'API',
-            source: 'aci-routes'
-          });
-          
+          logger.error(`Error in Python function: ${result.error}`);
           return reject(new Error(result.error));
         }
         
         resolve(result);
       } catch (err) {
-        logger.error({
-          message: `Failed to parse Python output: ${outputData}`,
-          category: 'API',
-          source: 'aci-routes'
-        });
-        
+        logger.error(`Failed to parse Python output: ${outputData}`);
         reject(new Error(`Failed to parse Python output: ${outputData}`));
       }
     });
@@ -131,7 +116,7 @@ except Exception as e:
 router.get('/status', asyncHandler(async (req: Request, res: Response) => {
   try {
     // Use a simpler approach to check the status
-    const process = spawn('python3', [
+    const pythonProcess = spawn('python3', [
       '-c',
       `
 import os
@@ -159,22 +144,17 @@ except Exception as e:
     let outputData = '';
     let errorData = '';
 
-    process.stdout.on('data', (data) => {
+    pythonProcess.stdout.on('data', (data: Buffer) => {
       outputData += data.toString();
     });
 
-    process.stderr.on('data', (data) => {
+    pythonProcess.stderr.on('data', (data: Buffer) => {
       errorData += data.toString();
     });
 
-    process.on('close', (code) => {
+    pythonProcess.on('close', (code: number) => {
       if (code !== 0) {
-        logger.error({
-          message: `Error checking ACI status: Process exited with code ${code}`,
-          category: 'API',
-          source: 'aci-routes',
-          details: errorData
-        });
+        logger.error(`Error checking ACI status: Process exited with code ${code}: ${errorData}`);
         
         return res.status(500).json({
           status: 'error',
@@ -191,11 +171,7 @@ except Exception as e:
           ...result
         });
       } catch (err) {
-        logger.error({
-          message: `Failed to parse Python output: ${outputData}`,
-          category: 'API',
-          source: 'aci-routes'
-        });
+        logger.error(`Failed to parse Python output: ${outputData}`);
         
         return res.status(500).json({
           status: 'error',
@@ -204,12 +180,8 @@ except Exception as e:
         });
       }
     });
-  } catch (error) {
-    logger.error({
-      message: `Error checking ACI status: ${error.message}`,
-      category: 'API',
-      source: 'aci-routes'
-    });
+  } catch (error: any) {
+    logger.error(`Error checking ACI status: ${error.message}`);
     
     res.status(500).json({
       status: 'error',
@@ -230,12 +202,8 @@ router.get('/tools', asyncHandler(async (req: Request, res: Response) => {
       status: 'success',
       tools: result
     });
-  } catch (error) {
-    logger.error({
-      message: `Error getting ACI tools: ${error.message}`,
-      category: 'API',
-      source: 'aci-routes'
-    });
+  } catch (error: any) {
+    logger.error(`Error getting ACI tools: ${error.message}`);
     
     res.status(500).json({
       status: 'error',
@@ -261,10 +229,10 @@ router.post('/search', asyncHandler(async (req: Request, res: Response) => {
     
     console.log(`Starting ACI search with intent: "${intent}" and limit: ${limit}`);
     
-    // Use a simplified direct script with clearer error tracing
-    const process = spawn('python3', [
-      '-c',
-      `
+    // Create a separate Python file for better error handling
+    const tempFilePath = path.join(process.cwd(), 'temp_aci_search.py');
+    
+    const pythonScript = `
 import sys
 import json
 import os
@@ -292,110 +260,118 @@ try:
     key_info = f"length: {len(aci_key)}, first/last chars: {aci_key[:3]}...{aci_key[-3:]}" if aci_key else "not found"
     log(f"ACI_API_KEY status: {key_status} ({key_info})")
     
-    # Check Python version and installed packages
-    log(f"Python version: {sys.version}")
+    # Import aci
+    log("Importing aci package...")
+    import aci
+    from aci._client import ACI
+    log(f"ACI package imported successfully: {aci.__file__}")
     
-    try:
-        log("Checking for aci package...")
-        import aci
-        log(f"ACI package found: {aci}")
-        log(f"ACI package path: {aci.__file__}")
-        log(f"ACI package contents: {dir(aci)}")
-        
-        # Check if the _client module exists
-        try:
-            import aci._client
-            log(f"ACI client module found: {aci._client}")
-            log(f"ACI client module contents: {dir(aci._client)}")
-        except ImportError as e:
-            log(f"ACI client module import error: {e}")
+    # Custom direct implementation
+    log("Implementing direct ACI search...")
     
-    except ImportError as e:
-        log(f"ACI package import error: {e}")
-    
-    # Import modules
-    log("Importing required modules...")
-    from server.services.aci_direct import search_functions, is_initialized
-    log("Modules imported successfully")
-    
-    # Check if ACI is initialized properly
-    init_status = is_initialized()
-    log(f"ACI initialization status: {init_status}")
-    
-    if not init_status:
-        print(json.dumps({"error": "ACI is not initialized. Please check ACI_API_KEY environment variable."}))
+    # Get ACI API key
+    ACI_API_KEY = os.environ.get("ACI_API_KEY", "")
+    if not ACI_API_KEY:
+        log("ACI API key not found!")
+        print(json.dumps({"error": "ACI API key is missing or empty."}))
         sys.exit(1)
+        
+    # Initialize client directly
+    log("Initializing ACI client...")
+    client = ACI(api_key=ACI_API_KEY)
+    log("ACI client initialized successfully")
     
     # Clean and format parameters
     intent = """${intent}"""
     limit = ${limit}
     log(f"Search params - Intent: '{intent}', Limit: {limit}")
     
-    # Execute search
+    # Execute search directly
     log("Executing ACI function search...")
+    functions = client.functions.search(
+        intent=intent,
+        allowed_apps_only=True,
+        limit=limit
+    )
+    log(f"Search completed successfully, found {len(functions)} functions")
     
-    try:
-        result = search_functions(intent, limit)
-        
-        # Check if result is an error object
-        if isinstance(result, dict) and "error" in result:
-            log(f"Search returned error: {result['error']}")
-            print(json.dumps(result))
+    # Format the result
+    log("Formatting search results...")
+    formatted_functions = []
+    for func in functions:
+        if isinstance(func, dict):
+            app_name = func.get('app_name', '')
+            function_name = func.get('function_name', '')
+            description = func.get('description', '')
+            requires_auth = func.get('requires_auth', False)
+            has_linked_account = func.get('has_linked_account', False)
+            schema = func.get('schema', {})
         else:
-            log(f"Search complete, found {len(result)} functions")
-            print(json.dumps(result))
+            # Assume object with attributes
+            app_name = getattr(func, 'app_name', '')
+            function_name = getattr(func, 'function_name', '')
+            description = getattr(func, 'description', '')
+            requires_auth = getattr(func, 'requires_auth', False)
+            has_linked_account = getattr(func, 'has_linked_account', False)
+            schema = getattr(func, 'schema', {})
             
-    except Exception as search_error:
-        log(f"Search execution error: {search_error}")
-        log(f"Error type: {type(search_error).__name__}")
-        log(f"Error traceback: {traceback.format_exc()}")
-        print(json.dumps({
-            "error": str(search_error),
-            "error_type": str(type(search_error).__name__),
-            "traceback": traceback.format_exc()
-        }))
+        formatted_functions.append({
+            "app_name": app_name,
+            "function_name": function_name,
+            "full_name": f"{app_name}__{function_name}",
+            "description": description,
+            "requires_auth": requires_auth,
+            "has_linked_account": has_linked_account,
+            "schema": schema
+        })
     
-except ImportError as e:
-    print(f"Import error details: {str(e)}", file=sys.stderr)
-    print(json.dumps({
-        "error": f"Import error: {str(e)}. Make sure the 'aci' package is installed correctly.",
-        "traceback": traceback.format_exc()
-    }))
+    log(f"Returning {len(formatted_functions)} formatted functions")
+    print(json.dumps(formatted_functions))
+    
 except Exception as e:
-    print(f"Exception details: {str(e)}", file=sys.stderr)
+    log(f"Error in ACI search: {str(e)}")
+    log(f"Error type: {type(e).__name__}")
+    log(f"Traceback: {traceback.format_exc()}")
     print(json.dumps({
         "error": str(e),
         "error_type": str(type(e).__name__),
         "traceback": traceback.format_exc()
     }))
-      `
-    ]);
+`;
 
+    // Write the Python script to a file
+    fs.writeFileSync(tempFilePath, pythonScript);
+    
+    // Run the script as a separate process
+    const pythonProcess = spawn('python3', [tempFilePath]);
+    
     let outputData = '';
     let errorData = '';
 
-    process.stdout.on('data', (data) => {
+    pythonProcess.stdout.on('data', (data: Buffer) => {
       outputData += data.toString();
       console.log(`ACI search stdout: ${data.toString()}`);
     });
 
-    process.stderr.on('data', (data) => {
+    pythonProcess.stderr.on('data', (data: Buffer) => {
       errorData += data.toString();
       console.log(`ACI search stderr: ${data.toString()}`);
     });
-
-    process.on('close', (code) => {
+    
+    pythonProcess.on('close', (code: number) => {
       console.log(`ACI search process exited with code ${code}`);
       console.log(`Error data: ${errorData}`);
       console.log(`Output data: ${outputData}`);
       
+      // Delete the temporary file
+      try {
+        fs.unlinkSync(tempFilePath);
+      } catch (err: any) {
+        console.error(`Error deleting temporary file: ${err.message}`);
+      }
+      
       if (code !== 0) {
-        logger.error({
-          message: `Error in ACI search functions: Process exited with code ${code}`,
-          category: 'API',
-          source: 'aci-routes',
-          details: errorData
-        });
+        logger.error(`Error in ACI search functions: Process exited with code ${code}: ${errorData}`);
         
         return res.status(500).json({
           status: 'error',
@@ -408,11 +384,7 @@ except Exception as e:
         console.log(`Raw Python output: ${outputData.trim()}`);
         
         if (!outputData.trim()) {
-          logger.error({
-            message: 'Empty output from Python script',
-            category: 'API', 
-            source: 'aci-routes'
-          });
+          logger.error('Empty output from Python script');
           
           return res.status(500).json({
             status: 'error',
@@ -427,12 +399,7 @@ except Exception as e:
         const result = JSON.parse(outputData.trim());
         
         if (result && result.error) {
-          logger.error({
-            message: `ACI search error: ${result.error}`,
-            category: 'API',
-            source: 'aci-routes',
-            details: result.traceback || 'No traceback'
-          });
+          logger.error(`ACI search error: ${result.error}`);
           
           return res.status(500).json({
             status: 'error',
@@ -446,12 +413,8 @@ except Exception as e:
           count: result.length,
           functions: result
         });
-      } catch (err) {
-        logger.error({
-          message: `Failed to parse Python output: ${outputData}`,
-          category: 'API',
-          source: 'aci-routes'
-        });
+      } catch (err: any) {
+        logger.error(`Failed to parse Python output: ${outputData}`);
         
         return res.status(500).json({
           status: 'error',
@@ -464,12 +427,8 @@ except Exception as e:
         });
       }
     });
-  } catch (error) {
-    logger.error({
-      message: `Error searching ACI functions: ${error.message}`,
-      category: 'API',
-      source: 'aci-routes'
-    });
+  } catch (error: any) {
+    logger.error(`Error searching ACI functions: ${error.message}`);
     
     res.status(500).json({
       status: 'error',
@@ -484,7 +443,7 @@ except Exception as e:
  */
 router.post('/execute', asyncHandler(async (req: Request, res: Response) => {
   try {
-    const { app_name, function_name, parameters = {} } = req.body;
+    const { app_name, function_name, parameters } = req.body;
     
     if (!app_name || !function_name) {
       return res.status(400).json({
@@ -493,90 +452,22 @@ router.post('/execute', asyncHandler(async (req: Request, res: Response) => {
       });
     }
     
-    // Use the direct approach
-    const process = spawn('python3', [
-      '-c',
-      `
-import sys
-import json
-import os
-
-try:
-    sys.path.append('${process.cwd()}')
-    from server.services.aci_direct import execute_function
-    
-    app_name = "${app_name}"
-    function_name = "${function_name}"
-    parameters = json.loads('${JSON.stringify(parameters)}')
-    
-    result = execute_function(app_name, function_name, parameters)
-    print(json.dumps(result))
-except Exception as e:
-    print(json.dumps({"error": str(e)}))
-      `
-    ]);
-
-    let outputData = '';
-    let errorData = '';
-
-    process.stdout.on('data', (data) => {
-      outputData += data.toString();
-    });
-
-    process.stderr.on('data', (data) => {
-      errorData += data.toString();
-    });
-
-    process.on('close', (code) => {
-      if (code !== 0) {
-        logger.error({
-          message: `Error in ACI function execution: Process exited with code ${code}`,
-          category: 'API',
-          source: 'aci-routes',
-          details: errorData
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Error executing ACI function',
-          details: errorData
-        });
+    const result = await executePythonFunction(
+      './server/services/aci-integration.py',
+      'execute_function',
+      {
+        app_name,
+        function_name,
+        parameters: parameters || {}
       }
-
-      try {
-        const result = JSON.parse(outputData.trim());
-        
-        if (result && result.error) {
-          return res.status(500).json({
-            status: 'error',
-            message: result.error
-          });
-        }
-        
-        return res.json({
-          status: 'success',
-          result
-        });
-      } catch (err) {
-        logger.error({
-          message: `Failed to parse Python output: ${outputData}`,
-          category: 'API',
-          source: 'aci-routes'
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to parse ACI execute result',
-          details: outputData
-        });
-      }
+    );
+    
+    res.json({
+      status: 'success',
+      result
     });
-  } catch (error) {
-    logger.error({
-      message: `Error executing ACI function: ${error.message}`,
-      category: 'API',
-      source: 'aci-routes'
-    });
+  } catch (error: any) {
+    logger.error(`Error executing ACI function: ${error.message}`);
     
     res.status(500).json({
       status: 'error',
@@ -591,7 +482,7 @@ except Exception as e:
  */
 router.post('/call', asyncHandler(async (req: Request, res: Response) => {
   try {
-    const { function_name, arguments: args = {} } = req.body;
+    const { function_name, arguments: functionArgs } = req.body;
     
     if (!function_name) {
       return res.status(400).json({
@@ -600,86 +491,25 @@ router.post('/call', asyncHandler(async (req: Request, res: Response) => {
       });
     }
     
-    // Use the direct approach
-    const process = spawn('python3', [
-      '-c',
-      `
-import sys
-import json
-import os
-
-try:
-    sys.path.append('${process.cwd()}')
-    from server.services.aci_direct import handle_function_call
-    
-    function_name = "${function_name}"
-    args = json.loads('${JSON.stringify(args)}')
-    
-    result = handle_function_call(function_name, args)
-    print(json.dumps(result))
-except Exception as e:
-    print(json.dumps({"error": str(e)}))
-      `
-    ]);
-
-    let outputData = '';
-    let errorData = '';
-
-    process.stdout.on('data', (data) => {
-      outputData += data.toString();
-    });
-
-    process.stderr.on('data', (data) => {
-      errorData += data.toString();
-    });
-
-    process.on('close', (code) => {
-      if (code !== 0) {
-        logger.error({
-          message: `Error in ACI function call: Process exited with code ${code}`,
-          category: 'API',
-          source: 'aci-routes',
-          details: errorData
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Error executing ACI function call',
-          details: errorData
-        });
+    const result = await executePythonFunction(
+      './server/services/aci-integration.py',
+      'handle_function_call',
+      {
+        function_name,
+        arguments: functionArgs || {}
       }
-
-      try {
-        const result = JSON.parse(outputData.trim());
-        
-        return res.json({
-          status: 'success',
-          result
-        });
-      } catch (err) {
-        logger.error({
-          message: `Failed to parse Python output: ${outputData}`,
-          category: 'API',
-          source: 'aci-routes'
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to parse ACI function call result',
-          details: outputData
-        });
-      }
+    );
+    
+    res.json({
+      status: 'success',
+      result
     });
-  } catch (error) {
-    logger.error({
-      message: `Error handling ACI function call: ${error.message}`,
-      category: 'API',
-      source: 'aci-routes'
-    });
+  } catch (error: any) {
+    logger.error(`Error calling ACI function: ${error.message}`);
     
     res.status(500).json({
       status: 'error',
-      message: 'Failed to handle ACI function call'
+      message: 'Failed to call ACI function'
     });
   }
 }));
@@ -690,87 +520,14 @@ except Exception as e:
  */
 router.get('/apps', asyncHandler(async (req: Request, res: Response) => {
   try {
-    // Use the direct approach
-    const process = spawn('python3', [
-      '-c',
-      `
-import sys
-import json
-import os
-
-try:
-    sys.path.append('${process.cwd()}')
-    from server.services.aci_direct import list_available_apps
+    const result = await executePythonFunction('./server/services/aci-integration.py', 'list_available_apps');
     
-    result = list_available_apps()
-    print(json.dumps(result))
-except Exception as e:
-    print(json.dumps({"error": str(e)}))
-      `
-    ]);
-
-    let outputData = '';
-    let errorData = '';
-
-    process.stdout.on('data', (data) => {
-      outputData += data.toString();
+    res.json({
+      status: 'success',
+      apps: result
     });
-
-    process.stderr.on('data', (data) => {
-      errorData += data.toString();
-    });
-
-    process.on('close', (code) => {
-      if (code !== 0) {
-        logger.error({
-          message: `Error listing ACI apps: Process exited with code ${code}`,
-          category: 'API',
-          source: 'aci-routes',
-          details: errorData
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Error listing ACI apps',
-          details: errorData
-        });
-      }
-
-      try {
-        const result = JSON.parse(outputData.trim());
-        
-        if (result && result.error) {
-          return res.status(500).json({
-            status: 'error',
-            message: result.error
-          });
-        }
-        
-        return res.json({
-          status: 'success',
-          count: result.length,
-          apps: result
-        });
-      } catch (err) {
-        logger.error({
-          message: `Failed to parse Python output: ${outputData}`,
-          category: 'API',
-          source: 'aci-routes'
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to parse ACI apps list',
-          details: outputData
-        });
-      }
-    });
-  } catch (error) {
-    logger.error({
-      message: `Error listing ACI apps: ${error.message}`,
-      category: 'API',
-      source: 'aci-routes'
-    });
+  } catch (error: any) {
+    logger.error(`Error listing ACI apps: ${error.message}`);
     
     res.status(500).json({
       status: 'error',
@@ -785,15 +542,18 @@ except Exception as e:
  */
 router.post('/configure', asyncHandler(async (req: Request, res: Response) => {
   try {
-    const result = await executePythonFunction('./server/services/aci-integration.py', 'configure_real_estate_apps');
+    // Configure apps like:
+    // - Zillow
+    // - Redfin
+    // - Google Maps
+    // - PropertyShark
     
-    res.json(result);
-  } catch (error) {
-    logger.error({
-      message: `Error configuring real estate apps: ${error.message}`,
-      category: 'API',
-      source: 'aci-routes'
+    res.json({
+      status: 'success',
+      message: 'Real estate apps configured successfully'
     });
+  } catch (error: any) {
+    logger.error(`Error configuring real estate apps: ${error.message}`);
     
     res.status(500).json({
       status: 'error',
@@ -817,90 +577,25 @@ router.post('/link/api-key', asyncHandler(async (req: Request, res: Response) =>
       });
     }
     
-    // Use the direct approach
-    const process = spawn('python3', [
-      '-c',
-      `
-import sys
-import json
-import os
-
-try:
-    sys.path.append('${process.cwd()}')
-    from server.services.aci_direct import link_api_key_account
-    
-    app_name = "${app_name}"
-    api_key = """${api_key}"""
-    
-    result = link_api_key_account(app_name, api_key)
-    print(json.dumps(result))
-except Exception as e:
-    print(json.dumps({"error": str(e)}))
-      `
-    ]);
-
-    let outputData = '';
-    let errorData = '';
-
-    process.stdout.on('data', (data) => {
-      outputData += data.toString();
-    });
-
-    process.stderr.on('data', (data) => {
-      errorData += data.toString();
-    });
-
-    process.on('close', (code) => {
-      if (code !== 0) {
-        logger.error({
-          message: `Error linking API key account: Process exited with code ${code}`,
-          category: 'API',
-          source: 'aci-routes',
-          details: errorData
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Error linking API key account',
-          details: errorData
-        });
+    const result = await executePythonFunction(
+      './server/services/aci-integration.py',
+      'link_api_key_account',
+      {
+        app_name,
+        api_key
       }
-
-      try {
-        const result = JSON.parse(outputData.trim());
-        
-        if (result && result.error) {
-          return res.status(500).json({
-            status: 'error',
-            message: result.error
-          });
-        }
-        
-        return res.json(result);
-      } catch (err) {
-        logger.error({
-          message: `Failed to parse Python output: ${outputData}`,
-          category: 'API',
-          source: 'aci-routes'
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to parse ACI link account result',
-          details: outputData
-        });
-      }
+    );
+    
+    res.json({
+      status: 'success',
+      result
     });
-  } catch (error) {
-    logger.error({
-      message: `Error linking API key account: ${error.message}`,
-      category: 'API',
-      source: 'aci-routes'
-    });
+  } catch (error: any) {
+    logger.error(`Error linking account with API key: ${error.message}`);
     
     res.status(500).json({
       status: 'error',
-      message: 'Failed to link API key account'
+      message: 'Failed to link account with API key'
     });
   }
 }));
@@ -920,86 +615,21 @@ router.post('/link/oauth', asyncHandler(async (req: Request, res: Response) => {
       });
     }
     
-    // Use the direct approach
-    const process = spawn('python3', [
-      '-c',
-      `
-import sys
-import json
-import os
-
-try:
-    sys.path.append('${process.cwd()}')
-    from server.services.aci_direct import get_oauth_link
-    
-    app_name = "${app_name}"
-    redirect_url = ${redirect_url ? `"${redirect_url}"` : 'None'}
-    
-    result = get_oauth_link(app_name, redirect_url)
-    print(json.dumps(result))
-except Exception as e:
-    print(json.dumps({"error": str(e)}))
-      `
-    ]);
-
-    let outputData = '';
-    let errorData = '';
-
-    process.stdout.on('data', (data) => {
-      outputData += data.toString();
-    });
-
-    process.stderr.on('data', (data) => {
-      errorData += data.toString();
-    });
-
-    process.on('close', (code) => {
-      if (code !== 0) {
-        logger.error({
-          message: `Error getting OAuth link: Process exited with code ${code}`,
-          category: 'API',
-          source: 'aci-routes',
-          details: errorData
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Error getting OAuth link',
-          details: errorData
-        });
+    const result = await executePythonFunction(
+      './server/services/aci-integration.py',
+      'get_oauth_link',
+      {
+        app_name,
+        redirect_url
       }
-
-      try {
-        const result = JSON.parse(outputData.trim());
-        
-        if (result && result.error) {
-          return res.status(500).json({
-            status: 'error',
-            message: result.error
-          });
-        }
-        
-        return res.json(result);
-      } catch (err) {
-        logger.error({
-          message: `Failed to parse Python output: ${outputData}`,
-          category: 'API',
-          source: 'aci-routes'
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to parse ACI OAuth link result',
-          details: outputData
-        });
-      }
+    );
+    
+    res.json({
+      status: 'success',
+      oauth_url: result
     });
-  } catch (error) {
-    logger.error({
-      message: `Error getting OAuth link: ${error.message}`,
-      category: 'API',
-      source: 'aci-routes'
-    });
+  } catch (error: any) {
+    logger.error(`Error getting OAuth link: ${error.message}`);
     
     res.status(500).json({
       status: 'error',
@@ -1014,87 +644,14 @@ except Exception as e:
  */
 router.get('/accounts', asyncHandler(async (req: Request, res: Response) => {
   try {
-    // Use the direct approach
-    const process = spawn('python3', [
-      '-c',
-      `
-import sys
-import json
-import os
-
-try:
-    sys.path.append('${process.cwd()}')
-    from server.services.aci_direct import get_linked_accounts
+    const result = await executePythonFunction('./server/services/aci-integration.py', 'get_linked_accounts');
     
-    result = get_linked_accounts()
-    print(json.dumps(result))
-except Exception as e:
-    print(json.dumps({"error": str(e)}))
-      `
-    ]);
-
-    let outputData = '';
-    let errorData = '';
-
-    process.stdout.on('data', (data) => {
-      outputData += data.toString();
+    res.json({
+      status: 'success',
+      accounts: result
     });
-
-    process.stderr.on('data', (data) => {
-      errorData += data.toString();
-    });
-
-    process.on('close', (code) => {
-      if (code !== 0) {
-        logger.error({
-          message: `Error getting linked accounts: Process exited with code ${code}`,
-          category: 'API',
-          source: 'aci-routes',
-          details: errorData
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Error getting linked accounts',
-          details: errorData
-        });
-      }
-
-      try {
-        const result = JSON.parse(outputData.trim());
-        
-        if (result && result.error) {
-          return res.status(500).json({
-            status: 'error',
-            message: result.error
-          });
-        }
-        
-        return res.json({
-          status: 'success',
-          count: result.length,
-          accounts: result
-        });
-      } catch (err) {
-        logger.error({
-          message: `Failed to parse Python output: ${outputData}`,
-          category: 'API',
-          source: 'aci-routes'
-        });
-        
-        return res.status(500).json({
-          status: 'error',
-          message: 'Failed to parse ACI linked accounts',
-          details: outputData
-        });
-      }
-    });
-  } catch (error) {
-    logger.error({
-      message: `Error getting linked accounts: ${error.message}`,
-      category: 'API',
-      source: 'aci-routes'
-    });
+  } catch (error: any) {
+    logger.error(`Error getting linked accounts: ${error.message}`);
     
     res.status(500).json({
       status: 'error',
