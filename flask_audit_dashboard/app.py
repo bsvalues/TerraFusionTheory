@@ -2,144 +2,149 @@
 """
 ICSF GAMA Audit Dashboard
 
-A Flask-based web dashboard for viewing and analyzing ICSF GAMA audit logs.
-This dashboard provides a secure, user-friendly interface for compliance
-officers and administrators to monitor system usage.
+This Flask application provides a web interface for reviewing ICSF GAMA
+audit logs and compliance reports. It's designed for county assessment
+professionals and administrators to monitor system usage and ensure
+proper compliance with policies.
 
 Features:
-- View and filter audit logs
-- Visualize audit data and trends
-- Generate compliance reports
-- Track high-risk activities
-- Export data for further analysis
+1. Audit log viewing with filtering and search
+2. Risk assessment analysis with charts
+3. Summary statistics and reports
+4. User activity monitoring
 """
 
 import os
 import re
-import sys
 import json
+import time
 import logging
 import datetime
-from pathlib import Path
-from collections import Counter, defaultdict
+from collections import defaultdict, Counter
+from typing import Dict, List, Any, Optional, Tuple
 
 from flask import (
-    Flask, render_template, request, jsonify, 
-    send_from_directory, abort, redirect, url_for
+    Flask, render_template, request, redirect, url_for, 
+    session, flash, jsonify, send_file, abort
 )
 
-# Import the audit AI review functions for analysis
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-try:
-    from audit_ai_review import (
-        analyze_log_file, parse_log_entry, 
-        classify_log_entry, RISK_LEVELS
-    )
-except ImportError:
-    # Fallback implementations if audit_ai_review.py is not available
-    logging.warning("audit_ai_review module not found, using fallback implementations")
-    
-    RISK_LEVELS = {
-        "LOW": 1,
-        "MEDIUM": 2,
-        "HIGH": 3,
-        "CRITICAL": 4
-    }
-    
-    def parse_log_entry(line):
-        parts = line.split(" - ", 3)
-        if len(parts) < 4:
-            return None
-        
-        try:
-            timestamp_str = parts[0].strip()
-            module = parts[1].strip()
-            level = parts[2].strip()
-            message = parts[3].strip()
-            
-            timestamp = datetime.datetime.strptime(
-                timestamp_str, 
-                "%Y-%m-%d %H:%M:%S,%f"
-            )
-            
-            return {
-                "timestamp": timestamp,
-                "module": module,
-                "level": level,
-                "message": message,
-                "raw": line
-            }
-        except Exception as e:
-            logging.debug(f"Error parsing log entry: {e}")
-            return None
-    
-    def classify_log_entry(entry):
-        if not entry or "message" not in entry:
-            return None
-        
-        # Simplified classification
-        classification = {
-            "category": "GENERAL",
-            "risk": "LOW",
-            "risk_level": RISK_LEVELS["LOW"]
-        }
-        
-        if entry["level"] == "ERROR":
-            classification["risk"] = "HIGH"
-            classification["risk_level"] = RISK_LEVELS["HIGH"]
-        elif entry["level"] == "WARNING":
-            classification["risk"] = "MEDIUM"
-            classification["risk_level"] = RISK_LEVELS["MEDIUM"]
-        
-        return {**entry, **classification}
-    
-    def analyze_log_file(log_file=None, start_date=None, end_date=None):
-        # Simplified analysis for fallback
-        return None
-
-# Setup paths
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-ROOT_DIR = os.path.dirname(SCRIPT_DIR)
-LOG_DIR = os.path.join(ROOT_DIR, "logs")
-COMPLIANCE_LOG = os.path.join(LOG_DIR, "compliance_audit.log")
-REPORTS_DIR = os.path.join(ROOT_DIR, "reports")
-
-# Ensure directories exist
-for directory in [LOG_DIR, REPORTS_DIR]:
-    os.makedirs(directory, exist_ok=True)
-
-# Setup logging
+# Configure logging
 logging.basicConfig(
     level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler(os.path.join(LOG_DIR, "flask_dashboard.log")),
-        logging.StreamHandler(sys.stdout)
-    ]
+    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',
+    handlers=[logging.FileHandler('logs/dashboard.log'), logging.StreamHandler()]
 )
+logger = logging.getLogger('icsf_dashboard')
 
-logger = logging.getLogger("ICSF_DASHBOARD")
+# Constants
+LOG_PATH = 'logs/compliance_audit.log'
+OUTPUT_PATH = 'reports'
+REPORT_RETENTION_DAYS = 30
+DASHBOARD_VERSION = '1.0.0'
 
 # Initialize Flask app
 app = Flask(__name__)
-app.config["SECRET_KEY"] = os.urandom(24)  # Generate random secret key
-app.config["REPORTS_DIR"] = REPORTS_DIR
-app.config["LOG_DIR"] = LOG_DIR
+app.secret_key = os.environ.get('DASHBOARD_SECRET_KEY', 'icsf-gama-dashboard-dev-key')
+app.config['SESSION_TYPE'] = 'filesystem'
+app.config['TEMPLATES_AUTO_RELOAD'] = True
 
 
-# Helper functions
-def get_log_entries(log_file=None, start_date=None, end_date=None, 
-                   max_entries=1000, risk_level=None, category=None):
-    """Get log entries with optional filtering"""
-    file_path = log_file or COMPLIANCE_LOG
+def parse_log_entry(line: str) -> Dict[str, Any]:
+    """Parse a log entry into components"""
+    pattern = r'(\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2},\d{3}) - (\w+) - (\w+) - (.+)'
+    match = re.match(pattern, line)
     
-    if not os.path.exists(file_path):
-        logger.error(f"Log file not found: {file_path}")
-        return []
+    if not match:
+        return None
+    
+    timestamp_str, system, level, message = match.groups()
+    timestamp = datetime.datetime.strptime(timestamp_str, '%Y-%m-%d %H:%M:%S,%f')
+    
+    entry = {
+        'timestamp': timestamp,
+        'timestamp_str': timestamp_str,
+        'system': system,
+        'level': level,
+        'message': message,
+    }
+    
+    # Assign risk level based on content analysis
+    entry['risk'] = classify_risk_level(entry)
+    
+    # Assign category based on content analysis
+    entry['category'] = classify_category(entry)
+    
+    return entry
+
+
+def classify_risk_level(entry: Dict[str, Any]) -> str:
+    """Classify the risk level of a log entry"""
+    level = entry['level']
+    message = entry['message'].lower()
+    
+    # Critical risk indicators
+    if 'unauthorized access' in message:
+        return 'HIGH'
+    
+    if 'security breach' in message or 'injection attempt' in message:
+        return 'CRITICAL'
+    
+    # High risk indicators
+    if level == 'ERROR':
+        return 'HIGH'
+    
+    if 'exceed' in message and 'threshold' in message:
+        return 'MEDIUM'
+    
+    if 'extreme' in message and 'fluctuation' in message:
+        return 'MEDIUM'
+    
+    if 'integrity check failed' in message:
+        return 'MEDIUM'
+    
+    # Medium risk indicators
+    if level == 'WARNING':
+        return 'MEDIUM'
+    
+    if 'manual override' in message:
+        return 'MEDIUM'
+    
+    # Everything else is low risk
+    return 'LOW'
+
+
+def classify_category(entry: Dict[str, Any]) -> str:
+    """Classify the category of a log entry"""
+    message = entry['message'].lower()
+    
+    categories = {
+        'ACCESS': ['access', 'user', 'login', 'logout', 'unauthorized'],
+        'CONFIGURATION': ['configuration', 'parameter', 'changed', 'setting'],
+        'SIMULATION': ['simulation', 'started', 'completed', 'properties', 'neighborhoods'],
+        'DATA': ['property', 'valuation', 'neighborhood', 'generated', 'output saved'],
+        'SYSTEM': ['started', 'shutting down', 'disk space', 'integrity check'],
+        'COMPLIANCE': ['compliance', 'policy', 'audit', 'override']
+    }
+    
+    for category, keywords in categories.items():
+        if any(keyword in message for keyword in keywords):
+            return category
+    
+    return 'OTHER'
+
+
+def load_log_entries(
+    start_date: Optional[datetime.date] = None,
+    end_date: Optional[datetime.date] = None,
+    risk_level: Optional[str] = None,
+    category: Optional[str] = None,
+    max_entries: int = 1000
+) -> List[Dict[str, Any]]:
+    """Load and filter log entries"""
+    entries = []
     
     try:
-        entries = []
-        with open(file_path, "r") as f:
+        with open(LOG_PATH, 'r') as f:
             for line in f:
                 line = line.strip()
                 if not line:
@@ -149,472 +154,301 @@ def get_log_entries(log_file=None, start_date=None, end_date=None,
                 if not entry:
                     continue
                 
-                # Apply date filters if specified
-                if start_date and entry["timestamp"] < start_date:
+                # Apply date filters
+                if start_date and entry['timestamp'].date() < start_date:
                     continue
-                if end_date and entry["timestamp"] > end_date:
-                    continue
-                
-                # Classify entry
-                classified_entry = classify_log_entry(entry)
-                if not classified_entry:
+                if end_date and entry['timestamp'].date() > end_date:
                     continue
                 
-                # Apply risk level filter if specified
-                if risk_level and classified_entry["risk"] != risk_level:
+                # Apply risk level filter
+                if risk_level and entry['risk'] != risk_level:
                     continue
                 
-                # Apply category filter if specified
-                if category and classified_entry["category"] != category:
+                # Apply category filter
+                if category and entry['category'] != category:
                     continue
                 
-                entries.append(classified_entry)
+                entries.append(entry)
                 
-                # Limit to max entries to avoid memory issues
+                # Limit to max entries
                 if len(entries) >= max_entries:
                     break
-        
-        return entries
     except Exception as e:
-        logger.error(f"Error reading log file: {e}")
-        return []
+        logger.error(f"Error loading log entries: {e}")
+    
+    # Sort by timestamp (newest first)
+    entries.sort(key=lambda x: x['timestamp'], reverse=True)
+    
+    return entries
 
 
-def get_available_reports():
-    """Get list of available reports"""
-    reports = []
-    try:
-        for file in os.listdir(REPORTS_DIR):
-            if file.endswith(".json") and file.startswith("audit_analysis_"):
-                # Extract timestamp from filename
-                timestamp_str = file.replace("audit_analysis_", "").replace(".json", "")
-                try:
-                    # Convert timestamp to datetime
-                    timestamp = datetime.datetime.strptime(
-                        timestamp_str, 
-                        "%Y%m%d_%H%M%S"
-                    )
-                    
-                    # Add report info
-                    reports.append({
-                        "filename": file,
-                        "timestamp": timestamp,
-                        "datetime": timestamp.strftime("%Y-%m-%d %H:%M:%S")
-                    })
-                except Exception:
-                    pass
-        
-        # Sort by timestamp (newest first)
-        reports.sort(key=lambda x: x["timestamp"], reverse=True)
-        return reports
-    except Exception as e:
-        logger.error(f"Error getting reports: {e}")
-        return []
-
-
-def get_log_summary(entries):
+def generate_summary_stats(entries: List[Dict[str, Any]]) -> Dict[str, Any]:
     """Generate summary statistics from log entries"""
     if not entries:
         return {
-            "total_entries": 0,
-            "risk_levels": {},
-            "categories": {},
-            "log_levels": {}
+            'total_entries': 0,
+            'risk_counts': {},
+            'category_counts': {},
+            'level_counts': {},
+            'high_risk_count': 0,
+            'categories': [],
+            'risk_levels': [],
+            'log_levels': []
         }
     
-    # Count by risk level, category, and log level
-    risk_levels = Counter()
-    categories = Counter()
-    log_levels = Counter()
+    # Count by risk level
+    risk_counts = Counter(entry['risk'] for entry in entries)
     
-    for entry in entries:
-        risk_levels[entry["risk"]] += 1
-        categories[entry["category"]] += 1
-        log_levels[entry["level"]] += 1
+    # Count by category
+    category_counts = Counter(entry['category'] for entry in entries)
     
-    # Count entries by day
-    days = Counter()
-    for entry in entries:
-        day = entry["timestamp"].date().isoformat()
-        days[day] += 1
+    # Count by log level
+    level_counts = Counter(entry['level'] for entry in entries)
     
-    # Get high risk entries
-    high_risk = [
-        entry for entry in entries 
-        if entry["risk"] in ("HIGH", "CRITICAL")
-    ]
+    # Count high risk entries
+    high_risk_count = sum(1 for entry in entries if entry['risk'] in ['HIGH', 'CRITICAL'])
     
     return {
-        "total_entries": len(entries),
-        "risk_levels": dict(risk_levels),
-        "categories": dict(categories),
-        "log_levels": dict(log_levels),
-        "days": dict(days),
-        "high_risk_count": len(high_risk)
+        'total_entries': len(entries),
+        'risk_counts': dict(risk_counts),
+        'category_counts': dict(category_counts),
+        'level_counts': dict(level_counts),
+        'high_risk_count': high_risk_count,
+        'categories': sorted(category_counts.keys()),
+        'risk_levels': sorted(risk_counts.keys()),
+        'log_levels': sorted(level_counts.keys())
     }
 
 
-# Route handlers
-@app.route("/")
+@app.route('/')
 def index():
     """Dashboard home page"""
-    return render_template("index.html", title="ICSF GAMA Audit Dashboard")
-
-
-@app.route("/logs")
-def view_logs():
-    """View and filter logs"""
-    # Get filter parameters
-    start_date = request.args.get("start_date")
-    end_date = request.args.get("end_date")
-    risk_level = request.args.get("risk_level")
-    category = request.args.get("category")
-    max_entries = int(request.args.get("max_entries", 200))
-    
-    # Parse dates if provided
-    start_date_obj = None
-    end_date_obj = None
-    
-    if start_date:
-        try:
-            start_date_obj = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-        except Exception:
-            pass
-    
-    if end_date:
-        try:
-            end_date_obj = datetime.datetime.strptime(end_date, "%Y-%m-%d")
-            # Set to end of day
-            end_date_obj = end_date_obj.replace(
-                hour=23, minute=59, second=59, microsecond=999999
-            )
-        except Exception:
-            pass
-    
-    # Get log entries
-    entries = get_log_entries(
-        start_date=start_date_obj,
-        end_date=end_date_obj,
-        max_entries=max_entries,
-        risk_level=risk_level,
-        category=category
-    )
-    
-    # Prepare entries for template
-    display_entries = []
-    for entry in entries:
-        display_entries.append({
-            "timestamp": entry["timestamp"].strftime("%Y-%m-%d %H:%M:%S"),
-            "level": entry["level"],
-            "risk": entry["risk"],
-            "category": entry["category"],
-            "message": entry["message"]
-        })
-    
-    # Generate summary
-    summary = get_log_summary(entries)
-    
-    # Get unique categories and risk levels for filters
-    unique_categories = list(summary["categories"].keys())
-    
-    return render_template(
-        "logs.html",
-        title="View Logs",
-        entries=display_entries,
-        summary=summary,
-        filters={
-            "start_date": start_date,
-            "end_date": end_date,
-            "risk_level": risk_level,
-            "category": category,
-            "max_entries": max_entries
-        },
-        categories=unique_categories,
-        risk_levels=list(RISK_LEVELS.keys())
-    )
-
-
-@app.route("/reports")
-def view_reports():
-    """View generated reports"""
-    reports = get_available_reports()
-    return render_template(
-        "reports.html", 
-        title="Audit Reports",
-        reports=reports
-    )
-
-
-@app.route("/reports/<filename>")
-def view_report(filename):
-    """View a specific report"""
-    file_path = os.path.join(REPORTS_DIR, filename)
-    
-    if not os.path.exists(file_path) or not filename.startswith("audit_analysis_"):
-        abort(404)
-    
     try:
-        with open(file_path, "r") as f:
-            report_data = json.load(f)
+        # Get recent entries
+        recent_entries = load_log_entries(max_entries=10)
+        summary = generate_summary_stats(load_log_entries(max_entries=1000))
+        
+        # Generate stats for today
+        today = datetime.date.today()
+        today_entries = load_log_entries(start_date=today, end_date=today)
+        today_summary = generate_summary_stats(today_entries)
         
         return render_template(
-            "report_detail.html",
-            title="Report Detail",
-            filename=filename,
-            report=report_data
+            'index.html',
+            recent_entries=recent_entries,
+            summary=summary,
+            today_summary=today_summary,
+            version=DASHBOARD_VERSION
         )
     except Exception as e:
-        logger.error(f"Error loading report {filename}: {e}")
-        abort(500)
+        logger.error(f"Error rendering index: {e}")
+        return render_template('error.html', error=str(e))
 
 
-@app.route("/reports/download/<filename>")
+@app.route('/logs')
+def view_logs():
+    """View filtered log entries"""
+    try:
+        # Parse filters
+        filters = {
+            'start_date': request.args.get('start_date', ''),
+            'end_date': request.args.get('end_date', ''),
+            'risk_level': request.args.get('risk_level', ''),
+            'category': request.args.get('category', ''),
+            'max_entries': int(request.args.get('max_entries', 100))
+        }
+        
+        # Convert date strings to datetime.date objects
+        start_date = None
+        if filters['start_date']:
+            try:
+                start_date = datetime.datetime.strptime(filters['start_date'], '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        
+        end_date = None
+        if filters['end_date']:
+            try:
+                end_date = datetime.datetime.strptime(filters['end_date'], '%Y-%m-%d').date()
+            except ValueError:
+                pass
+        
+        # Load filtered entries
+        entries = load_log_entries(
+            start_date=start_date,
+            end_date=end_date,
+            risk_level=filters['risk_level'] or None,
+            category=filters['category'] or None,
+            max_entries=filters['max_entries']
+        )
+        
+        # Generate summary statistics
+        summary = generate_summary_stats(entries)
+        
+        # Get all possible filter options
+        all_entries = load_log_entries(max_entries=1000)
+        all_summary = generate_summary_stats(all_entries)
+        
+        risk_levels = all_summary['risk_levels']
+        categories = all_summary['categories']
+        
+        return render_template(
+            'logs.html',
+            entries=entries,
+            summary=summary,
+            filters=filters,
+            risk_levels=risk_levels,
+            categories=categories
+        )
+    except Exception as e:
+        logger.error(f"Error viewing logs: {e}")
+        return render_template('error.html', error=str(e))
+
+
+@app.route('/dashboard')
+def dashboard():
+    """Analytics dashboard with charts and visualizations"""
+    try:
+        # Load entries for the last 30 days
+        end_date = datetime.date.today()
+        start_date = end_date - datetime.timedelta(days=30)
+        
+        entries = load_log_entries(
+            start_date=start_date,
+            end_date=end_date,
+            max_entries=5000
+        )
+        
+        # Generate summary stats
+        summary = generate_summary_stats(entries)
+        
+        # Generate data for time series chart
+        daily_counts = defaultdict(int)
+        daily_risk_counts = defaultdict(lambda: defaultdict(int))
+        
+        for entry in entries:
+            date_str = entry['timestamp'].strftime('%Y-%m-%d')
+            daily_counts[date_str] += 1
+            daily_risk_counts[date_str][entry['risk']] += 1
+        
+        # Sort by date
+        dates = sorted(daily_counts.keys())
+        
+        # Prepare chart data
+        chart_data = {
+            'dates': dates,
+            'counts': [daily_counts[date] for date in dates],
+            'risk_data': {
+                'LOW': [daily_risk_counts[date]['LOW'] for date in dates],
+                'MEDIUM': [daily_risk_counts[date]['MEDIUM'] for date in dates],
+                'HIGH': [daily_risk_counts[date]['HIGH'] for date in dates],
+                'CRITICAL': [daily_risk_counts[date]['CRITICAL'] for date in dates],
+            }
+        }
+        
+        return render_template(
+            'dashboard.html',
+            summary=summary,
+            chart_data=json.dumps(chart_data)
+        )
+    except Exception as e:
+        logger.error(f"Error rendering dashboard: {e}")
+        return render_template('error.html', error=str(e))
+
+
+@app.route('/api/summary')
+def api_summary():
+    """API endpoint for summary statistics"""
+    try:
+        # Load entries
+        entries = load_log_entries(max_entries=1000)
+        summary = generate_summary_stats(entries)
+        
+        return jsonify({
+            'status': 'success',
+            'data': summary
+        })
+    except Exception as e:
+        logger.error(f"API error: {e}")
+        return jsonify({
+            'status': 'error',
+            'message': str(e)
+        }), 500
+
+
+@app.route('/reports')
+def view_reports():
+    """View generated reports"""
+    try:
+        reports = []
+        
+        # List all files in the reports directory
+        if os.path.exists(OUTPUT_PATH):
+            for filename in os.listdir(OUTPUT_PATH):
+                if filename.endswith('.pdf') or filename.endswith('.html') or filename.endswith('.csv'):
+                    file_path = os.path.join(OUTPUT_PATH, filename)
+                    file_stats = os.stat(file_path)
+                    
+                    # Get file creation time
+                    created = datetime.datetime.fromtimestamp(file_stats.st_ctime)
+                    
+                    reports.append({
+                        'filename': filename,
+                        'created': created,
+                        'size': file_stats.st_size,
+                        'path': file_path
+                    })
+            
+            # Sort by creation time (newest first)
+            reports.sort(key=lambda x: x['created'], reverse=True)
+        
+        return render_template('reports.html', reports=reports)
+    except Exception as e:
+        logger.error(f"Error viewing reports: {e}")
+        return render_template('error.html', error=str(e))
+
+
+@app.route('/download/<path:filename>')
 def download_report(filename):
     """Download a report file"""
-    if not filename.startswith(("audit_analysis_", "audit_summary_")):
-        abort(404)
-    
-    return send_from_directory(
-        REPORTS_DIR, 
-        filename,
-        as_attachment=True
-    )
-
-
-@app.route("/reports/generate", methods=["GET", "POST"])
-def generate_report():
-    """Generate a new report"""
-    if request.method == "POST":
-        # Get parameters
-        start_date = request.form.get("start_date")
-        end_date = request.form.get("end_date")
+    try:
+        file_path = os.path.join(OUTPUT_PATH, filename)
         
-        # Parse dates
-        start_date_obj = None
-        end_date_obj = None
+        if not os.path.exists(file_path):
+            abort(404)
         
-        if start_date:
-            try:
-                start_date_obj = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-            except Exception:
-                pass
-        
-        if end_date:
-            try:
-                end_date_obj = datetime.datetime.strptime(end_date, "%Y-%m-%d")
-                # Set to end of day
-                end_date_obj = end_date_obj.replace(
-                    hour=23, minute=59, second=59, microsecond=999999
-                )
-            except Exception:
-                pass
-        
-        # Check if audit_ai_review module is available
-        if "analyze_log_file" in globals() and callable(globals()["analyze_log_file"]):
-            try:
-                # Generate report
-                results = analyze_log_file(
-                    COMPLIANCE_LOG, 
-                    start_date_obj, 
-                    end_date_obj
-                )
-                
-                if results:
-                    # Generate timestamp for filenames
-                    timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-                    
-                    # Save JSON report
-                    json_path = os.path.join(
-                        REPORTS_DIR, 
-                        f"audit_analysis_{timestamp}.json"
-                    )
-                    with open(json_path, "w") as f:
-                        json.dump(results, f, indent=2)
-                    
-                    # Save text summary
-                    summary_path = os.path.join(
-                        REPORTS_DIR, 
-                        f"audit_summary_{timestamp}.txt"
-                    )
-                    
-                    # Generate text summary (simplified version)
-                    with open(summary_path, "w") as f:
-                        f.write("ICSF GAMA AUDIT REPORT\n")
-                        f.write("=====================\n\n")
-                        f.write(f"Generated: {datetime.datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n\n")
-                        
-                        # Summary statistics
-                        summary = results["summary"]
-                        f.write(f"Total Entries: {summary['total_entries']}\n")
-                        f.write(f"High Risk Entries: {summary['high_risk_entries']}\n")
-                        
-                        # Risk levels
-                        f.write("\nRisk Levels:\n")
-                        for risk, count in results["risk_levels"].items():
-                            f.write(f"- {risk}: {count}\n")
-                        
-                        # Categories
-                        f.write("\nCategories:\n")
-                        for category, count in results["categories"].items():
-                            f.write(f"- {category}: {count}\n")
-                    
-                    # Redirect to view the report
-                    return redirect(url_for("view_report", filename=f"audit_analysis_{timestamp}.json"))
-                else:
-                    return render_template(
-                        "generate_report.html",
-                        title="Generate Report",
-                        error="Failed to generate report. See logs for details."
-                    )
-            except Exception as e:
-                logger.error(f"Error generating report: {e}")
-                return render_template(
-                    "generate_report.html",
-                    title="Generate Report",
-                    error=f"Error generating report: {str(e)}"
-                )
-        else:
-            return render_template(
-                "generate_report.html",
-                title="Generate Report",
-                error="Audit AI review module not available. Cannot generate reports."
-            )
-    
-    # GET request - show form
-    return render_template(
-        "generate_report.html",
-        title="Generate Report"
-    )
+        return send_file(file_path, as_attachment=True)
+    except Exception as e:
+        logger.error(f"Error downloading report: {e}")
+        return render_template('error.html', error=str(e))
 
 
-@app.route("/api/logs/summary")
-def api_logs_summary():
-    """API endpoint for log summary data"""
-    # Get filter parameters
-    start_date = request.args.get("start_date")
-    end_date = request.args.get("end_date")
-    
-    # Parse dates if provided
-    start_date_obj = None
-    end_date_obj = None
-    
-    if start_date:
-        try:
-            start_date_obj = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-        except Exception:
-            pass
-    
-    if end_date:
-        try:
-            end_date_obj = datetime.datetime.strptime(end_date, "%Y-%m-%d")
-            # Set to end of day
-            end_date_obj = end_date_obj.replace(
-                hour=23, minute=59, second=59, microsecond=999999
-            )
-        except Exception:
-            pass
-    
-    # Get log entries
-    entries = get_log_entries(
-        start_date=start_date_obj,
-        end_date=end_date_obj,
-        max_entries=10000  # Higher limit for API
-    )
-    
-    # Generate summary
-    summary = get_log_summary(entries)
-    
-    return jsonify(summary)
-
-
-@app.route("/api/logs/time-series")
-def api_logs_time_series():
-    """API endpoint for log time series data"""
-    # Get filter parameters
-    start_date = request.args.get("start_date")
-    end_date = request.args.get("end_date")
-    
-    # Parse dates if provided
-    start_date_obj = None
-    end_date_obj = None
-    
-    if start_date:
-        try:
-            start_date_obj = datetime.datetime.strptime(start_date, "%Y-%m-%d")
-        except Exception:
-            pass
-    
-    if end_date:
-        try:
-            end_date_obj = datetime.datetime.strptime(end_date, "%Y-%m-%d")
-            # Set to end of day
-            end_date_obj = end_date_obj.replace(
-                hour=23, minute=59, second=59, microsecond=999999
-            )
-        except Exception:
-            pass
-    
-    # Get log entries
-    entries = get_log_entries(
-        start_date=start_date_obj,
-        end_date=end_date_obj,
-        max_entries=10000  # Higher limit for API
-    )
-    
-    # Count entries by day and risk level
-    days = defaultdict(lambda: defaultdict(int))
-    
-    for entry in entries:
-        day = entry["timestamp"].date().isoformat()
-        risk = entry["risk"]
-        days[day][risk] += 1
-    
-    # Convert to list of data points
-    data_points = []
-    for day, risks in sorted(days.items()):
-        data_point = {"date": day}
-        for risk, count in risks.items():
-            data_point[risk] = count
-        data_points.append(data_point)
-    
-    return jsonify(data_points)
+@app.route('/health')
+def health_check():
+    """Health check endpoint for monitoring"""
+    return jsonify({
+        'status': 'healthy',
+        'version': DASHBOARD_VERSION,
+        'timestamp': datetime.datetime.now().isoformat()
+    })
 
 
 @app.errorhandler(404)
 def page_not_found(e):
-    return render_template("error.html", title="Page Not Found", error=str(e)), 404
+    """Handle 404 errors"""
+    return render_template('error.html', error='Page not found'), 404
 
 
 @app.errorhandler(500)
 def server_error(e):
-    return render_template("error.html", title="Server Error", error=str(e)), 500
+    """Handle 500 errors"""
+    logger.error(f"Server error: {e}")
+    return render_template('error.html', error='Internal server error'), 500
 
 
-if __name__ == "__main__":
-    # Parse command line arguments
-    import argparse
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    debug = os.environ.get('DEBUG', 'False').lower() == 'true'
     
-    parser = argparse.ArgumentParser(description="ICSF GAMA Audit Dashboard")
-    parser.add_argument(
-        "--host", 
-        default="0.0.0.0", 
-        help="Host to run the server on"
-    )
-    parser.add_argument(
-        "--port", 
-        type=int, 
-        default=5000, 
-        help="Port to run the server on"
-    )
-    parser.add_argument(
-        "--debug", 
-        action="store_true", 
-        help="Run in debug mode"
-    )
-    args = parser.parse_args()
-    
-    # Log startup
-    logger.info(f"Starting ICSF GAMA Audit Dashboard on {args.host}:{args.port}")
-    
-    # Run the app
-    app.run(host=args.host, port=args.port, debug=args.debug)
+    logger.info(f"Starting ICSF GAMA Audit Dashboard on port {port}")
+    app.run(host='0.0.0.0', port=port, debug=debug)

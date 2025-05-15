@@ -1,0 +1,388 @@
+{% extends 'base.html' %}
+
+{% block extra_head %}
+<style>
+    .chart-container {
+        position: relative;
+        height: 300px;
+    }
+    .risk-stat {
+        border-radius: 8px;
+        padding: 1.5rem;
+        margin-bottom: 20px;
+        color: white;
+    }
+    .risk-LOW {
+        background-color: #28a745;
+    }
+    .risk-MEDIUM {
+        background-color: #ffc107;
+        color: #343a40;
+    }
+    .risk-HIGH {
+        background-color: #dc3545;
+    }
+    .risk-CRITICAL {
+        background-color: #6610f2;
+    }
+    .risk-stat h4 {
+        font-size: 1.1rem;
+        margin-bottom: 0.5rem;
+    }
+    .risk-stat .count {
+        font-size: 2.5rem;
+        font-weight: 700;
+        line-height: 1;
+        margin-bottom: 0.5rem;
+    }
+    .risk-stat .percent {
+        font-size: 1rem;
+        opacity: 0.9;
+    }
+    .insight-card {
+        background-color: #fff;
+        border-radius: 8px;
+        padding: 1.5rem;
+        box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+        height: 100%;
+    }
+    .insight-card h5 {
+        color: #495057;
+        margin-bottom: 1rem;
+        font-size: 1.1rem;
+    }
+    .insight-card p {
+        color: #6c757d;
+        font-size: 0.9rem;
+        margin-bottom: 0.5rem;
+    }
+    .insight-card .trend-up {
+        color: #28a745;
+    }
+    .insight-card .trend-down {
+        color: #dc3545;
+    }
+    .tooltip-inner {
+        max-width: 300px;
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}Analytics Dashboard{% endblock %}
+
+{% block breadcrumb_items %}
+<li class="breadcrumb-item active">Analytics</li>
+{% endblock %}
+
+{% block content %}
+<div class="row mb-4">
+    {% set risk_types = ['LOW', 'MEDIUM', 'HIGH', 'CRITICAL'] %}
+    {% for risk in risk_types %}
+        {% if risk in summary.risk_counts %}
+            {% set count = summary.risk_counts[risk] %}
+            {% set percent = (count / summary.total_entries * 100) if summary.total_entries > 0 else 0 %}
+            <div class="col-md-3">
+                <div class="risk-stat risk-{{ risk }}">
+                    <h4>{{ risk }} Risk</h4>
+                    <div class="count">{{ count }}</div>
+                    <div class="percent">{{ "%.1f"|format(percent) }}% of total</div>
+                </div>
+            </div>
+        {% else %}
+            <div class="col-md-3">
+                <div class="risk-stat risk-{{ risk }}">
+                    <h4>{{ risk }} Risk</h4>
+                    <div class="count">0</div>
+                    <div class="percent">0.0% of total</div>
+                </div>
+            </div>
+        {% endif %}
+    {% endfor %}
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bar-chart-line"></i> Log Entry Trends (30 Days)
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="trendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-pie-chart"></i> Category Distribution
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="categoryChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-12">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-graph-up"></i> Risk Level Trends by Day
+                </h5>
+            </div>
+            <div class="card-body">
+                <div class="chart-container">
+                    <canvas id="riskTrendChart"></canvas>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-4">
+        <div class="insight-card">
+            <h5><i class="bi bi-lightbulb"></i> Key Insights</h5>
+            <p><strong>Top Category:</strong> 
+                {% set top_category = summary.category_counts|dictsort(by='value')|reverse|first %}
+                {{ top_category[0] }} ({{ top_category[1] }} entries)
+            </p>
+            <p><strong>High Risk Rate:</strong> 
+                {{ "%.1f"|format(summary.high_risk_count / summary.total_entries * 100) if summary.total_entries > 0 else 0 }}%
+            </p>
+            <p><strong>Average Daily Entries:</strong> 
+                {{ "%.1f"|format(summary.total_entries / chart_data.dates|length) if chart_data.dates|length > 0 else 0 }}
+            </p>
+            <p><strong>Trend:</strong> 
+                {% if chart_data.dates|length >= 2 %}
+                    {% set last_day = chart_data.counts[-1] %}
+                    {% set prev_day = chart_data.counts[-2] %}
+                    {% if last_day > prev_day %}
+                        <span class="trend-up"><i class="bi bi-arrow-up"></i> Increasing</span>
+                    {% elif last_day < prev_day %}
+                        <span class="trend-down"><i class="bi bi-arrow-down"></i> Decreasing</span>
+                    {% else %}
+                        <span><i class="bi bi-dash"></i> Stable</span>
+                    {% endif %}
+                {% else %}
+                    <span><i class="bi bi-dash"></i> Insufficient data</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="insight-card">
+            <h5><i class="bi bi-shield-exclamation"></i> Risk Analysis</h5>
+            <p><strong>Highest Risk Day:</strong>
+                {% if chart_data.dates|length > 0 %}
+                    {% set highest_risk_index = chart_data.risk_data.HIGH|default([])|map('float')|list|argmax %}
+                    {% if highest_risk_index is defined and highest_risk_index < chart_data.dates|length %}
+                        {{ chart_data.dates[highest_risk_index] }}
+                    {% else %}
+                        None detected
+                    {% endif %}
+                {% else %}
+                    None detected
+                {% endif %}
+            </p>
+            <p><strong>Warning to Error Ratio:</strong>
+                {% set warnings = summary.level_counts.WARNING|default(0) %}
+                {% set errors = summary.level_counts.ERROR|default(0) %}
+                {% if errors > 0 %}
+                    {{ "%.1f"|format(warnings / errors) }}:1
+                {% else %}
+                    No errors
+                {% endif %}
+            </p>
+            <p><strong>Recommendation:</strong>
+                {% if summary.high_risk_count > 0 %}
+                    <span class="text-danger">Review high risk entries</span>
+                {% else %}
+                    <span class="text-success">System operating normally</span>
+                {% endif %}
+            </p>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="insight-card">
+            <h5><i class="bi bi-calendar-check"></i> Compliance Status</h5>
+            <p><strong>Audit Status:</strong>
+                {% if summary.high_risk_count == 0 %}
+                    <span class="badge bg-success">Compliant</span>
+                {% elif summary.high_risk_count <= 2 %}
+                    <span class="badge bg-warning text-dark">Review Needed</span>
+                {% else %}
+                    <span class="badge bg-danger">Action Required</span>
+                {% endif %}
+            </p>
+            <p><strong>Last Report Generated:</strong> Today</p>
+            <p><strong>Next Audit:</strong> Tomorrow</p>
+            <p><a href="{{ url_for('view_logs', risk_level='HIGH') }}" class="btn btn-sm btn-outline-primary mt-3">
+                <i class="bi bi-search"></i> View High Risk Entries
+            </a></p>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        // Parse chart data from Flask
+        const chartData = {{ chart_data|safe }};
+        
+        // Time Series Chart
+        const trendCtx = document.getElementById('trendChart').getContext('2d');
+        new Chart(trendCtx, {
+            type: 'line',
+            data: {
+                labels: chartData.dates,
+                datasets: [{
+                    label: 'Log Entries',
+                    data: chartData.counts,
+                    borderColor: '#2c3e50',
+                    backgroundColor: 'rgba(44, 62, 80, 0.1)',
+                    tension: 0.3,
+                    fill: true
+                }]
+            },
+            options: {
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Entries'
+                        }
+                    },
+                    x: {
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    }
+                },
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    legend: {
+                        display: true,
+                        position: 'top'
+                    }
+                },
+                responsive: true,
+                maintainAspectRatio: false
+            }
+        });
+        
+        // Category Chart
+        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+        new Chart(categoryCtx, {
+            type: 'doughnut',
+            data: {
+                labels: Object.keys({{ summary.category_counts|tojson }}),
+                datasets: [{
+                    data: Object.values({{ summary.category_counts|tojson }}),
+                    backgroundColor: [
+                        '#3498db', // Blue
+                        '#2ecc71', // Green
+                        '#e74c3c', // Red
+                        '#f39c12', // Orange
+                        '#9b59b6', // Purple
+                        '#1abc9c'  // Teal
+                    ],
+                    borderWidth: 1
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    legend: {
+                        position: 'right',
+                        labels: {
+                            boxWidth: 15
+                        }
+                    }
+                }
+            }
+        });
+        
+        // Risk Level Trend Chart
+        const riskTrendCtx = document.getElementById('riskTrendChart').getContext('2d');
+        new Chart(riskTrendCtx, {
+            type: 'bar',
+            data: {
+                labels: chartData.dates,
+                datasets: [
+                    {
+                        label: 'Low Risk',
+                        data: chartData.risk_data.LOW || [],
+                        backgroundColor: 'rgba(40, 167, 69, 0.7)',
+                        stack: 'Stack 0'
+                    },
+                    {
+                        label: 'Medium Risk',
+                        data: chartData.risk_data.MEDIUM || [],
+                        backgroundColor: 'rgba(255, 193, 7, 0.7)',
+                        stack: 'Stack 0'
+                    },
+                    {
+                        label: 'High Risk',
+                        data: chartData.risk_data.HIGH || [],
+                        backgroundColor: 'rgba(220, 53, 69, 0.7)',
+                        stack: 'Stack 0'
+                    },
+                    {
+                        label: 'Critical Risk',
+                        data: chartData.risk_data.CRITICAL || [],
+                        backgroundColor: 'rgba(102, 16, 242, 0.7)',
+                        stack: 'Stack 0'
+                    }
+                ]
+            },
+            options: {
+                scales: {
+                    x: {
+                        stacked: true,
+                        title: {
+                            display: true,
+                            text: 'Date'
+                        }
+                    },
+                    y: {
+                        stacked: true,
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Number of Entries'
+                        }
+                    }
+                },
+                responsive: true,
+                maintainAspectRatio: false,
+                plugins: {
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false
+                    },
+                    legend: {
+                        position: 'top'
+                    }
+                }
+            }
+        });
+    });
+</script>
+{% endblock %}

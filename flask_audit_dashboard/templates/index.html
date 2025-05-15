@@ -1,18 +1,205 @@
 {% extends 'base.html' %}
 
+{% block extra_head %}
+<style>
+    .stat-card {
+        border-radius: 8px;
+        transition: all 0.3s;
+    }
+    .stat-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+    }
+    .stat-card .card-body {
+        padding: 1.5rem;
+    }
+    .stat-icon {
+        font-size: 2rem;
+        margin-bottom: 0.5rem;
+    }
+    .stat-title {
+        font-size: 0.9rem;
+        color: rgba(0,0,0,0.6);
+        margin-bottom: 0.25rem;
+    }
+    .stat-value {
+        font-size: 2rem;
+        font-weight: 700;
+        margin-bottom: 0.5rem;
+    }
+    .stat-description {
+        font-size: 0.85rem;
+        color: rgba(0,0,0,0.5);
+    }
+    .table-recent {
+        font-size: 0.9rem;
+    }
+    .table-recent th {
+        font-weight: 600;
+        color: #6c757d;
+    }
+    .risk-LOW {
+        background-color: rgba(40, 167, 69, 0.1);
+    }
+    .risk-MEDIUM {
+        background-color: rgba(255, 193, 7, 0.2);
+    }
+    .risk-HIGH {
+        background-color: rgba(220, 53, 69, 0.2);
+    }
+    .risk-CRITICAL {
+        background-color: rgba(102, 16, 242, 0.2);
+    }
+    .badge-LOW {
+        background-color: #28a745;
+    }
+    .badge-MEDIUM {
+        background-color: #ffc107;
+        color: #212529;
+    }
+    .badge-HIGH {
+        background-color: #dc3545;
+    }
+    .badge-CRITICAL {
+        background-color: #6610f2;
+    }
+    .activity-card {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+</style>
+{% endblock %}
+
+{% block page_title %}Dashboard Overview{% endblock %}
+
 {% block content %}
+<div class="row mb-4">
+    <div class="col-md-3">
+        <div class="card stat-card text-white bg-primary">
+            <div class="card-body">
+                <div class="stat-icon">
+                    <i class="bi bi-clipboard-data"></i>
+                </div>
+                <div class="stat-title">Total Log Entries</div>
+                <div class="stat-value">{{ summary.total_entries }}</div>
+                <div class="stat-description">All time</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card text-white bg-success">
+            <div class="card-body">
+                <div class="stat-icon">
+                    <i class="bi bi-activity"></i>
+                </div>
+                <div class="stat-title">Entries Today</div>
+                <div class="stat-value">{{ today_summary.total_entries }}</div>
+                <div class="stat-description">Last 24 hours</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card text-white bg-warning">
+            <div class="card-body">
+                <div class="stat-icon">
+                    <i class="bi bi-exclamation-triangle"></i>
+                </div>
+                <div class="stat-title">Warnings</div>
+                <div class="stat-value">{{ summary.level_counts.WARNING|default(0) }}</div>
+                <div class="stat-description">Require attention</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="card stat-card text-white bg-danger">
+            <div class="card-body">
+                <div class="stat-icon">
+                    <i class="bi bi-shield-exclamation"></i>
+                </div>
+                <div class="stat-title">High Risk Issues</div>
+                <div class="stat-value">{{ summary.high_risk_count }}</div>
+                <div class="stat-description">Immediate action required</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-pie-chart"></i> Risk Level Distribution
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="riskChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="card-title mb-0">
+                    <i class="bi bi-bar-chart"></i> Entry Categories
+                </h5>
+            </div>
+            <div class="card-body">
+                <canvas id="categoryChart" height="250"></canvas>
+            </div>
+        </div>
+    </div>
+</div>
+
 <div class="row mb-4">
     <div class="col-md-12">
         <div class="card">
-            <div class="card-header bg-primary text-white">
+            <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-shield-check"></i> ICSF GAMA Audit Dashboard
+                    <i class="bi bi-clock-history"></i> Recent Activity
                 </h5>
             </div>
-            <div class="card-body">
-                <p>Welcome to the ICSF GAMA Simulator Audit Dashboard. This dashboard provides tools for monitoring and analyzing simulation audit logs for compliance and operational purposes.</p>
-                <div class="alert alert-info">
-                    <i class="bi bi-info-circle"></i> This dashboard is for authorized county personnel only. All activities are logged.
+            <div class="card-body activity-card">
+                <div class="table-responsive">
+                    <table class="table table-hover table-recent">
+                        <thead>
+                            <tr>
+                                <th style="width: 15%;">Timestamp</th>
+                                <th style="width: 8%;">Level</th>
+                                <th style="width: 10%;">Risk</th>
+                                <th style="width: 15%;">Category</th>
+                                <th>Message</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for entry in recent_entries %}
+                            <tr class="risk-{{ entry.risk }}">
+                                <td>{{ entry.timestamp_str }}</td>
+                                <td>
+                                    {% if entry.level == 'INFO' %}
+                                    <span class="badge bg-info">{{ entry.level }}</span>
+                                    {% elif entry.level == 'WARNING' %}
+                                    <span class="badge bg-warning text-dark">{{ entry.level }}</span>
+                                    {% elif entry.level == 'ERROR' %}
+                                    <span class="badge bg-danger">{{ entry.level }}</span>
+                                    {% elif entry.level == 'CRITICAL' %}
+                                    <span class="badge bg-dark">{{ entry.level }}</span>
+                                    {% else %}
+                                    <span class="badge bg-secondary">{{ entry.level }}</span>
+                                    {% endif %}
+                                </td>
+                                <td><span class="badge badge-{{ entry.risk }}">{{ entry.risk }}</span></td>
+                                <td>{{ entry.category }}</td>
+                                <td>{{ entry.message }}</td>
+                            </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                <div class="text-center mt-3">
+                    <a href="{{ url_for('view_logs') }}" class="btn btn-sm btn-primary">
+                        <i class="bi bi-search"></i> View All Logs
+                    </a>
                 </div>
             </div>
         </div>
@@ -24,11 +211,28 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-graph-up"></i> Log Activity
+                    <i class="bi bi-clipboard-check"></i> System Status
                 </h5>
             </div>
             <div class="card-body">
-                <canvas id="activityChart" width="400" height="300"></canvas>
+                <ul class="list-group">
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        ICSF GAMA Simulator
+                        <span class="badge bg-success">Active</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Audit Logging
+                        <span class="badge bg-success">Active</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Auto-Update Service
+                        <span class="badge bg-success">Active</span>
+                    </li>
+                    <li class="list-group-item d-flex justify-content-between align-items-center">
+                        Compliance Reporting
+                        <span class="badge bg-success">Active</span>
+                    </li>
+                </ul>
             </div>
         </div>
     </div>
@@ -36,228 +240,118 @@
         <div class="card">
             <div class="card-header">
                 <h5 class="card-title mb-0">
-                    <i class="bi bi-exclamation-triangle"></i> Risk Distribution
+                    <i class="bi bi-tools"></i> Quick Actions
                 </h5>
             </div>
             <div class="card-body">
-                <canvas id="riskChart" width="400" height="300"></canvas>
-            </div>
-        </div>
-    </div>
-</div>
-
-<div class="row">
-    <div class="col-md-4">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-journal-text"></i> Quick Actions
-                </h5>
-            </div>
-            <div class="card-body">
-                <div class="list-group">
-                    <a href="{{ url_for('view_logs') }}" class="list-group-item list-group-item-action">
-                        <i class="bi bi-search"></i> View Recent Logs
-                    </a>
-                    <a href="{{ url_for('view_logs', risk_level='HIGH') }}" class="list-group-item list-group-item-action">
-                        <i class="bi bi-exclamation-circle"></i> View High-Risk Entries
-                    </a>
-                    <a href="{{ url_for('generate_report') }}" class="list-group-item list-group-item-action">
-                        <i class="bi bi-file-earmark-text"></i> Generate New Report
-                    </a>
-                    <a href="{{ url_for('view_reports') }}" class="list-group-item list-group-item-action">
-                        <i class="bi bi-folder"></i> View All Reports
-                    </a>
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <a href="{{ url_for('view_logs') }}" class="btn btn-primary w-100">
+                            <i class="bi bi-journal-text"></i> View Audit Logs
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-success w-100">
+                            <i class="bi bi-graph-up"></i> View Analytics
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="{{ url_for('view_reports') }}" class="btn btn-info w-100 text-white">
+                            <i class="bi bi-file-earmark-text"></i> View Reports
+                        </a>
+                    </div>
+                    <div class="col-md-6 mb-3">
+                        <a href="/health" class="btn btn-secondary w-100">
+                            <i class="bi bi-heart-pulse"></i> Check Health
+                        </a>
+                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
-    <div class="col-md-8">
-        <div class="card">
-            <div class="card-header">
-                <h5 class="card-title mb-0">
-                    <i class="bi bi-info-circle"></i> System Information
-                </h5>
-            </div>
-            <div class="card-body">
-                <table class="table table-bordered">
-                    <tbody>
-                        <tr>
-                            <th style="width: 30%;">Dashboard Version</th>
-                            <td>1.0.0</td>
-                        </tr>
-                        <tr>
-                            <th>ICSF GAMA Simulator</th>
-                            <td>Version 1.0.0</td>
-                        </tr>
-                        <tr>
-                            <th>Log File</th>
-                            <td><code>logs/compliance_audit.log</code></td>
-                        </tr>
-                        <tr>
-                            <th>Server Date/Time</th>
-                            <td id="server-time">Loading...</td>
-                        </tr>
-                        <tr>
-                            <th>Dashboard Status</th>
-                            <td><span class="badge bg-success">Active</span></td>
-                        </tr>
-                    </tbody>
-                </table>
             </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
-{% block scripts %}
+{% block extra_scripts %}
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    // Update server time every second
-    function updateServerTime() {
-        const now = new Date();
-        document.getElementById('server-time').textContent = now.toLocaleString();
-    }
-    updateServerTime();
-    setInterval(updateServerTime, 1000);
-    
-    // Fetch dashboard data
-    fetch('/api/logs/summary')
-        .then(response => response.json())
-        .then(data => {
-            updateRiskChart(data);
-            // More chart updates can be added here
-        })
-        .catch(error => console.error('Error loading dashboard data:', error));
-    
-    // Fetch time series data
-    fetch('/api/logs/time-series')
-        .then(response => response.json())
-        .then(data => {
-            updateActivityChart(data);
-        })
-        .catch(error => console.error('Error loading time series data:', error));
-    
-    // Risk Distribution Chart
-    function updateRiskChart(data) {
-        const riskLabels = Object.keys(data.risk_levels || {});
-        const riskData = Object.values(data.risk_levels || {});
-        
-        if (riskLabels.length === 0) {
-            // No data available
-            document.getElementById('riskChart').parentElement.innerHTML = 
-                '<div class="alert alert-info">No risk data available.</div>';
-            return;
-        }
-        
-        const riskColors = {
-            'LOW': 'rgba(40, 167, 69, 0.7)',
-            'MEDIUM': 'rgba(255, 193, 7, 0.7)',
-            'HIGH': 'rgba(220, 53, 69, 0.7)',
-            'CRITICAL': 'rgba(102, 16, 242, 0.7)'
+    document.addEventListener('DOMContentLoaded', function() {
+        // Risk Level Chart
+        const riskCtx = document.getElementById('riskChart').getContext('2d');
+        const riskData = {
+            labels: [
+                {% for risk in summary.risk_counts.keys() %}
+                "{{ risk }}",
+                {% endfor %}
+            ],
+            datasets: [{
+                data: [
+                    {% for count in summary.risk_counts.values() %}
+                    {{ count }},
+                    {% endfor %}
+                ],
+                backgroundColor: [
+                    '#28a745',  // LOW - Green
+                    '#ffc107',  // MEDIUM - Yellow
+                    '#dc3545',  // HIGH - Red
+                    '#6610f2'   // CRITICAL - Purple
+                ],
+                borderWidth: 1
+            }]
         };
         
-        const backgroundColor = riskLabels.map(label => riskColors[label] || 'rgba(108, 117, 125, 0.7)');
-        
-        const riskChart = new Chart(document.getElementById('riskChart'), {
+        new Chart(riskCtx, {
             type: 'pie',
-            data: {
-                labels: riskLabels,
-                datasets: [{
-                    data: riskData,
-                    backgroundColor: backgroundColor,
-                    borderColor: backgroundColor.map(color => color.replace('0.7', '1')),
-                    borderWidth: 1
-                }]
-            },
+            data: riskData,
             options: {
-                responsive: true,
                 plugins: {
                     legend: {
-                        position: 'right',
-                    },
-                    title: {
-                        display: true,
-                        text: 'Risk Level Distribution'
+                        position: 'bottom'
                     }
-                }
+                },
+                responsive: true,
+                maintainAspectRatio: false
             }
         });
-    }
-    
-    // Activity Chart
-    function updateActivityChart(data) {
-        if (!data || data.length === 0) {
-            // No data available
-            document.getElementById('activityChart').parentElement.innerHTML = 
-                '<div class="alert alert-info">No activity data available.</div>';
-            return;
-        }
         
-        // Process data for chart
-        const dates = data.map(item => item.date);
-        
-        // Find unique risk levels across all data points
-        const riskLevels = new Set();
-        data.forEach(item => {
-            Object.keys(item).forEach(key => {
-                if (key !== 'date') {
-                    riskLevels.add(key);
-                }
-            });
-        });
-        
-        // Create datasets for each risk level
-        const datasets = [];
-        const colors = {
-            'LOW': 'rgba(40, 167, 69, 0.7)',
-            'MEDIUM': 'rgba(255, 193, 7, 0.7)',
-            'HIGH': 'rgba(220, 53, 69, 0.7)',
-            'CRITICAL': 'rgba(102, 16, 242, 0.7)'
+        // Category Chart
+        const categoryCtx = document.getElementById('categoryChart').getContext('2d');
+        const categoryData = {
+            labels: [
+                {% for category in summary.category_counts.keys() %}
+                "{{ category }}",
+                {% endfor %}
+            ],
+            datasets: [{
+                label: 'Entry Count',
+                data: [
+                    {% for count in summary.category_counts.values() %}
+                    {{ count }},
+                    {% endfor %}
+                ],
+                backgroundColor: '#2c3e50',
+                borderColor: '#2c3e50',
+                borderWidth: 1
+            }]
         };
         
-        riskLevels.forEach(risk => {
-            const values = data.map(item => item[risk] || 0);
-            
-            datasets.push({
-                label: risk,
-                data: values,
-                backgroundColor: colors[risk] || 'rgba(108, 117, 125, 0.7)',
-                borderColor: (colors[risk] || 'rgba(108, 117, 125, 0.7)').replace('0.7', '1'),
-                borderWidth: 1
-            });
-        });
-        
-        const activityChart = new Chart(document.getElementById('activityChart'), {
+        new Chart(categoryCtx, {
             type: 'bar',
-            data: {
-                labels: dates,
-                datasets: datasets
-            },
+            data: categoryData,
             options: {
-                responsive: true,
                 scales: {
-                    x: {
-                        stacked: true
-                    },
                     y: {
-                        stacked: true,
                         beginAtZero: true
                     }
                 },
                 plugins: {
-                    title: {
-                        display: true,
-                        text: 'Log Activity by Date'
-                    },
-                    tooltip: {
-                        mode: 'index',
-                        intersect: false
+                    legend: {
+                        display: false
                     }
-                }
+                },
+                responsive: true,
+                maintainAspectRatio: false
             }
         });
-    }
-});
+    });
 </script>
 {% endblock %}

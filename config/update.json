@@ -1,0 +1,21 @@
+{
+  "version": "1.0.0",
+  "release_date": "2025-05-15",
+  "package_url": "\\\\county-server\\icsf-updates\\ICSF_GAMA_1.0.0.zip",
+  "checksum": "0615bff13f7e9d556adb924d56ee7c36a3352ab8b0ae1ff859a55085a2dd4b10",
+  "changes": [
+    "Initial release of ICSF GAMA Simulator",
+    "Full GUI/CLI interface for property valuation simulation",
+    "Advanced spatial analytics with GWR modeling",
+    "Interactive map viewer with property details",
+    "Compliance audit logging and reporting"
+  ],
+  "requirements": {
+    "python": ">=3.8",
+    "disk_space": "50MB",
+    "memory": "256MB"
+  },
+  "auto_update": true,
+  "prompt_user": false,
+  "backup_before_update": true
+}
