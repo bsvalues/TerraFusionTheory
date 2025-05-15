@@ -1,0 +1,29 @@
+apiVersion: terrafusion.ai/v1
+kind: DriftGuard
+metadata:
+  name: market-settings-guard
+  namespace: terrafusion-system
+  labels:
+    app: terrafusion-market
+    component: settings
+spec:
+  # Monitor a ConfigMap resource
+  targetKind: ConfigMap
+  targetName: market-settings
+  targetNamespace: terrafusion-system
+  
+  # Expected SHA-256 hash of the ConfigMap data
+  expectedHash: "7d8c69f9a32e4c9b6e8b9a1d5c8f7e6d5c4b3a2c1d0e9f8a7b6c5d4e3f2d1c0b9"
+  
+  # Enable automatic remediation
+  autoRemediate: true
+  
+  # Alert after 3 consecutive failures
+  maxFailuresBeforeAlert: 3
+  
+  # Configuration source of truth reference - using Git repository
+  sourceOfTruthRef:
+    kind: git
+    name: terrafusion-configs
+    namespace: terrafusion-system
+    path: configs/kubernetes/terrafusion-system/configmaps/market-settings.yaml

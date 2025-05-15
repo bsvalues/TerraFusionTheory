@@ -1,149 +1,182 @@
 # TerraFusion DriftGuard Operator
 
-The DriftGuard Operator is a Kubernetes operator that monitors resources for configuration drift and can automatically remediate unauthorized changes. It's an essential component for maintaining system integrity in enterprise environments.
-
 ## Overview
 
-DriftGuard uses a hash-based approach to detect unauthorized changes to Kubernetes resources, including:
+DriftGuard is a Kubernetes operator for detecting and remediating configuration drift in TerraFusion resources. Built on the [Kopf](https://github.com/nolar/kopf) (Kubernetes Operator Pythonic Framework), it provides enterprise-grade protection against unauthorized configuration changes.
 
-- ConfigMaps
-- Secrets
-- Deployments
-- Custom Resources (like GAMAConfig)
+![DriftGuard Architecture](./docs/driftguard-architecture.png)
 
-When drift is detected, DriftGuard can automatically restore resources to their expected state, ensuring consistent system operation.
+## Key Features
+
+- **Configuration Drift Detection**: Continuously monitors resources for unauthorized changes
+- **Automatic Remediation**: Restores resources to their expected state (when enabled)
+- **Multi-Source Fallback**: Uses multiple configuration sources to ensure resilience
+- **Enhanced Telemetry**: Provides detailed logging with transaction tracking
+- **Comprehensive Audit Trail**: Records all drift events and remediation actions
+- **Resource Protection**: Supports ConfigMaps, Secrets, and GAMA configuration resources
+
+## How It Works
+
+DriftGuard uses SHA-256 hashing to detect configuration drift:
+
+1. When a DriftGuard resource is created, it stores the expected hash of the target resource configuration
+2. Periodically, it computes the current hash of the target resource
+3. If the hashes don't match, it detects drift and can automatically restore the expected configuration
+4. All events are logged with detailed metadata for audit and compliance purposes
 
 ## Architecture
 
-The DriftGuard system consists of several components:
+DriftGuard consists of several components:
 
-1. **DriftGuard Operator**: Kubernetes operator running the main drift detection logic
-2. **Configuration Service**: Source-of-truth for configurations
-3. **CRDs**: Custom Resource Definitions for the DriftGuard resources
-4. **Telemetry Service**: Collects drift detection events for monitoring and analysis
+- **DriftGuard Operator**: The main Kubernetes operator that watches for DriftGuard resources
+- **Configuration Service**: A central source of truth for approved configurations
+- **Telemetry Service**: Records all drift events and remediation actions
+
+## Prerequisites
+
+- Kubernetes 1.16+
+- Python 3.8+
+- Kopf 1.35+
+- Access to create CustomResourceDefinitions (CRDs)
 
 ## Installation
 
-### Prerequisites
-
-- Kubernetes cluster (v1.16+)
-- kubectl configured to manage the cluster
-- Helm (optional for chart-based installation)
-
-### Option 1: Direct Installation
-
-Apply the CRDs and deployment manifests:
+### Using Kubernetes Manifests
 
 ```bash
-# Create namespace
+# Apply the CRD
+kubectl apply -f crds/driftguard.yaml
+
+# Create the namespace if it doesn't exist
 kubectl create namespace terrafusion-system
 
-# Deploy CRDs
-kubectl apply -f crds/
-
-# Deploy operator
+# Apply the deployment
 kubectl apply -f deployment.yaml
-
-# Deploy configuration service
-kubectl apply -f config-service-deployment.yaml
 ```
 
-### Option 2: Helm Installation (Coming Soon)
+### Verifying the Installation
 
 ```bash
-helm repo add terrafusion https://charts.terrafusion.ai
-helm install driftguard terrafusion/driftguard-operator -n terrafusion-system
+# Check if the operator is running
+kubectl get pods -n terrafusion-system -l app=driftguard-operator
+
+# Check if the configuration service is running
+kubectl get pods -n terrafusion-system -l app=config-service
+
+# Verify the CRD was installed correctly
+kubectl get crds | grep driftguards.terrafusion.ai
 ```
 
 ## Usage
 
-### Creating a DriftGuard Resource
-
-A DriftGuard resource defines what to monitor and how to respond to drift:
+### Creating a DriftGuard
 
 ```yaml
 apiVersion: terrafusion.ai/v1
 kind: DriftGuard
 metadata:
-  name: example-configmap-guard
-  namespace: default
+  name: gama-valuation-model-guard
+  namespace: terrafusion-system
 spec:
-  targetKind: ConfigMap
-  targetName: my-config
-  # SHA-256 hash of the expected configuration
-  expectedHash: "8a7b4a9f6e5d2c1b0a9e8d7c6b5a4f3e2d1c0b9a8e7d6c5b4a3f2e1d0c9b8a7"
+  targetKind: GAMAConfig
+  targetName: gama-valuation-model
+  targetNamespace: terrafusion-system
+  expectedHash: "8a7b4a9f6e5d2c1b0a9e8d7c6b5a4f3e2d1c0b9a8e7d6c5b4a3f2e1d0c9b8a7f"
   autoRemediate: true
-  maxFailuresBeforeAlert: 3
+  maxFailuresBeforeAlert: 2
   sourceOfTruthRef:
-    kind: git
-    name: terrafusion-configs
-    namespace: default
-    path: /configs/my-config.yaml
+    kind: service
+    name: terrafusion-config-service
+    namespace: terrafusion-system
+    path: /configurations/gama/gama-valuation-model
 ```
 
-### Computing Config Hashes
-
-The `expectedHash` is a SHA-256 hash of the configuration data. You can compute it with tools like:
+### Monitoring Status
 
 ```bash
-# For a ConfigMap
-kubectl get configmap my-config -o json | jq -S '.data' | sha256sum
+# List all DriftGuards
+kubectl get driftguards -n terrafusion-system
 
-# For a GAMAConfig (custom resource)
-kubectl get gamaconfig my-gama-config -o json | jq -S '.spec.parameters' | sha256sum
+# Get detailed status of a specific DriftGuard
+kubectl describe driftguard gama-valuation-model-guard -n terrafusion-system
 ```
 
-The DriftGuard Configuration Service can also compute hashes for you:
+## Configuration
 
-```bash
-curl -X POST http://terrafusion-update-service/configurations \
-  -H "Content-Type: application/json" \
-  -d '{"kind":"gamaconfig","name":"gama-main","config":{...}}'
-```
+### DriftGuard Specification
 
-## GAMA Integration
+| Field | Description | Type | Required | Default |
+|-------|-------------|------|----------|---------|
+| `targetKind` | Kind of resource to monitor | string | Yes | - |
+| `targetName` | Name of the resource to monitor | string | Yes | - |
+| `targetNamespace` | Namespace of the resource | string | No | DriftGuard's namespace |
+| `expectedHash` | Expected SHA-256 hash of the configuration | string | Yes | - |
+| `autoRemediate` | Automatically remediate drift when detected | boolean | No | false |
+| `maxFailuresBeforeAlert` | Number of failures before triggering alert | integer | No | 3 |
+| `sourceOfTruthRef` | Reference to source of truth for remediation | object | No | - |
 
-TerraFusion's GAMA simulation system uses DriftGuard to ensure valuation model integrity:
+### Source of Truth Reference
 
-1. The GAMA model parameters are stored in GAMAConfig custom resources
-2. DriftGuard monitors these resources for unauthorized changes 
-3. The Configuration Service provides the source of truth for valid configurations
-4. Auto-remediation ensures consistency across instances
+| Field | Description | Type | Required |
+|-------|-------------|------|----------|
+| `kind` | Type of source ("git", "configmap", "secret", "service") | string | Yes |
+| `name` | Name of the source | string | Yes |
+| `namespace` | Namespace of the source | string | No |
+| `path` | Path within the source | string | No |
+
+## Security Considerations
+
+### RBAC Permissions
+
+DriftGuard requires certain RBAC permissions to function correctly:
+
+- `get`, `list`, `watch` permissions on the resources it monitors
+- `update`, `patch` permissions for remediation
+- `create` permissions for events
+
+Review the `deployment.yaml` file for the complete RBAC configuration.
+
+### Secret Management
+
+For sensitive resources (like Secrets), consider:
+
+- Using a more restrictive `maxFailuresBeforeAlert` (e.g., 1)
+- Setting up immediate alerting when drift is detected
+- Using a reference Secret in a more restricted namespace as the source of truth
+
+## Examples
+
+The `examples/` directory contains sample DriftGuard resources for various use cases:
+
+- `gama-config-guard.yaml`: Protects GAMA valuation model configurations
+- `configmap-guard.yaml`: Protects a ConfigMap with market settings
+- `secret-guard.yaml`: Protects database credentials stored in a Secret
 
 ## Troubleshooting
 
 ### Common Issues
 
-- **DriftGuard not detecting changes**: Verify the hash computation matches the resource structure
-- **Auto-remediation failing**: Check the sourceOfTruthRef configuration
-- **Operator pods not running**: Check RBAC permissions
+1. **DriftGuard operator pod not starting**:
+   - Check logs: `kubectl logs -n terrafusion-system -l app=driftguard-operator`
+   - Verify RBAC permissions: `kubectl describe clusterrole driftguard-operator`
 
-### Logs
+2. **Configuration drift not detected**:
+   - Verify the expected hash is correct
+   - Check if the operator has permissions to access the target resource
 
-```bash
-kubectl logs -n terrafusion-system -l app=driftguard-operator
-```
-
-## Security Considerations
-
-- The DriftGuard operator requires permissions to read and update resources it monitors
-- RBAC should be configured to limit DriftGuard to only necessary resources
-- Changes to DriftGuard resources should be audited to prevent tampering with security controls
-
-## Integration with CI/CD
-
-DriftGuard works alongside CI/CD pipelines by:
-
-1. Computing expected hashes during the build process
-2. Updating DriftGuard resources after successful deployments
-3. Alerting when unauthorized changes occur between deployments
-
-See the TerraFusion CI/CD documentation for more details on pipeline integration.
+3. **Remediation failing**:
+   - Verify source of truth is accessible
+   - Check if the operator has permissions to update the target resource
 
 ## Contributing
 
-Contributions to DriftGuard are welcome! Please see our [contributing guidelines](../../CONTRIBUTING.md) for more information.
+We welcome contributions! Please see [CONTRIBUTING.md](../../CONTRIBUTING.md) for details on how to contribute to this project.
 
 ## License
 
-TerraFusion DriftGuard is licensed under the Apache 2.0 license.
+This project is licensed under the Apache License 2.0 - see the [LICENSE](../../LICENSE) file for details.
+
+## Acknowledgments
+
+- [Kopf](https://github.com/nolar/kopf) - Kubernetes Operator Pythonic Framework
+- [Kubernetes Python Client](https://github.com/kubernetes-client/python) - Official Kubernetes Python client

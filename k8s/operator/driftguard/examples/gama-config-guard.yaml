@@ -1,0 +1,29 @@
+apiVersion: terrafusion.ai/v1
+kind: DriftGuard
+metadata:
+  name: gama-valuation-model-guard
+  namespace: terrafusion-system
+  labels:
+    app: terrafusion-gama
+    component: valuation-model
+spec:
+  # Monitor the GAMAConfig resource
+  targetKind: GAMAConfig
+  targetName: gama-valuation-model
+  targetNamespace: terrafusion-system
+  
+  # Expected SHA-256 hash of the configuration parameters
+  expectedHash: "8a7b4a9f6e5d2c1b0a9e8d7c6b5a4f3e2d1c0b9a8e7d6c5b4a3f2e1d0c9b8a7f"
+  
+  # Enable automatic remediation for critical valuation models
+  autoRemediate: true
+  
+  # Alert after 2 consecutive failures
+  maxFailuresBeforeAlert: 2
+  
+  # Configuration source of truth reference
+  sourceOfTruthRef:
+    kind: service
+    name: terrafusion-config-service
+    namespace: terrafusion-system
+    path: /configurations/gama/gama-valuation-model

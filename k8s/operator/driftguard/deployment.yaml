@@ -1,50 +1,10 @@
-apiVersion: v1
-kind: Namespace
-metadata:
-  name: terrafusion-system
----
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: driftguard-operator
-  namespace: terrafusion-system
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRole
-metadata:
-  name: driftguard-operator
-rules:
-  - apiGroups: [""]
-    resources: ["configmaps", "secrets"]
-    verbs: ["get", "list", "watch", "patch", "update"]
-  - apiGroups: ["apps"]
-    resources: ["deployments"]
-    verbs: ["get", "list", "watch", "patch", "update"]
-  - apiGroups: ["terrafusion.ai"]
-    resources: ["driftguards", "driftguards/status", "gamaconfigs"]
-    verbs: ["get", "list", "watch", "patch", "update"]
-  - apiGroups: ["apiextensions.k8s.io"]
-    resources: ["customresourcedefinitions"]
-    verbs: ["get", "list", "watch"]
----
-apiVersion: rbac.authorization.k8s.io/v1
-kind: ClusterRoleBinding
-metadata:
-  name: driftguard-operator
-subjects:
-  - kind: ServiceAccount
-    name: driftguard-operator
-    namespace: terrafusion-system
-roleRef:
-  kind: ClusterRole
-  name: driftguard-operator
-  apiGroup: rbac.authorization.k8s.io
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: driftguard-operator
   namespace: terrafusion-system
+  labels:
+    app: driftguard-operator
 spec:
   replicas: 1
   selector:
@@ -57,30 +17,192 @@ spec:
     spec:
       serviceAccountName: driftguard-operator
       containers:
-        - name: operator
-          image: terrafusion/driftguard-operator:latest
-          imagePullPolicy: Always
-          env:
-            - name: TELEMETRY_ENDPOINT
-              value: "http://telemetry-service.terrafusion-system.svc/telemetry/driftguard"
-            - name: KOPF_NAMESPACE
-              value: "" # Empty string means watching all namespaces
-          resources:
-            limits:
-              cpu: "500m"
-              memory: "512Mi"
-            requests:
-              cpu: "100m"
-              memory: "128Mi"
-          livenessProbe:
-            httpGet:
-              path: /healthz
-              port: 8080
-            initialDelaySeconds: 30
-            periodSeconds: 10
-          readinessProbe:
-            httpGet:
-              path: /readyz
-              port: 8080
-            initialDelaySeconds: 5
-            periodSeconds: 5
+      - name: driftguard-operator
+        image: terrafusion/driftguard-operator:1.0.0
+        imagePullPolicy: Always
+        env:
+        - name: KOPF_NAMESPACE
+          value: "terrafusion-system"
+        - name: TELEMETRY_ENDPOINT
+          value: "http://telemetry-service.terrafusion-system.svc.cluster.local:8080/api/telemetry"
+        - name: CONFIG_SERVICE_ENDPOINT
+          value: "http://config-service.terrafusion-system.svc.cluster.local:8080"
+        - name: CONFIG_SERVICE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: driftguard-secrets
+              key: config-service-api-key
+        resources:
+          limits:
+            cpu: "200m"
+            memory: "256Mi"
+          requests:
+            cpu: "100m"
+            memory: "128Mi"
+        livenessProbe:
+          httpGet:
+            path: /healthz
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /readyz
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: config-service
+  namespace: terrafusion-system
+  labels:
+    app: config-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: config-service
+  template:
+    metadata:
+      labels:
+        app: config-service
+    spec:
+      serviceAccountName: config-service
+      containers:
+      - name: config-service
+        image: terrafusion/config-service:1.0.0
+        imagePullPolicy: Always
+        ports:
+        - containerPort: 8080
+          name: http
+        env:
+        - name: PORT
+          value: "8080"
+        - name: CONFIG_SERVICE_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: driftguard-secrets
+              key: config-service-api-key
+        - name: CONFIG_DIR
+          value: "/config"
+        volumeMounts:
+        - name: config-volume
+          mountPath: /config
+          readOnly: true
+        resources:
+          limits:
+            cpu: "500m"
+            memory: "512Mi"
+          requests:
+            cpu: "200m"
+            memory: "256Mi"
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 5
+      volumes:
+      - name: config-volume
+        configMap:
+          name: terrafusion-configurations
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: config-service
+  namespace: terrafusion-system
+  labels:
+    app: config-service
+spec:
+  selector:
+    app: config-service
+  ports:
+  - port: 8080
+    targetPort: 8080
+    name: http
+  type: ClusterIP
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: driftguard-operator
+  namespace: terrafusion-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: config-service
+  namespace: terrafusion-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: driftguard-operator
+rules:
+- apiGroups: [""]
+  resources: ["configmaps", "secrets"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["create", "patch"]
+- apiGroups: ["terrafusion.ai"]
+  resources: ["driftguards", "driftguards/status"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: ["terrafusion.ai"]
+  resources: ["gamaconfigs"]
+  verbs: ["get", "list", "watch", "update", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: driftguard-operator
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: driftguard-operator
+subjects:
+- kind: ServiceAccount
+  name: driftguard-operator
+  namespace: terrafusion-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: config-service
+  namespace: terrafusion-system
+rules:
+- apiGroups: [""]
+  resources: ["configmaps"]
+  verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: config-service
+  namespace: terrafusion-system
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: config-service
+subjects:
+- kind: ServiceAccount
+  name: config-service
+  namespace: terrafusion-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
+  name: driftguard-secrets
+  namespace: terrafusion-system
+type: Opaque
+data:
+  config-service-api-key: VEVSUkFGVVNJT04tQ09ORklHLVNFUlZJQ0UtQVBJLUtFWS0yMDI1
