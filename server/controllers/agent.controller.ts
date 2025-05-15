@@ -310,8 +310,8 @@ export async function collaborateAgents(req: Request, res: Response) {
     });
   } catch (error) {
     logger.error(
-      LogCategory.AI, 
       `Error processing agent collaboration: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      LogCategory.AI,
       { error, question }
     );
     
@@ -334,8 +334,8 @@ export async function searchAgentMemory(req: Request, res: Response) {
   
   try {
     logger.info(
-      LogCategory.AI,
       `Searching agent memory: ${query}`,
+      LogCategory.AI,
       { userSessionId: req.sessionID }
     );
     
@@ -365,8 +365,8 @@ export async function searchAgentMemory(req: Request, res: Response) {
     });
   } catch (error) {
     logger.error(
-      LogCategory.AI,
       `Error searching agent memory: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      LogCategory.AI,
       { error, query }
     );
     

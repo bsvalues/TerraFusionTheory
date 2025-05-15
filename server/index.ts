@@ -10,6 +10,7 @@ import { initializeConnectors } from "./services/connectors";
 import { initializeAgentSystem } from "../agents";
 import { startMicroservices, stopMicroservices } from "./controllers/microservices.controller";
 import { initializeOptimizedLogger } from "./services/optimized-logging";
+import { testDatabaseConnection } from "./db";
 
 // Declare session data type
 declare module 'express-session' {
@@ -104,6 +105,15 @@ app.use((req, res, next) => {
 
 (async () => {
   try {
+    // Test database connection before proceeding
+    // Already imported at the top of the file
+    const dbConnected = await testDatabaseConnection();
+    if (!dbConnected) {
+      console.warn('Database connection test failed. Proceeding with caution.');
+    } else {
+      console.info('Database connection verified successfully.');
+    }
+    
     // Register API routes
     const server = await registerRoutes(app);
     
