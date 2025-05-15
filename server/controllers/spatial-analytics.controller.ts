@@ -9,7 +9,7 @@ import { spawn } from 'child_process';
 import path from 'path';
 import fs from 'fs';
 import { Request, Response, NextFunction } from 'express';
-import { logger } from '../utils/logger';
+import logger from '../utils/logger';
 
 // Define interface for spatial analytics results
 interface SpatialFeaturesResponse {
@@ -43,26 +43,26 @@ const executePythonScript = async (scriptPath: string, args: string[] = []): Pro
     }
 
     // Get Python executable
-    const pythonCommand = process.platform === 'win32' ? 'python' : 'python3';
+    const pythonCommand: string = process.platform === 'win32' ? 'python' : 'python3';
     
     // Execute the script
-    const process = spawn(pythonCommand, [scriptPath, ...args]);
+    const pythonProcess = spawn(pythonCommand, [scriptPath, ...args]);
     
     let output = '';
     let errorOutput = '';
     
     // Collect standard output data
-    process.stdout.on('data', (data) => {
+    pythonProcess.stdout.on('data', (data: Buffer) => {
       output += data.toString();
     });
     
     // Collect error output data
-    process.stderr.on('data', (data) => {
+    pythonProcess.stderr.on('data', (data: Buffer) => {
       errorOutput += data.toString();
     });
     
     // Handle process exit
-    process.on('close', (code) => {
+    pythonProcess.on('close', (code: number) => {
       if (code !== 0) {
         logger.error(`Child process exited with code ${code}`);
         return resolve({ output, error: errorOutput });
@@ -71,7 +71,7 @@ const executePythonScript = async (scriptPath: string, args: string[] = []): Pro
       resolve({ output, error: errorOutput });
     });
     
-    process.on('error', (err) => {
+    pythonProcess.on('error', (err: Error) => {
       logger.error(`Failed to start child process: ${err.message}`);
       reject(err);
     });

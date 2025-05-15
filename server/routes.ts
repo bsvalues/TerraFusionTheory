@@ -31,6 +31,7 @@ import { registerTestRoutes } from "./utils/terrafusion-test";
 import { dataQualityRoutes } from "./routes/data-quality.routes";
 import { aciRoutes } from "./routes/aci-routes";
 import { aciPropertyRoutes } from "./routes/aci-property-routes";
+import spatialAnalyticsRoutes from "./routes/spatial-analytics.routes";
 
 // Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';
