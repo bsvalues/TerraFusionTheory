@@ -30,6 +30,7 @@ import microservicesClient from "./services/microservices-client";
 import { registerTestRoutes } from "./utils/terrafusion-test";
 import { dataQualityRoutes } from "./routes/data-quality.routes";
 import { aciRoutes } from "./routes/aci-routes";
+import { aciPropertyRoutes } from "./routes/aci-property-routes";
 
 // Swagger documentation imports
 import swaggerUi from 'swagger-ui-express';
@@ -103,6 +104,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Register ACI integration routes
   app.use('/api/aci', aciRoutes);
+  
+  // Register ACI property data routes
+  app.use('/api/aci', aciPropertyRoutes);
   
   // API routes - prefix all routes with /api
   

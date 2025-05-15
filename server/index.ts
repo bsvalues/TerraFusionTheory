@@ -9,6 +9,7 @@ import { scheduler } from "./services/scheduler.service";
 import { initializeConnectors } from "./services/connectors";
 import { initializeAgentSystem } from "../agents";
 import { startMicroservices, stopMicroservices } from "./controllers/microservices.controller";
+import { initializeOptimizedLogger } from "./services/optimized-logging";
 
 // Declare session data type
 declare module 'express-session' {
@@ -30,6 +31,12 @@ declare global {
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Initialize optimized logging system
+initializeOptimizedLogger({
+  debugMode: process.env.NODE_ENV === 'development',
+  minLogLevel: process.env.NODE_ENV === 'production' ? LogLevel.INFO : LogLevel.DEBUG
+});
 
 // Set up session middleware
 app.use(session({

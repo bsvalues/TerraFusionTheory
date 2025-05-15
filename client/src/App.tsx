@@ -115,6 +115,8 @@ const App = () => {
               <Route path="/dev-auth" component={DevAuthLoginPage} />
               <Route path="/dev-auth/admin" component={DevAuthAdminPage} />
               <Route path="/admin/users" component={UserAdminPage} />
+              <Route path="/data-quality" component={DataQualityPage} />
+              <Route path="/property-data" component={PropertyDataPage} />
               
               {/* TerraFusion Integration Routes */}
               <Route path="/parcel/:id" component={ParcelDetailsPageNew} />

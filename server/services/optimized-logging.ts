@@ -47,7 +47,7 @@ export const DEFAULT_LOGGING_CONFIG: OptimizedLoggingConfig = {
 };
 
 /**
- * Memory efficient log entry
+ * Optimized log entry
  */
 interface OptimizedLogEntry {
   level: LogLevel;
@@ -114,6 +114,83 @@ export class OptimizedLogger {
     
     // Reset timer with new timeout
     this.resetBatchTimer();
+  }
+  
+  /**
+   * Reset the batch timer
+   */
+  private resetBatchTimer(): void {
+    // Clear existing timer
+    if (this.batchTimer) {
+      clearTimeout(this.batchTimer);
+    }
+    
+    // Set new timer to flush logs on timeout
+    this.batchTimer = setTimeout(() => {
+      if (this.logBatch.length > 0) {
+        this.flush();
+      }
+      this.resetBatchTimer(); // Set up next timer
+    }, this.config.batchTimeoutMs);
+    
+    // Unref to prevent keeping the process alive just for logging
+    if (this.batchTimer.unref) {
+      this.batchTimer.unref();
+    }
+  }
+  
+  /**
+   * Truncate a string to a maximum length
+   */
+  private truncateString(str: string, maxLength: number): string {
+    if (str.length <= maxLength) {
+      return str;
+    }
+    
+    return str.substring(0, maxLength) + '... [truncated]';
+  }
+  
+  /**
+   * Get numerical value for a log level for comparison
+   */
+  private getLevelValue(level: LogLevel): number {
+    switch (level) {
+      case LogLevel.DEBUG: return 0;
+      case LogLevel.INFO: return 1;
+      case LogLevel.WARNING: return 2;
+      case LogLevel.ERROR: return 3;
+      case LogLevel.CRITICAL: return 4;
+      default: return -1;
+    }
+  }
+  
+  /**
+   * Write logs to storage
+   */
+  private async writeLogsToStorage(logs: OptimizedLogEntry[]): Promise<void> {
+    try {
+      // Convert to storage format
+      const storableLogs: InsertLog[] = logs.map(log => ({
+        timestamp: log.timestamp,
+        level: log.level,
+        category: log.category,
+        message: log.message,
+        details: typeof log.details === 'string' ? { text: log.details } : log.details,
+        source: log.source,
+        userId: log.userId,
+        projectId: log.projectId,
+        sessionId: log.sessionId,
+        duration: log.duration,
+        statusCode: log.statusCode,
+        endpoint: log.endpoint,
+        tags: log.tags
+      }));
+      
+      // Insert all logs
+      await storage.createLogs(storableLogs);
+    } catch (error) {
+      console.error('Error writing logs to storage:', error);
+    }
   }
   
   /**
@@ -300,7 +377,10 @@ export class OptimizedLogger {
       });
     } else {
       // Sync - wait for completion
-      this.writeLogsToStorage(batchToFlush);
+      this.writeLogsToStorage(batchToFlush)
+        .catch(error => {
+          console.error('OptimizedLogger: Error writing logs:', error);
+        });
     }
   }
   
@@ -308,120 +388,19 @@ export class OptimizedLogger {
    * Get logging statistics
    */
   public getStats(): {
+    batchSize: number;
+    queuedLogs: number;
     totalLogged: number;
     totalDiscarded: number;
-    pendingLogs: number;
     config: OptimizedLoggingConfig;
   } {
     return {
+      batchSize: this.config.batchSize,
+      queuedLogs: this.logBatch.length,
       totalLogged: this.totalLogged,
       totalDiscarded: this.totalDiscarded,
-      pendingLogs: this.logBatch.length,
       config: { ...this.config }
     };
-  }
-  
-  /**
-   * Reset the batch timer
-   */
-  private resetBatchTimer(): void {
-    // Clear existing timer
-    if (this.batchTimer) {
-      clearTimeout(this.batchTimer);
-    }
-    
-    // Set new timer
-    this.batchTimer = setTimeout(() => {
-      this.flush();
-    }, this.config.batchTimeoutMs);
-  }
-  
-  /**
-   * Write a batch of logs to storage
-   */
-  private async writeLogsToStorage(logs: OptimizedLogEntry[]): Promise<void> {
-    try {
-      // Convert to storage format and write each log
-      for (const log of logs) {
-        const insertLog: InsertLog = {
-          level: log.level,
-          category: log.category,
-          message: log.message,
-          details: log.details,
-          source: log.source || 'optimized-logger',
-          projectId: log.projectId,
-          userId: log.userId,
-          sessionId: log.sessionId,
-          duration: log.duration,
-          statusCode: log.statusCode,
-          endpoint: log.endpoint,
-          tags: log.tags,
-          timestamp: log.timestamp
-        };
-        
-        await storage.createLog(insertLog);
-      }
-    } catch (error) {
-      console.error('OptimizedLogger: Error writing logs to storage:', error);
-      
-      // If in debug mode, also log details
-      if (this.config.debugMode) {
-        console.error('OptimizedLogger: Logs that failed to write:', 
-          logs.map(log => ({
-            level: log.level,
-            message: log.message.substring(0, 50),
-            timestamp: log.timestamp
-          }))
-        );
-      }
-    }
-  }
-  
-  /**
-   * Helper to truncate strings with ellipsis
-   */
-  private truncateString(str: any, maxLength: number): string {
-    if (!str) {
-      return '';
-    }
-    
-    // Convert to string if not already
-    if (typeof str !== 'string') {
-      try {
-        str = JSON.stringify(str);
-      } catch (e) {
-        str = String(str);
-      }
-    }
-    
-    // If string is already short enough, return as is
-    if (str.length <= maxLength) {
-      return str;
-    }
-    
-    // Keep the beginning and end, replacing the middle with ellipsis
-    const halfLength = Math.floor((maxLength - 3) / 2);
-    return str.substring(0, halfLength) + '...' + str.substring(str.length - halfLength);
-  }
-  
-  /**
-   * Get numeric value for log level for comparisons
-   */
-  private getLevelValue(level: LogLevel): number {
-    switch (level) {
-      case LogLevel.DEBUG:
-        return 0;
-      case LogLevel.INFO:
-        return 1;
-      case LogLevel.WARNING:
-        return 2;
-      case LogLevel.ERROR:
-        return 3;
-      case LogLevel.CRITICAL:
-        return 4;
-      default:
-        return -1;
-    }
   }
 }
 
