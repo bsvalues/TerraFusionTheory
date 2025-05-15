@@ -1,0 +1,81 @@
+apiVersion: apiextensions.k8s.io/v1
+kind: CustomResourceDefinition
+metadata:
+  name: driftguards.terrafusion.ai
+spec:
+  group: terrafusion.ai
+  names:
+    kind: DriftGuard
+    listKind: DriftGuardList
+    plural: driftguards
+    singular: driftguard
+  scope: Namespaced
+  versions:
+    - name: v1
+      served: true
+      storage: true
+      schema:
+        openAPIV3Schema:
+          type: object
+          properties:
+            spec:
+              type: object
+              required:
+                - targetKind
+                - targetName
+                - expectedHash
+              properties:
+                targetKind:
+                  type: string
+                  description: "Kind of the target resource to monitor (ConfigMap, Secret, Deployment, GAMAConfig, etc.)"
+                targetName:
+                  type: string
+                  description: "Name of the target resource to monitor"
+                targetNamespace:
+                  type: string
+                  description: "Namespace of the target resource (defaults to same namespace as DriftGuard)"
+                expectedHash:
+                  type: string
+                  description: "Expected SHA-256 hash of the resource data"
+                autoRemediate:
+                  type: boolean
+                  description: "Whether to automatically remediate drift"
+                  default: false
+                maxFailuresBeforeAlert:
+                  type: integer
+                  description: "Number of consecutive failures before alerting"
+                  default: 3
+                sourceOfTruthRef:
+                  type: object
+                  description: "Reference to the source of truth for auto-remediation"
+                  properties:
+                    kind:
+                      type: string
+                      description: "Kind of the source (git, configmap, etc.)"
+                    name:
+                      type: string
+                      description: "Name of the source resource"
+                    namespace:
+                      type: string
+                      description: "Namespace of the source resource"
+                    path:
+                      type: string
+                      description: "Path within the source (if applicable)"
+            status:
+              type: object
+              x-kubernetes-preserve-unknown-fields: true
+      additionalPrinterColumns:
+        - name: Target
+          type: string
+          jsonPath: .spec.targetKind
+        - name: Match
+          type: boolean
+          jsonPath: .status.hashMatch
+        - name: Status
+          type: string
+          jsonPath: .status.status
+        - name: Last Check
+          type: string
+          jsonPath: .status.lastChecked
+      subresources:
+        status: {}

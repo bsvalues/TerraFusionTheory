@@ -1,0 +1,22 @@
+apiVersion: terrafusion.ai/v1
+kind: DriftGuard
+metadata:
+  name: gama-config-guard
+  namespace: default
+  labels:
+    app: terrafusion
+    component: gama
+    targetRef: gamaconfig-gama-main
+spec:
+  targetKind: GAMAConfig
+  targetName: gama-main
+  targetNamespace: default
+  # This is an example hash - in a real scenario this would be computed from the actual configuration
+  expectedHash: "8a7b4a9f6e5d2c1b0a9e8d7c6b5a4f3e2d1c0b9a8e7d6c5b4a3f2e1d0c9b8a7"
+  autoRemediate: true
+  maxFailuresBeforeAlert: 2
+  sourceOfTruthRef:
+    kind: git
+    name: terrafusion-configs
+    namespace: default
+    path: /configs/gama-main.yaml

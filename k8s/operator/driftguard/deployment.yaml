@@ -1,0 +1,86 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: terrafusion-system
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: driftguard-operator
+  namespace: terrafusion-system
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: driftguard-operator
+rules:
+  - apiGroups: [""]
+    resources: ["configmaps", "secrets"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["apps"]
+    resources: ["deployments"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["terrafusion.ai"]
+    resources: ["driftguards", "driftguards/status", "gamaconfigs"]
+    verbs: ["get", "list", "watch", "patch", "update"]
+  - apiGroups: ["apiextensions.k8s.io"]
+    resources: ["customresourcedefinitions"]
+    verbs: ["get", "list", "watch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: driftguard-operator
+subjects:
+  - kind: ServiceAccount
+    name: driftguard-operator
+    namespace: terrafusion-system
+roleRef:
+  kind: ClusterRole
+  name: driftguard-operator
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: driftguard-operator
+  namespace: terrafusion-system
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: driftguard-operator
+  template:
+    metadata:
+      labels:
+        app: driftguard-operator
+    spec:
+      serviceAccountName: driftguard-operator
+      containers:
+        - name: operator
+          image: terrafusion/driftguard-operator:latest
+          imagePullPolicy: Always
+          env:
+            - name: TELEMETRY_ENDPOINT
+              value: "http://telemetry-service.terrafusion-system.svc/telemetry/driftguard"
+            - name: KOPF_NAMESPACE
+              value: "" # Empty string means watching all namespaces
+          resources:
+            limits:
+              cpu: "500m"
+              memory: "512Mi"
+            requests:
+              cpu: "100m"
+              memory: "128Mi"
+          livenessProbe:
+            httpGet:
+              path: /healthz
+              port: 8080
+            initialDelaySeconds: 30
+            periodSeconds: 10
+          readinessProbe:
+            httpGet:
+              path: /readyz
+              port: 8080
+            initialDelaySeconds: 5
+            periodSeconds: 5
