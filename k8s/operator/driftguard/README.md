@@ -151,6 +151,11 @@ The `examples/` directory contains sample DriftGuard resources for various use c
 - `gama-config-guard.yaml`: Protects GAMA valuation model configurations
 - `configmap-guard.yaml`: Protects a ConfigMap with market settings
 - `secret-guard.yaml`: Protects database credentials stored in a Secret
+- `lil-engine/`: Complete example for protecting the Location Intelligence Layer Engine:
+  - Configuration for spatial scoring weights and parameters
+  - DriftGuard protection with auto-remediation
+  - Deployment manifests for the LIL Engine
+  - Integration guide for implementing configuration protection
 
 ## Troubleshooting
 
