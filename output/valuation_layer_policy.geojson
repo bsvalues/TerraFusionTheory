@@ -1,0 +1,95 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.3341, 47.6062]
+      },
+      "properties": {
+        "id": "P0001",
+        "neighborhood": "N001",
+        "sqft": 2450,
+        "year_built": 1992,
+        "bedrooms": 4,
+        "bathrooms": 2,
+        "base_value": 657000,
+        "simulated_value": 690000,
+        "percent_change": 5.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.3351, 47.6082]
+      },
+      "properties": {
+        "id": "P0002",
+        "neighborhood": "N001",
+        "sqft": 1850,
+        "year_built": 1988,
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "base_value": 552000,
+        "simulated_value": 580000,
+        "percent_change": 5.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.3261, 47.6152]
+      },
+      "properties": {
+        "id": "P0003",
+        "neighborhood": "N002",
+        "sqft": 3200,
+        "year_built": 2002,
+        "bedrooms": 5,
+        "bathrooms": 3,
+        "base_value": 892000,
+        "simulated_value": 945000,
+        "percent_change": 5.9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.3361, 47.6022]
+      },
+      "properties": {
+        "id": "P0004",
+        "neighborhood": "N003",
+        "sqft": 1650,
+        "year_built": 1972,
+        "bedrooms": 3,
+        "bathrooms": 1,
+        "base_value": 485000,
+        "simulated_value": 510000,
+        "percent_change": 5.2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [-122.3411, 47.6042]
+      },
+      "properties": {
+        "id": "P0005",
+        "neighborhood": "N004",
+        "sqft": 2850,
+        "year_built": 1998,
+        "bedrooms": 4,
+        "bathrooms": 3,
+        "base_value": 745000,
+        "simulated_value": 783000,
+        "percent_change": 5.1
+      }
+    }
+  ]
+}

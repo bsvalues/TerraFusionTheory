@@ -1,0 +1,33 @@
+{
+  "name": "ICSF GAMA Simulator Agent",
+  "description": "An AI agent for maintaining and extending the ICSF GAMA Simulator. It helps manage GUI/CLI simulation tools for geo-assisted mass appraisal and policy simulation.",
+  "files": [
+    {
+      "path": "icsf_gui_launcher.py",
+      "description": "Main CLI launcher for running simulation, opening output maps and audit logs."
+    },
+    {
+      "path": "output/",
+      "description": "Directory to store valuation result GeoJSON files."
+    },
+    {
+      "path": "logs/",
+      "description": "Directory to store compliance audit logs generated during simulation."
+    },
+    {
+      "path": "README.txt",
+      "description": "Instructions for building the .exe from Python source using PyInstaller."
+    },
+    {
+      "path": "ICSF_GAMA_Installer.nsi",
+      "description": "NSIS script to generate a Windows installer for the launcher executable."
+    }
+  ],
+  "instructions": [
+    "Ensure all simulation logic is encapsulated in `icsf_gama_simulation.py`.",
+    "Add new CLI or GUI functionality via `icsf_gui_launcher.py`.",
+    "Ensure output and logs are written into their respective folders.",
+    "Maintain compatibility with NSIS and PyInstaller packaging processes.",
+    "Do not introduce GUI frameworks like tkinter unless verified for Windows compatibility."
+  ]
+}

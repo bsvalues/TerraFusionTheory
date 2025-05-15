@@ -1,0 +1,10 @@
+{
+  "policy_id": "policy_default",
+  "value_adjust_factor": 1.0,
+  "location_weight": 0.4,
+  "market_condition_factor": 1.05,
+  "neighborhood_factor": 1.0,
+  "randomize_factor": 0.1,
+  "sample_size": 50,
+  "market_year": 2025
+}
