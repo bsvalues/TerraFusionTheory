@@ -305,7 +305,7 @@ export const fitGWRModel = async (req: Request, res: Response, next: NextFunctio
     
     res.json(result);
   } catch (error) {
-    logger.error(`Error fitting GWR model: ${error}`);
+    logger.error(`Error fitting GWR model: ${error}`, LogCategory.SPATIAL_ANALYTICS);
     next(error);
   }
 };
@@ -359,7 +359,7 @@ export const fitQuantileModel = async (req: Request, res: Response, next: NextFu
     
     res.json(result);
   } catch (error) {
-    logger.error(`Error fitting quantile model: ${error}`);
+    logger.error(`Error fitting quantile model: ${error}`, LogCategory.SPATIAL_ANALYTICS);
     next(error);
   }
 };
@@ -421,7 +421,7 @@ export const predictWithModel = async (req: Request, res: Response, next: NextFu
     
     res.json(result);
   } catch (error) {
-    logger.error(`Error predicting with model: ${error}`);
+    logger.error(`Error predicting with model: ${error}`, LogCategory.SPATIAL_ANALYTICS);
     next(error);
   }
 };
@@ -471,7 +471,7 @@ export const generateCoefficientMaps = async (req: Request, res: Response, next:
     
     res.json(result);
   } catch (error) {
-    logger.error(`Error generating coefficient maps: ${error}`);
+    logger.error(`Error generating coefficient maps: ${error}`, LogCategory.SPATIAL_ANALYTICS);
     next(error);
   }
 };
@@ -519,7 +519,7 @@ export const plotUncertainty = async (req: Request, res: Response, next: NextFun
     
     res.json(result);
   } catch (error) {
-    logger.error(`Error plotting uncertainty: ${error}`);
+    logger.error(`Error plotting uncertainty: ${error}`, LogCategory.SPATIAL_ANALYTICS);
     next(error);
   }
 };
