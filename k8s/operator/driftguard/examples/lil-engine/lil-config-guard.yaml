@@ -1,0 +1,29 @@
+apiVersion: terrafusion.ai/v1
+kind: DriftGuard
+metadata:
+  name: lil-weights-config-guard
+  namespace: terrafusion-system
+  labels:
+    app: terrafusion-lil
+    component: spatial-engine
+spec:
+  # Monitor ConfigMap resource with scoring weights
+  targetKind: ConfigMap
+  targetName: lil-weights-config
+  targetNamespace: terrafusion-system
+  
+  # Expected SHA-256 hash of the ConfigMap data
+  expectedHash: "d9fd73529604cde803aedecc78a0142c5b4823e019dbeefdc6072b9423b7fde9"
+  
+  # Enable automatic remediation
+  autoRemediate: true
+  
+  # Alert after just one failure for these critical weights
+  maxFailuresBeforeAlert: 1
+  
+  # Configuration source of truth - using the configuration service
+  sourceOfTruthRef:
+    kind: service
+    name: terrafusion-config-service
+    namespace: terrafusion-system
+    path: /configurations/kubernetes/configmaps/lil-weights-config

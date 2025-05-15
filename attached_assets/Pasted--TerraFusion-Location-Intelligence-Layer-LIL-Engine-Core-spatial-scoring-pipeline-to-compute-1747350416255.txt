@@ -1,0 +1,100 @@
+# TerraFusion - Location Intelligence Layer (LIL) Engine
+# Core spatial scoring pipeline to compute location-based valuation influence scores
+
+import geopandas as gpd
+import pandas as pd
+import numpy as np
+import rasterio
+from rasterio.features import geometry_mask
+from shapely.geometry import Point
+from shapely.ops import unary_union
+from sklearn.preprocessing import MinMaxScaler
+import json
+import os
+import math
+
+# Load config from DriftGuard-protected ConfigMap
+CONFIG_PATH = os.environ.get("LIL_CONFIG_PATH", "./lil_weights_config.json")
+
+def load_config():
+    with open(CONFIG_PATH, "r") as f:
+        return json.load(f)
+
+CONFIG = load_config()
+
+# Constants
+BUFFER_DISTANCES = CONFIG.get("poi_buffer_distances", [250, 500, 1000])
+NDVI_THRESHOLD = CONFIG.get("ndvi_threshold", 0.3)
+ENTROPY_RADIUS = CONFIG.get("entropy_radius", 300)
+VIEWSHED_SCORE_PATH = CONFIG.get("viewshed_raster_path", "./data/viewshed.tif")
+
+# Load input data
+parcels = gpd.read_file("./data/parcels.geojson").to_crs(epsg=3857)
+pois = gpd.read_file("./data/pois.geojson").to_crs(parcels.crs)
+landuse = gpd.read_file("./data/landuse.geojson").to_crs(parcels.crs)
+
+# Helper: Distance-weighted POI score
+def compute_poi_accessibility(parcels, pois):
+    weights = []
+    for dist in BUFFER_DISTANCES:
+        joined = gpd.sjoin(parcels.copy(), pois, how="left", predicate="intersects")
+        score = joined.groupby("index_left").size().reindex(parcels.index, fill_value=0)
+        weights.append(score / dist)
+    total_score = sum(weights)
+    scaler = MinMaxScaler()
+    return scaler.fit_transform(total_score.values.reshape(-1, 1)).flatten()
+
+# Helper: Shannon entropy of landuse diversity
+def compute_entropy(parcels, landuse):
+    scores = []
+    for parcel in parcels.geometry:
+        buffer = parcel.buffer(ENTROPY_RADIUS)
+        intersected = landuse[landuse.intersects(buffer)]
+        counts = intersected["landuse_type"].value_counts(normalize=True)
+        entropy = -sum(p * math.log(p, 2) for p in counts if p > 0)
+        scores.append(entropy)
+    scaler = MinMaxScaler()
+    return scaler.fit_transform(np.array(scores).reshape(-1, 1)).flatten()
+
+# Helper: Viewshed raster scoring
+def compute_viewshed_scores(parcels):
+    viewshed_scores = []
+    with rasterio.open(VIEWSHED_SCORE_PATH) as src:
+        for geom in parcels.geometry:
+            mask = geometry_mask([geom], transform=src.transform, invert=True,
+                                 out_shape=src.shape)
+            data = src.read(1)
+            visible = data[mask]
+            score = np.nanmean(visible) if visible.size > 0 else 0
+            viewshed_scores.append(score)
+    scaler = MinMaxScaler()
+    return scaler.fit_transform(np.array(viewshed_scores).reshape(-1, 1)).flatten()
+
+# Compute features
+print("Computing POI accessibility scores...")
+parcels["poi_score"] = compute_poi_accessibility(parcels, pois)
+
+print("Computing land use entropy...")
+parcels["entropy_score"] = compute_entropy(parcels, landuse)
+
+print("Computing viewshed score...")
+parcels["viewshed_score"] = compute_viewshed_scores(parcels)
+
+# Weighted location score
+weights = CONFIG.get("score_weights", {
+    "poi_score": 0.4,
+    "entropy_score": 0.3,
+    "viewshed_score": 0.3
+})
+
+parcels["location_score"] = (
+    parcels["poi_score"] * weights["poi_score"] +
+    parcels["entropy_score"] * weights["entropy_score"] +
+    parcels["viewshed_score"] * weights["viewshed_score"]
+)
+
+# Save result
+output_path = "./output/location_scores.geojson"
+os.makedirs(os.path.dirname(output_path), exist_ok=True)
+parcels[["parcel_id", "location_score", "poi_score", "entropy_score", "viewshed_score"]].to_file(output_path, driver="GeoJSON")
+print(f"Location scores saved to {output_path}")

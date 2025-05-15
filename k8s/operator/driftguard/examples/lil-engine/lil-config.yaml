@@ -1,0 +1,26 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: lil-weights-config
+  namespace: terrafusion-system
+  labels:
+    app: terrafusion-lil
+    component: spatial-engine
+    managed-by: terrafusion-config-service
+data:
+  lil_weights_config.json: |
+    {
+      "poi_buffer_distances": [250, 500, 1000],
+      "ndvi_threshold": 0.3,
+      "entropy_radius": 300,
+      "viewshed_raster_path": "./data/viewshed.tif",
+      "score_weights": {
+        "poi_score": 0.4,
+        "entropy_score": 0.3,
+        "viewshed_score": 0.3
+      },
+      "output_path": "./output/location_scores.geojson",
+      "model_version": "1.2.0",
+      "last_validated": "2025-05-01",
+      "validated_by": "TerraFusion Research Team"
+    }

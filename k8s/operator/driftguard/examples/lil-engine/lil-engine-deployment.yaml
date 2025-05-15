@@ -1,0 +1,78 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: terrafusion-lil-engine
+  namespace: terrafusion-system
+  labels:
+    app: terrafusion-lil
+    component: spatial-engine
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: terrafusion-lil
+      component: spatial-engine
+  strategy:
+    type: RollingUpdate
+    rollingUpdate:
+      maxUnavailable: 1
+      maxSurge: 1
+  template:
+    metadata:
+      labels:
+        app: terrafusion-lil
+        component: spatial-engine
+      annotations:
+        driftguard.terrafusion.ai/protected: "true"
+    spec:
+      containers:
+      - name: lil-engine
+        image: registry.terrafusion.ai/terrafusion/lil-engine:1.2.0
+        imagePullPolicy: IfNotPresent
+        resources:
+          requests:
+            cpu: 500m
+            memory: 1Gi
+          limits:
+            cpu: 2
+            memory: 4Gi
+        env:
+        - name: LIL_CONFIG_PATH
+          value: "/etc/terrafusion/config/lil_weights_config.json"
+        - name: DRIFTGUARD_ENABLED
+          value: "true"
+        ports:
+        - containerPort: 8080
+          name: http
+        volumeMounts:
+        - name: lil-config
+          mountPath: /etc/terrafusion/config
+          readOnly: true
+        - name: data-volume
+          mountPath: /app/data
+        - name: output-volume
+          mountPath: /app/output
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 60
+          periodSeconds: 30
+          timeoutSeconds: 10
+        readinessProbe:
+          httpGet:
+            path: /ready
+            port: 8080
+          initialDelaySeconds: 30
+          periodSeconds: 10
+          timeoutSeconds: 5
+      volumes:
+      - name: lil-config
+        configMap:
+          name: lil-weights-config
+      - name: data-volume
+        persistentVolumeClaim:
+          claimName: terrafusion-lil-data-pvc
+      - name: output-volume
+        persistentVolumeClaim:
+          claimName: terrafusion-lil-output-pvc
