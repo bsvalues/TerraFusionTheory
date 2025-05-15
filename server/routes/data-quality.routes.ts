@@ -1,27 +1,50 @@
 /**
  * Data Quality Routes
  * 
- * Defines API endpoints for data quality assessment and enrichment.
+ * Provides API endpoints for data quality assessment, reporting,
+ * and validation based on IAAO standards.
  */
 
 import { Router } from 'express';
+import { asyncHandler } from '../middleware/errorHandler';
 import * as dataQualityController from '../controllers/data-quality.controller';
 
 const router = Router();
 
-// Data quality reports
-router.get('/property-report', dataQualityController.getPropertyDataQualityReport);
-router.get('/property-sales-report', dataQualityController.getPropertySalesDataQualityReport);
-router.get('/neighborhood-report', dataQualityController.getNeighborhoodDataQualityReport);
-router.get('/dashboard', dataQualityController.getDataQualityDashboard);
+/**
+ * @route GET /api/data-quality/report
+ * @description Get data quality report
+ */
+router.get('/report', asyncHandler(dataQualityController.getDataQualityReport));
 
-// Property-specific quality
-router.get('/property/:id/report', dataQualityController.getPropertyQualityReport);
+/**
+ * @route GET /api/data-quality/issues
+ * @description Get quality issues, optionally filtered by category and severity
+ */
+router.get('/issues', asyncHandler(dataQualityController.getQualityIssues));
 
-// Data enrichment
-router.get('/geocoding/needed', dataQualityController.getPropertiesNeedingGeocoding);
-router.post('/geocoding/batch', dataQualityController.geocodeProperties);
-router.post('/property/:id/enrich/flood-zone', dataQualityController.enrichPropertyFloodZone);
-router.post('/neighborhood/:code/update-stats', dataQualityController.updateNeighborhoodStats);
+/**
+ * @route GET /api/data-quality/stats
+ * @description Get quality statistics
+ */
+router.get('/stats', asyncHandler(dataQualityController.getQualityStats));
+
+/**
+ * @route POST /api/data-quality/regenerate
+ * @description Force regeneration of quality report
+ */
+router.post('/regenerate', asyncHandler(dataQualityController.regenerateQualityReport));
+
+/**
+ * @route GET /api/data-quality/property/:id
+ * @description Validate a specific property
+ */
+router.get('/property/:id', asyncHandler(dataQualityController.validateProperty));
+
+/**
+ * @route GET /api/data-quality/sale/:id
+ * @description Validate a specific sale
+ */
+router.get('/sale/:id', asyncHandler(dataQualityController.validateSale));
 
 export const dataQualityRoutes = router;

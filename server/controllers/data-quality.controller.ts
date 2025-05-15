@@ -1,172 +1,424 @@
 /**
  * Data Quality Controller
  * 
- * Provides API endpoints for data quality assessment and data enrichment.
+ * Provides endpoints for data quality assessment, reporting, and remediation.
+ * Implements IAAO (International Association of Assessing Officers) standards
+ * for property data validation and quality measurement.
  */
 
 import { Request, Response } from 'express';
-import { dataQualityService } from '../services/data-quality';
-import { dataEnrichmentService } from '../services/data-enrichment';
+import { OptimizedLogger } from '../services/optimized-logging';
+import { 
+  DataQualityFramework, 
+  DataCategory, 
+  SeverityLevel,
+  DataQualityIssue,
+  DataQualityReport
+} from '../../shared/validation/data-quality-framework';
+import { initializeIAAORules } from '../../shared/validation/iaao-validation-rules';
 import { db } from '../db';
-import { properties } from '@shared/schema';
+import { properties, propertySales as sales, neighborhoods } from '@shared/schema';
 import { eq } from 'drizzle-orm';
 
+const logger = OptimizedLogger.getInstance();
+
+// Initialize the quality framework
+const framework = DataQualityFramework.getInstance();
+let isInitialized = false;
+
 /**
- * Generate a property data quality report
+ * Initialize the data quality module
  */
-export async function getPropertyDataQualityReport(req: Request, res: Response) {
+export async function initializeDataQuality(): Promise<boolean> {
   try {
-    const report = await dataQualityService.generatePropertyDataQualityReport();
-    return res.json(report);
-  } catch (error) {
-    console.error('Error generating property data quality report:', error);
-    return res.status(500).json({ error: 'Failed to generate property data quality report' });
+    if (!isInitialized) {
+      // Register IAAO validation rules
+      initializeIAAORules();
+      isInitialized = true;
+      logger.info('Data quality module initialized with IAAO rules');
+    }
+    return true;
+  } catch (error: any) {
+    logger.error(`Failed to initialize data quality module: ${error.message}`);
+    return false;
   }
 }
 
 /**
- * Generate a property sales data quality report
+ * Get data quality report
  */
-export async function getPropertySalesDataQualityReport(req: Request, res: Response) {
+export async function getDataQualityReport(req: Request, res: Response): Promise<void> {
   try {
-    const report = await dataQualityService.generatePropertySalesDataQualityReport();
-    return res.json(report);
-  } catch (error) {
-    console.error('Error generating property sales data quality report:', error);
-    return res.status(500).json({ error: 'Failed to generate property sales data quality report' });
-  }
-}
-
-/**
- * Generate a neighborhood data quality report
- */
-export async function getNeighborhoodDataQualityReport(req: Request, res: Response) {
-  try {
-    const report = await dataQualityService.generateNeighborhoodDataQualityReport();
-    return res.json(report);
-  } catch (error) {
-    console.error('Error generating neighborhood data quality report:', error);
-    return res.status(500).json({ error: 'Failed to generate neighborhood data quality report' });
-  }
-}
-
-/**
- * Generate a consolidated data quality dashboard
- */
-export async function getDataQualityDashboard(req: Request, res: Response) {
-  try {
-    const dashboard = await dataQualityService.generateDataQualityDashboard();
-    return res.json(dashboard);
-  } catch (error) {
-    console.error('Error generating data quality dashboard:', error);
-    return res.status(500).json({ error: 'Failed to generate data quality dashboard' });
-  }
-}
-
-/**
- * Geocode properties missing coordinates
- */
-export async function geocodeProperties(req: Request, res: Response) {
-  try {
-    const limit = req.query.limit ? parseInt(req.query.limit as string) : 10;
-    const results = await dataEnrichmentService.batchGeocodeProperties(limit);
-    return res.json({
-      success: true,
-      processed: results.length,
-      successful: results.filter(r => r.successful).length,
-      failed: results.filter(r => !r.successful).length,
-      results
+    if (!isInitialized) {
+      await initializeDataQuality();
+    }
+    
+    // Get latest report if available
+    const latestReport = framework.getLatestReport();
+    
+    // If no report or report is older than 1 hour, generate a new one
+    if (!latestReport || Date.now() - latestReport.timestamp > 3600000) {
+      const newReport = await generateQualityReport();
+      res.json({
+        status: 'success',
+        report: newReport,
+        freshReport: true
+      });
+    } else {
+      res.json({
+        status: 'success',
+        report: latestReport,
+        freshReport: false
+      });
+    }
+  } catch (error: any) {
+    logger.error(`Error getting data quality report: ${error.message}`);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to get data quality report',
+      error: error.message
     });
-  } catch (error) {
-    console.error('Error geocoding properties:', error);
-    return res.status(500).json({ error: 'Failed to geocode properties' });
   }
 }
 
 /**
- * Get a list of properties needing geocoding
+ * Generate a full data quality report
  */
-export async function getPropertiesNeedingGeocoding(req: Request, res: Response) {
+async function generateQualityReport(): Promise<DataQualityReport> {
+  logger.info('Generating new data quality report');
+  
+  // Get all issues
+  const propertyIssues = await validateProperties();
+  const saleIssues = await validateSales();
+  const neighborhoodIssues = await validateNeighborhoods();
+  
+  // Count records by category
+  let propertyCount = 0;
+  let saleCount = 0;
+  let neighborhoodCount = 0;
+  
   try {
-    const properties = await dataEnrichmentService.identifyPropertiesNeedingGeocoding();
-    return res.json({
-      count: properties.length,
-      properties
+    // Get record counts
+    const propertyResult = await db.select().from(properties);
+    const saleResult = await db.select().from(sales);
+    const neighborhoodResult = await db.select().from(neighborhoods);
+    
+    propertyCount = propertyResult.length;
+    saleCount = saleResult.length;
+    neighborhoodCount = neighborhoodResult.length;
+  } catch (error) {
+    logger.error('Error counting records for quality report');
+  }
+  
+  // Combine all issues
+  const allIssues = [
+    ...propertyIssues,
+    ...saleIssues,
+    ...neighborhoodIssues
+  ];
+  
+  // Record counts by category
+  const recordsByCategory: Record<DataCategory, number> = {
+    [DataCategory.PROPERTY]: propertyCount,
+    [DataCategory.SALE]: saleCount,
+    [DataCategory.NEIGHBORHOOD]: neighborhoodCount,
+    [DataCategory.MARKET]: 1 // Always at least one market analysis
+  };
+  
+  // Generate report
+  const report = framework.generateReport(allIssues, recordsByCategory);
+  
+  logger.info(`Generated quality report with ${allIssues.length} issues`);
+  return report;
+}
+
+/**
+ * Validate all properties
+ */
+async function validateProperties(): Promise<DataQualityIssue[]> {
+  try {
+    // Get properties from database
+    const propertyData = await db.select().from(properties);
+    
+    // Validate properties
+    const issues = framework.validateRecords(
+      propertyData,
+      DataCategory.PROPERTY,
+      (record) => record.id
+    );
+    
+    logger.info(`Validated ${propertyData.length} properties, found ${issues.length} issues`);
+    return issues;
+  } catch (error: any) {
+    logger.error(`Error validating properties: ${error.message}`);
+    return [];
+  }
+}
+
+/**
+ * Validate all sales
+ */
+async function validateSales(): Promise<DataQualityIssue[]> {
+  try {
+    // Get sales from database
+    const salesData = await db.select().from(sales);
+    
+    // Validate sales
+    const issues = framework.validateRecords(
+      salesData,
+      DataCategory.SALE,
+      (record) => record.id
+    );
+    
+    logger.info(`Validated ${salesData.length} sales, found ${issues.length} issues`);
+    return issues;
+  } catch (error: any) {
+    logger.error(`Error validating sales: ${error.message}`);
+    return [];
+  }
+}
+
+/**
+ * Validate all neighborhoods
+ */
+async function validateNeighborhoods(): Promise<DataQualityIssue[]> {
+  try {
+    // Get neighborhoods from database
+    const neighborhoodData = await db.select().from(neighborhoods);
+    
+    // Validate neighborhoods
+    const issues = framework.validateRecords(
+      neighborhoodData,
+      DataCategory.NEIGHBORHOOD,
+      (record) => record.id
+    );
+    
+    logger.info(`Validated ${neighborhoodData.length} neighborhoods, found ${issues.length} issues`);
+    return issues;
+  } catch (error: any) {
+    logger.error(`Error validating neighborhoods: ${error.message}`);
+    return [];
+  }
+}
+
+/**
+ * Validate a single property
+ */
+export async function validateProperty(req: Request, res: Response): Promise<void> {
+  try {
+    const { id } = req.params;
+    
+    if (!id) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Property ID is required'
+      });
+      return;
+    }
+    
+    // Get property from database
+    const [property] = await db.select().from(properties).where(eq(properties.id, parseInt(id)));
+    
+    if (!property) {
+      res.status(404).json({
+        status: 'error',
+        message: `Property with ID ${id} not found`
+      });
+      return;
+    }
+    
+    // Validate property
+    const issues = framework.validateRecord(
+      property,
+      DataCategory.PROPERTY,
+      property.id
+    );
+    
+    res.json({
+      status: 'success',
+      property,
+      issues,
+      issueCount: issues.length
     });
-  } catch (error) {
-    console.error('Error identifying properties needing geocoding:', error);
-    return res.status(500).json({ error: 'Failed to identify properties needing geocoding' });
+  } catch (error: any) {
+    logger.error(`Error validating property: ${error.message}`);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to validate property',
+      error: error.message
+    });
   }
 }
 
 /**
- * Generate a quality report for a specific property
+ * Validate a single sale
  */
-export async function getPropertyQualityReport(req: Request, res: Response) {
+export async function validateSale(req: Request, res: Response): Promise<void> {
   try {
-    const propertyId = parseInt(req.params.id);
-    if (isNaN(propertyId)) {
-      return res.status(400).json({ error: 'Invalid property ID' });
+    const { id } = req.params;
+    
+    if (!id) {
+      res.status(400).json({
+        status: 'error',
+        message: 'Sale ID is required'
+      });
+      return;
     }
     
-    // Check if property exists
-    const propertyExists = await db.select({ id: properties.id })
-      .from(properties)
-      .where(eq(properties.id, propertyId));
+    // Get sale from database
+    const [sale] = await db.select().from(sales).where(eq(sales.id, parseInt(id)));
     
-    if (propertyExists.length === 0) {
-      return res.status(404).json({ error: 'Property not found' });
+    if (!sale) {
+      res.status(404).json({
+        status: 'error',
+        message: `Sale with ID ${id} not found`
+      });
+      return;
     }
     
-    const report = await dataEnrichmentService.generatePropertyQualityReport(propertyId);
-    return res.json(report);
-  } catch (error) {
-    console.error(`Error generating quality report for property ${req.params.id}:`, error);
-    return res.status(500).json({ error: 'Failed to generate property quality report' });
+    // Validate sale
+    const issues = framework.validateRecord(
+      sale,
+      DataCategory.SALE,
+      sale.id
+    );
+    
+    res.json({
+      status: 'success',
+      sale,
+      issues,
+      issueCount: issues.length
+    });
+  } catch (error: any) {
+    logger.error(`Error validating sale: ${error.message}`);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to validate sale',
+      error: error.message
+    });
   }
 }
 
 /**
- * Enrich a property with flood zone data
+ * Get quality issues for a specific category
  */
-export async function enrichPropertyFloodZone(req: Request, res: Response) {
+export async function getQualityIssues(req: Request, res: Response): Promise<void> {
   try {
-    const propertyId = parseInt(req.params.id);
-    if (isNaN(propertyId)) {
-      return res.status(400).json({ error: 'Invalid property ID' });
+    const { category, severity } = req.query;
+    
+    // Get latest report
+    const latestReport = framework.getLatestReport();
+    
+    if (!latestReport) {
+      // Generate a new report if none exists
+      const newReport = await generateQualityReport();
+      
+      filterAndReturnIssues(newReport, res, category as string, severity as string);
+      return;
     }
     
-    // Check if property exists
-    const propertyExists = await db.select({ id: properties.id })
-      .from(properties)
-      .where(eq(properties.id, propertyId));
-    
-    if (propertyExists.length === 0) {
-      return res.status(404).json({ error: 'Property not found' });
-    }
-    
-    const result = await dataEnrichmentService.enrichFloodZoneData(propertyId);
-    return res.json(result);
-  } catch (error) {
-    console.error(`Error enriching flood zone data for property ${req.params.id}:`, error);
-    return res.status(500).json({ error: 'Failed to enrich property with flood zone data' });
+    filterAndReturnIssues(latestReport, res, category as string, severity as string);
+  } catch (error: any) {
+    logger.error(`Error getting quality issues: ${error.message}`);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to get quality issues',
+      error: error.message
+    });
   }
 }
 
 /**
- * Update statistics for a neighborhood
+ * Filter issues and return them
  */
-export async function updateNeighborhoodStats(req: Request, res: Response) {
+function filterAndReturnIssues(
+  report: DataQualityReport,
+  res: Response,
+  category?: string | undefined,
+  severity?: string | undefined
+): void {
+  let filteredIssues = [...report.issues];
+  
+  // Filter by category if specified
+  if (category && Object.values(DataCategory).includes(category as DataCategory)) {
+    filteredIssues = filteredIssues.filter(
+      issue => issue.category === category
+    );
+  }
+  
+  // Filter by severity if specified
+  if (severity && Object.values(SeverityLevel).includes(severity as SeverityLevel)) {
+    filteredIssues = filteredIssues.filter(
+      issue => issue.severity === severity
+    );
+  }
+  
+  res.json({
+    status: 'success',
+    issues: filteredIssues,
+    totalIssues: report.issues.length,
+    filteredCount: filteredIssues.length,
+    filters: {
+      category,
+      severity
+    }
+  });
+}
+
+/**
+ * Get quality statistics
+ */
+export async function getQualityStats(req: Request, res: Response): Promise<void> {
   try {
-    const neighborhoodCode = req.params.code;
-    if (!neighborhoodCode) {
-      return res.status(400).json({ error: 'Invalid neighborhood code' });
+    // Get latest report or generate new one
+    const latestReport = framework.getLatestReport();
+    
+    if (!latestReport) {
+      // Generate a new report if none exists
+      const newReport = await generateQualityReport();
+      
+      res.json({
+        status: 'success',
+        stats: newReport.stats,
+        scores: newReport.scores,
+        freshReport: true
+      });
+      return;
     }
     
-    await dataEnrichmentService.updateNeighborhoodStatistics(neighborhoodCode);
-    return res.json({ success: true, message: `Updated statistics for neighborhood ${neighborhoodCode}` });
-  } catch (error) {
-    console.error(`Error updating statistics for neighborhood ${req.params.code}:`, error);
-    return res.status(500).json({ error: 'Failed to update neighborhood statistics' });
+    res.json({
+      status: 'success',
+      stats: latestReport.stats,
+      scores: latestReport.scores,
+      freshReport: false
+    });
+  } catch (error: any) {
+    logger.error(`Error getting quality stats: ${error.message}`);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to get quality statistics',
+      error: error.message
+    });
+  }
+}
+
+/**
+ * Force regeneration of quality report
+ */
+export async function regenerateQualityReport(req: Request, res: Response): Promise<void> {
+  try {
+    const newReport = await generateQualityReport();
+    
+    res.json({
+      status: 'success',
+      report: newReport
+    });
+  } catch (error: any) {
+    logger.error(`Error regenerating quality report: ${error.message}`);
+    res.status(500).json({
+      status: 'error',
+      message: 'Failed to regenerate quality report',
+      error: error.message
+    });
   }
 }
