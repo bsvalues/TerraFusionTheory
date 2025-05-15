@@ -90,8 +90,8 @@ export async function getRealEstateAgent(req: Request, res: Response) {
     });
   } catch (error) {
     logger.error(
-      LogCategory.AI,
       `Error retrieving real estate agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      LogCategory.AI,
       { error }
     );
     
@@ -131,8 +131,8 @@ export async function getDeveloperAgent(req: Request, res: Response) {
     });
   } catch (error) {
     logger.error(
-      LogCategory.AI,
       `Error retrieving developer agent: ${error instanceof Error ? error.message : 'Unknown error'}`,
+      LogCategory.AI,
       { error }
     );
     
@@ -156,8 +156,8 @@ export async function askRealEstateAgent(req: Request, res: Response) {
   try {
     // Log with correct type for LogCategory
     logger.info(
-      LogCategory.AI, 
       `User asked real estate agent: ${question.substring(0, 100)}${question.length > 100 ? '...' : ''}`,
+      LogCategory.AI,
       { userSessionId: req.sessionID }
     );
     
