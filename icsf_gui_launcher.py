@@ -109,14 +109,26 @@ def run_simulation():
 
 def open_output_map():
     """Open the GeoJSON output map in the default browser"""
+    map_viewer = os.path.join(os.path.dirname(OUTPUT_GEOJSON), "map_viewer.html")
+    
     if os.path.exists(OUTPUT_GEOJSON):
         try:
-            success = webbrowser.open(f"file://{os.path.abspath(OUTPUT_GEOJSON)}")
-            if success:
-                print("Opened output map in default browser.\n")
+            # Check if map viewer exists, use that if available
+            if os.path.exists(map_viewer):
+                success = webbrowser.open(f"file://{os.path.abspath(map_viewer)}")
+                if success:
+                    print("Opened interactive map viewer in default browser.\n")
+                else:
+                    print("Failed to open browser. Try opening the map viewer manually at:")
+                    print(f"  {os.path.abspath(map_viewer)}\n")
             else:
-                print("Failed to open browser. The output map is located at:")
-                print(f"  {os.path.abspath(OUTPUT_GEOJSON)}\n")
+                # Fallback to direct GeoJSON viewing
+                success = webbrowser.open(f"file://{os.path.abspath(OUTPUT_GEOJSON)}")
+                if success:
+                    print("Opened output map in default browser.\n")
+                else:
+                    print("Failed to open browser. The output map is located at:")
+                    print(f"  {os.path.abspath(OUTPUT_GEOJSON)}\n")
         except Exception as e:
             print(f"Error opening map: {e}")
             print(f"The output map is located at: {os.path.abspath(OUTPUT_GEOJSON)}\n")

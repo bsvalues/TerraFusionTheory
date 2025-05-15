@@ -6,20 +6,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.28879522053215,
-          47.61740372174212
+          -122.31372087255247,
+          47.626054831604385
         ]
       },
       "properties": {
         "id": "P0001",
         "neighborhood": "N003",
-        "sqft": 3053,
-        "year_built": 2008,
+        "sqft": 2516,
+        "year_built": 1992,
         "bedrooms": 3,
-        "bathrooms": 1,
-        "base_value": 349000,
-        "simulated_value": 338000,
-        "percent_change": -3.2
+        "bathrooms": 3,
+        "base_value": 452000,
+        "simulated_value": 486000,
+        "percent_change": 7.5
       }
     },
     {
@@ -27,20 +27,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.33800907617146,
-          47.62999138313374
+          -122.28432579392147,
+          47.6254549431276
         ]
       },
       "properties": {
         "id": "P0002",
         "neighborhood": "N001",
-        "sqft": 2254,
-        "year_built": 1957,
-        "bedrooms": 2,
-        "bathrooms": 2,
-        "base_value": 217000,
-        "simulated_value": 219000,
-        "percent_change": 0.9
+        "sqft": 1469,
+        "year_built": 1963,
+        "bedrooms": 5,
+        "bathrooms": 4,
+        "base_value": 225000,
+        "simulated_value": 232000,
+        "percent_change": 3.1
       }
     },
     {
@@ -48,397 +48,19 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.33710242568152,
-          47.62971082131048
+          -122.27533365033375,
+          47.62626231442851
         ]
       },
       "properties": {
         "id": "P0003",
         "neighborhood": "N001",
-        "sqft": 1915,
-        "year_built": 1970,
-        "bedrooms": 3,
-        "bathrooms": 3,
-        "base_value": 238000,
-        "simulated_value": 246000,
-        "percent_change": 3.4
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.29699577139519,
-          47.61296047892362
-        ]
-      },
-      "properties": {
-        "id": "P0004",
-        "neighborhood": "N003",
-        "sqft": 2360,
-        "year_built": 1973,
-        "bedrooms": 5,
-        "bathrooms": 4,
-        "base_value": 311000,
-        "simulated_value": 301000,
-        "percent_change": -3.2
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.3202238503903,
-          47.596379901801605
-        ]
-      },
-      "properties": {
-        "id": "P0005",
-        "neighborhood": "N002",
-        "sqft": 1579,
-        "year_built": 1978,
-        "bedrooms": 3,
-        "bathrooms": 2,
-        "base_value": 198000,
-        "simulated_value": 208000,
-        "percent_change": 5.1
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.286018127164,
-          47.62253930584245
-        ]
-      },
-      "properties": {
-        "id": "P0006",
-        "neighborhood": "N003",
-        "sqft": 3404,
-        "year_built": 1971,
+        "sqft": 1183,
+        "year_built": 1953,
         "bedrooms": 2,
         "bathrooms": 1,
-        "base_value": 342000,
-        "simulated_value": 353000,
-        "percent_change": 3.2
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.3107856723941,
-          47.59706785258782
-        ]
-      },
-      "properties": {
-        "id": "P0007",
-        "neighborhood": "N002",
-        "sqft": 2477,
-        "year_built": 1980,
-        "bedrooms": 5,
-        "bathrooms": 3,
-        "base_value": 351000,
-        "simulated_value": 352000,
-        "percent_change": 0.3
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.33440768751821,
-          47.632475759481615
-        ]
-      },
-      "properties": {
-        "id": "P0008",
-        "neighborhood": "N001",
-        "sqft": 1027,
-        "year_built": 1991,
-        "bedrooms": 2,
-        "bathrooms": 2,
-        "base_value": 121000,
-        "simulated_value": 121000,
-        "percent_change": 0.0
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.28167601304548,
-          47.617991856738136
-        ]
-      },
-      "properties": {
-        "id": "P0009",
-        "neighborhood": "N003",
-        "sqft": 1814,
-        "year_built": 1970,
-        "bedrooms": 2,
-        "bathrooms": 2,
-        "base_value": 242000,
-        "simulated_value": 232000,
-        "percent_change": -4.1
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.31058302052232,
-          47.59337672579871
-        ]
-      },
-      "properties": {
-        "id": "P0010",
-        "neighborhood": "N002",
-        "sqft": 1578,
-        "year_built": 2011,
-        "bedrooms": 4,
-        "bathrooms": 4,
-        "base_value": 274000,
-        "simulated_value": 281000,
-        "percent_change": 2.6
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.29781435453508,
-          47.621802066689796
-        ]
-      },
-      "properties": {
-        "id": "P0011",
-        "neighborhood": "N003",
-        "sqft": 1627,
-        "year_built": 1975,
-        "bedrooms": 3,
-        "bathrooms": 1,
-        "base_value": 193000,
-        "simulated_value": 202000,
-        "percent_change": 4.7
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.30900942871324,
-          47.59738389964122
-        ]
-      },
-      "properties": {
-        "id": "P0012",
-        "neighborhood": "N002",
-        "sqft": 1566,
-        "year_built": 1967,
-        "bedrooms": 2,
-        "bathrooms": 2,
-        "base_value": 218000,
-        "simulated_value": 228000,
-        "percent_change": 4.6
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.30417519635333,
-          47.57899897819789
-        ]
-      },
-      "properties": {
-        "id": "P0013",
-        "neighborhood": "N002",
-        "sqft": 1715,
-        "year_built": 1977,
-        "bedrooms": 3,
-        "bathrooms": 3,
-        "base_value": 277000,
-        "simulated_value": 273000,
-        "percent_change": -1.4
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.32587360891685,
-          47.643740879475324
-        ]
-      },
-      "properties": {
-        "id": "P0014",
-        "neighborhood": "N001",
-        "sqft": 2388,
-        "year_built": 1988,
-        "bedrooms": 5,
-        "bathrooms": 4,
-        "base_value": 358000,
-        "simulated_value": 336000,
-        "percent_change": -6.1
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.32446230006269,
-          47.64410144428359
-        ]
-      },
-      "properties": {
-        "id": "P0015",
-        "neighborhood": "N001",
-        "sqft": 2515,
-        "year_built": 2015,
-        "bedrooms": 2,
-        "bathrooms": 3,
-        "base_value": 298000,
-        "simulated_value": 303000,
-        "percent_change": 1.7
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.31233858549541,
-          47.58805155471169
-        ]
-      },
-      "properties": {
-        "id": "P0016",
-        "neighborhood": "N002",
-        "sqft": 3240,
-        "year_built": 1975,
-        "bedrooms": 4,
-        "bathrooms": 3,
-        "base_value": 450000,
-        "simulated_value": 459000,
-        "percent_change": 2.0
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.32158633551369,
-          47.58411996240005
-        ]
-      },
-      "properties": {
-        "id": "P0017",
-        "neighborhood": "N002",
-        "sqft": 2303,
-        "year_built": 2011,
-        "bedrooms": 4,
-        "bathrooms": 1,
-        "base_value": 368000,
-        "simulated_value": 381000,
-        "percent_change": 3.5
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.32174141475215,
-          47.59036172495768
-        ]
-      },
-      "properties": {
-        "id": "P0018",
-        "neighborhood": "N002",
-        "sqft": 2373,
-        "year_built": 1957,
-        "bedrooms": 4,
-        "bathrooms": 3,
-        "base_value": 378000,
-        "simulated_value": 394000,
-        "percent_change": 4.2
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.32194940327058,
-          47.591172174170765
-        ]
-      },
-      "properties": {
-        "id": "P0019",
-        "neighborhood": "N002",
-        "sqft": 2485,
-        "year_built": 1995,
-        "bedrooms": 5,
-        "bathrooms": 2,
-        "base_value": 323000,
-        "simulated_value": 337000,
-        "percent_change": 4.3
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.31854971162427,
-          47.593173555451955
-        ]
-      },
-      "properties": {
-        "id": "P0020",
-        "neighborhood": "N002",
-        "sqft": 2237,
-        "year_built": 1976,
-        "bedrooms": 3,
-        "bathrooms": 4,
-        "base_value": 279000,
-        "simulated_value": 287000,
-        "percent_change": 2.9
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.3135391344466,
-          47.59386904721346
-        ]
-      },
-      "properties": {
-        "id": "P0021",
-        "neighborhood": "N002",
-        "sqft": 3032,
-        "year_built": 1990,
-        "bedrooms": 3,
-        "bathrooms": 4,
-        "base_value": 422000,
-        "simulated_value": 411000,
+        "base_value": 152000,
+        "simulated_value": 148000,
         "percent_change": -2.6
       }
     },
@@ -447,83 +69,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.30715948053087,
-          47.59304635181417
+          -122.27709082402234,
+          47.61797192874591
         ]
       },
       "properties": {
-        "id": "P0022",
-        "neighborhood": "N002",
-        "sqft": 1661,
-        "year_built": 2010,
-        "bedrooms": 4,
-        "bathrooms": 4,
-        "base_value": 252000,
-        "simulated_value": 259000,
-        "percent_change": 2.8
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.31850797316305,
-          47.5813521918367
-        ]
-      },
-      "properties": {
-        "id": "P0023",
-        "neighborhood": "N002",
-        "sqft": 1082,
-        "year_built": 1964,
-        "bedrooms": 2,
-        "bathrooms": 3,
-        "base_value": 161000,
-        "simulated_value": 163000,
-        "percent_change": 1.2
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.2836768645861,
-          47.61861088143922
-        ]
-      },
-      "properties": {
-        "id": "P0024",
-        "neighborhood": "N003",
-        "sqft": 2585,
-        "year_built": 1990,
-        "bedrooms": 5,
-        "bathrooms": 3,
-        "base_value": 352000,
-        "simulated_value": 340000,
-        "percent_change": -3.4
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.33446864399835,
-          47.6451568032413
-        ]
-      },
-      "properties": {
-        "id": "P0025",
+        "id": "P0004",
         "neighborhood": "N001",
-        "sqft": 3179,
-        "year_built": 2004,
+        "sqft": 3111,
+        "year_built": 1965,
         "bedrooms": 3,
-        "bathrooms": 3,
-        "base_value": 431000,
-        "simulated_value": 439000,
-        "percent_change": 1.9
+        "bathrooms": 2,
+        "base_value": 394000,
+        "simulated_value": 409000,
+        "percent_change": 3.8
       }
     },
     {
@@ -531,20 +90,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.32817032150646,
-          47.62958916407885
+          -122.28708605868346,
+          47.62481162926774
         ]
       },
       "properties": {
-        "id": "P0026",
+        "id": "P0005",
         "neighborhood": "N001",
-        "sqft": 3468,
-        "year_built": 1980,
+        "sqft": 3169,
+        "year_built": 1987,
         "bedrooms": 2,
         "bathrooms": 1,
-        "base_value": 372000,
-        "simulated_value": 364000,
-        "percent_change": -2.2
+        "base_value": 341000,
+        "simulated_value": 353000,
+        "percent_change": 3.5
       }
     },
     {
@@ -552,20 +111,41 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.2977885255591,
-          47.61313543641494
+          -122.28613047852623,
+          47.65005486278498
         ]
       },
       "properties": {
-        "id": "P0027",
-        "neighborhood": "N003",
-        "sqft": 2515,
+        "id": "P0006",
+        "neighborhood": "N002",
+        "sqft": 1962,
         "year_built": 1974,
+        "bedrooms": 4,
+        "bathrooms": 3,
+        "base_value": 281000,
+        "simulated_value": 286000,
+        "percent_change": 1.8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29826859787667,
+          47.65157008684273
+        ]
+      },
+      "properties": {
+        "id": "P0007",
+        "neighborhood": "N002",
+        "sqft": 1368,
+        "year_built": 1990,
         "bedrooms": 2,
         "bathrooms": 4,
-        "base_value": 331000,
-        "simulated_value": 335000,
-        "percent_change": 1.2
+        "base_value": 259000,
+        "simulated_value": 284000,
+        "percent_change": 9.7
       }
     },
     {
@@ -573,124 +153,19 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.32851513413449,
-          47.63757115243226
+          -122.32144819084331,
+          47.626538168853884
         ]
       },
       "properties": {
-        "id": "P0028",
-        "neighborhood": "N001",
-        "sqft": 3488,
-        "year_built": 1950,
-        "bedrooms": 5,
-        "bathrooms": 3,
-        "base_value": 469000,
-        "simulated_value": 450000,
-        "percent_change": -4.1
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.29349377847164,
-          47.6109457575682
-        ]
-      },
-      "properties": {
-        "id": "P0029",
+        "id": "P0008",
         "neighborhood": "N003",
-        "sqft": 2113,
+        "sqft": 3242,
         "year_built": 1996,
-        "bedrooms": 5,
-        "bathrooms": 1,
-        "base_value": 276000,
-        "simulated_value": 265000,
-        "percent_change": -4.0
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.30378119224918,
-          47.582114905049636
-        ]
-      },
-      "properties": {
-        "id": "P0030",
-        "neighborhood": "N002",
-        "sqft": 2362,
-        "year_built": 1976,
         "bedrooms": 3,
         "bathrooms": 1,
-        "base_value": 350000,
-        "simulated_value": 348000,
-        "percent_change": -0.6
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.33448622990417,
-          47.63129696568952
-        ]
-      },
-      "properties": {
-        "id": "P0031",
-        "neighborhood": "N001",
-        "sqft": 1834,
-        "year_built": 1973,
-        "bedrooms": 4,
-        "bathrooms": 1,
-        "base_value": 227000,
-        "simulated_value": 233000,
-        "percent_change": 2.6
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.28801127633503,
-          47.62143224515673
-        ]
-      },
-      "properties": {
-        "id": "P0032",
-        "neighborhood": "N003",
-        "sqft": 2388,
-        "year_built": 1991,
-        "bedrooms": 5,
-        "bathrooms": 3,
-        "base_value": 372000,
-        "simulated_value": 372000,
-        "percent_change": 0.0
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.29497284615131,
-          47.613356625140014
-        ]
-      },
-      "properties": {
-        "id": "P0033",
-        "neighborhood": "N003",
-        "sqft": 2448,
-        "year_built": 1980,
-        "bedrooms": 5,
-        "bathrooms": 1,
-        "base_value": 329000,
-        "simulated_value": 342000,
+        "base_value": 503000,
+        "simulated_value": 523000,
         "percent_change": 4.0
       }
     },
@@ -699,82 +174,313 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.3237869076355,
-          47.6348752971214
+          -122.2850158461953,
+          47.62896804659759
         ]
       },
       "properties": {
-        "id": "P0034",
+        "id": "P0009",
         "neighborhood": "N001",
-        "sqft": 1309,
-        "year_built": 2006,
-        "bedrooms": 4,
-        "bathrooms": 4,
-        "base_value": 240000,
-        "simulated_value": 238000,
-        "percent_change": -0.8
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.32143645160086,
-          47.63774785110215
-        ]
-      },
-      "properties": {
-        "id": "P0035",
-        "neighborhood": "N001",
-        "sqft": 3306,
-        "year_built": 2016,
-        "bedrooms": 2,
-        "bathrooms": 4,
-        "base_value": 387000,
-        "simulated_value": 396000,
-        "percent_change": 2.3
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.32405025959231,
-          47.64254541125489
-        ]
-      },
-      "properties": {
-        "id": "P0036",
-        "neighborhood": "N001",
-        "sqft": 1686,
-        "year_built": 1960,
-        "bedrooms": 3,
-        "bathrooms": 1,
-        "base_value": 211000,
-        "simulated_value": 210000,
-        "percent_change": -0.5
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.29442893509588,
-          47.625251661386514
-        ]
-      },
-      "properties": {
-        "id": "P0037",
-        "neighborhood": "N003",
-        "sqft": 2290,
-        "year_built": 1954,
+        "sqft": 1362,
+        "year_built": 1991,
         "bedrooms": 5,
         "bathrooms": 4,
-        "base_value": 332000,
-        "simulated_value": 340000,
+        "base_value": 212000,
+        "simulated_value": 209000,
+        "percent_change": -1.4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28315874049014,
+          47.65825693043083
+        ]
+      },
+      "properties": {
+        "id": "P0010",
+        "neighborhood": "N002",
+        "sqft": 1932,
+        "year_built": 1951,
+        "bedrooms": 3,
+        "bathrooms": 4,
+        "base_value": 290000,
+        "simulated_value": 321000,
+        "percent_change": 10.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.3196023415027,
+          47.6304359269417
+        ]
+      },
+      "properties": {
+        "id": "P0011",
+        "neighborhood": "N003",
+        "sqft": 1663,
+        "year_built": 1981,
+        "bedrooms": 5,
+        "bathrooms": 3,
+        "base_value": 321000,
+        "simulated_value": 349000,
+        "percent_change": 8.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2750570649282,
+          47.61803620176113
+        ]
+      },
+      "properties": {
+        "id": "P0012",
+        "neighborhood": "N001",
+        "sqft": 1524,
+        "year_built": 2019,
+        "bedrooms": 4,
+        "bathrooms": 1,
+        "base_value": 219000,
+        "simulated_value": 223000,
+        "percent_change": 1.8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29424881760858,
+          47.6172935188854
+        ]
+      },
+      "properties": {
+        "id": "P0013",
+        "neighborhood": "N001",
+        "sqft": 2521,
+        "year_built": 1963,
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "base_value": 339000,
+        "simulated_value": 342000,
+        "percent_change": 0.9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.3123807042875,
+          47.63871060785732
+        ]
+      },
+      "properties": {
+        "id": "P0014",
+        "neighborhood": "N003",
+        "sqft": 2310,
+        "year_built": 1983,
+        "bedrooms": 4,
+        "bathrooms": 3,
+        "base_value": 428000,
+        "simulated_value": 474000,
+        "percent_change": 10.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29068872932369,
+          47.652159109221685
+        ]
+      },
+      "properties": {
+        "id": "P0015",
+        "neighborhood": "N002",
+        "sqft": 3041,
+        "year_built": 1950,
+        "bedrooms": 5,
+        "bathrooms": 2,
+        "base_value": 432000,
+        "simulated_value": 475000,
+        "percent_change": 10.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.32225150068179,
+          47.63258535641267
+        ]
+      },
+      "properties": {
+        "id": "P0016",
+        "neighborhood": "N003",
+        "sqft": 2106,
+        "year_built": 2013,
+        "bedrooms": 4,
+        "bathrooms": 1,
+        "base_value": 374000,
+        "simulated_value": 406000,
+        "percent_change": 8.6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.27803182866568,
+          47.62903051975213
+        ]
+      },
+      "properties": {
+        "id": "P0017",
+        "neighborhood": "N001",
+        "sqft": 1434,
+        "year_built": 1983,
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "base_value": 187000,
+        "simulated_value": 188000,
+        "percent_change": 0.5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28272506037322,
+          47.629310052326474
+        ]
+      },
+      "properties": {
+        "id": "P0018",
+        "neighborhood": "N001",
+        "sqft": 3457,
+        "year_built": 1970,
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "base_value": 444000,
+        "simulated_value": 465000,
+        "percent_change": 4.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.31436259237698,
+          47.62259251001865
+        ]
+      },
+      "properties": {
+        "id": "P0019",
+        "neighborhood": "N003",
+        "sqft": 3097,
+        "year_built": 1971,
+        "bedrooms": 4,
+        "bathrooms": 2,
+        "base_value": 442000,
+        "simulated_value": 467000,
+        "percent_change": 5.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.3283352434604,
+          47.63000731262722
+        ]
+      },
+      "properties": {
+        "id": "P0020",
+        "neighborhood": "N003",
+        "sqft": 1914,
+        "year_built": 1979,
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "base_value": 331000,
+        "simulated_value": 365000,
+        "percent_change": 10.3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29301177209676,
+          47.634748328261836
+        ]
+      },
+      "properties": {
+        "id": "P0021",
+        "neighborhood": "N001",
+        "sqft": 2735,
+        "year_built": 1967,
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "base_value": 325000,
+        "simulated_value": 336000,
+        "percent_change": 3.4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.32264576028011,
+          47.625921217994
+        ]
+      },
+      "properties": {
+        "id": "P0022",
+        "neighborhood": "N003",
+        "sqft": 3385,
+        "year_built": 2001,
+        "bedrooms": 3,
+        "bathrooms": 4,
+        "base_value": 578000,
+        "simulated_value": 628000,
+        "percent_change": 8.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29053597864073,
+          47.65254144551415
+        ]
+      },
+      "properties": {
+        "id": "P0023",
+        "neighborhood": "N002",
+        "sqft": 2469,
+        "year_built": 1984,
+        "bedrooms": 4,
+        "bathrooms": 4,
+        "base_value": 452000,
+        "simulated_value": 463000,
         "percent_change": 2.4
       }
     },
@@ -783,41 +489,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.3236588253755,
-          47.63527204929229
+          -122.2812527801856,
+          47.61996582118458
         ]
       },
       "properties": {
-        "id": "P0038",
+        "id": "P0024",
         "neighborhood": "N001",
-        "sqft": 2257,
-        "year_built": 1966,
-        "bedrooms": 3,
-        "bathrooms": 4,
-        "base_value": 268000,
-        "simulated_value": 259000,
-        "percent_change": -3.4
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.29470664018746,
-          47.61007393916338
-        ]
-      },
-      "properties": {
-        "id": "P0039",
-        "neighborhood": "N003",
-        "sqft": 3319,
-        "year_built": 1980,
+        "sqft": 1562,
+        "year_built": 1989,
         "bedrooms": 5,
         "bathrooms": 2,
-        "base_value": 397000,
-        "simulated_value": 406000,
-        "percent_change": 2.3
+        "base_value": 260000,
+        "simulated_value": 262000,
+        "percent_change": 0.8
       }
     },
     {
@@ -825,20 +510,146 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.33982493280651,
-          47.64282051726802
+          -122.31080002614708,
+          47.63794995897546
         ]
       },
       "properties": {
-        "id": "P0040",
+        "id": "P0025",
+        "neighborhood": "N003",
+        "sqft": 2804,
+        "year_built": 1951,
+        "bedrooms": 3,
+        "bathrooms": 1,
+        "base_value": 416000,
+        "simulated_value": 463000,
+        "percent_change": 11.3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29329920877333,
+          47.61952548761953
+        ]
+      },
+      "properties": {
+        "id": "P0026",
         "neighborhood": "N001",
-        "sqft": 1209,
-        "year_built": 1977,
+        "sqft": 2406,
+        "year_built": 2005,
+        "bedrooms": 4,
+        "bathrooms": 1,
+        "base_value": 307000,
+        "simulated_value": 318000,
+        "percent_change": 3.6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.290925646742,
+          47.616473059208964
+        ]
+      },
+      "properties": {
+        "id": "P0027",
+        "neighborhood": "N001",
+        "sqft": 1098,
+        "year_built": 1986,
+        "bedrooms": 2,
+        "bathrooms": 1,
+        "base_value": 149000,
+        "simulated_value": 148000,
+        "percent_change": -0.7
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.27631113280572,
+          47.619319180880424
+        ]
+      },
+      "properties": {
+        "id": "P0028",
+        "neighborhood": "N001",
+        "sqft": 1658,
+        "year_built": 2019,
+        "bedrooms": 5,
+        "bathrooms": 3,
+        "base_value": 251000,
+        "simulated_value": 263000,
+        "percent_change": 4.8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.3002099814505,
+          47.64504592188083
+        ]
+      },
+      "properties": {
+        "id": "P0029",
+        "neighborhood": "N002",
+        "sqft": 3282,
+        "year_built": 1967,
+        "bedrooms": 4,
+        "bathrooms": 2,
+        "base_value": 424000,
+        "simulated_value": 454000,
+        "percent_change": 7.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29428265949002,
+          47.61493203544188
+        ]
+      },
+      "properties": {
+        "id": "P0030",
+        "neighborhood": "N001",
+        "sqft": 1230,
+        "year_built": 1999,
+        "bedrooms": 2,
+        "bathrooms": 2,
+        "base_value": 185000,
+        "simulated_value": 193000,
+        "percent_change": 4.3
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28472118182628,
+          47.655820289306426
+        ]
+      },
+      "properties": {
+        "id": "P0031",
+        "neighborhood": "N002",
+        "sqft": 2906,
+        "year_built": 1956,
         "bedrooms": 3,
         "bathrooms": 3,
-        "base_value": 183000,
-        "simulated_value": 182000,
-        "percent_change": -0.5
+        "base_value": 365000,
+        "simulated_value": 405000,
+        "percent_change": 11.0
       }
     },
     {
@@ -846,143 +657,59 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.31758281074096,
-          47.58587550246093
+          -122.30200983697273,
+          47.65947383516703
         ]
       },
       "properties": {
-        "id": "P0041",
+        "id": "P0032",
         "neighborhood": "N002",
-        "sqft": 1491,
-        "year_built": 1982,
-        "bedrooms": 4,
-        "bathrooms": 2,
-        "base_value": 252000,
-        "simulated_value": 263000,
-        "percent_change": 4.4
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.324565048293,
-          47.64479898933945
-        ]
-      },
-      "properties": {
-        "id": "P0042",
-        "neighborhood": "N001",
-        "sqft": 1163,
-        "year_built": 1975,
-        "bedrooms": 2,
-        "bathrooms": 1,
-        "base_value": 135000,
-        "simulated_value": 130000,
-        "percent_change": -3.7
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.32728048753573,
-          47.62814967639014
-        ]
-      },
-      "properties": {
-        "id": "P0043",
-        "neighborhood": "N001",
-        "sqft": 2218,
-        "year_built": 1973,
-        "bedrooms": 4,
-        "bathrooms": 3,
-        "base_value": 263000,
-        "simulated_value": 248000,
-        "percent_change": -5.7
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.28690818981755,
-          47.61301106369767
-        ]
-      },
-      "properties": {
-        "id": "P0044",
-        "neighborhood": "N003",
-        "sqft": 2701,
-        "year_built": 1970,
-        "bedrooms": 4,
-        "bathrooms": 2,
-        "base_value": 330000,
-        "simulated_value": 319000,
-        "percent_change": -3.3
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.30745119808157,
-          47.59479176707551
-        ]
-      },
-      "properties": {
-        "id": "P0045",
-        "neighborhood": "N002",
-        "sqft": 1703,
-        "year_built": 1989,
-        "bedrooms": 4,
-        "bathrooms": 3,
-        "base_value": 237000,
-        "simulated_value": 244000,
-        "percent_change": 3.0
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.32357795672337,
-          47.63876407120807
-        ]
-      },
-      "properties": {
-        "id": "P0046",
-        "neighborhood": "N001",
-        "sqft": 1364,
-        "year_built": 1972,
-        "bedrooms": 2,
-        "bathrooms": 1,
-        "base_value": 143000,
-        "simulated_value": 144000,
-        "percent_change": 0.7
-      }
-    },
-    {
-      "type": "Feature",
-      "geometry": {
-        "type": "Point",
-        "coordinates": [
-          -122.28175144784596,
-          47.625366879752335
-        ]
-      },
-      "properties": {
-        "id": "P0047",
-        "neighborhood": "N003",
-        "sqft": 2991,
+        "sqft": 2556,
         "year_built": 2020,
+        "bedrooms": 5,
+        "bathrooms": 3,
+        "base_value": 390000,
+        "simulated_value": 422000,
+        "percent_change": 8.2
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29155057099042,
+          47.624407537230965
+        ]
+      },
+      "properties": {
+        "id": "P0033",
+        "neighborhood": "N001",
+        "sqft": 3019,
+        "year_built": 2015,
+        "bedrooms": 5,
+        "bathrooms": 3,
+        "base_value": 428000,
+        "simulated_value": 419000,
+        "percent_change": -2.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28355377780886,
+          47.62562620259622
+        ]
+      },
+      "properties": {
+        "id": "P0034",
+        "neighborhood": "N001",
+        "sqft": 2903,
+        "year_built": 1963,
         "bedrooms": 4,
-        "bathrooms": 2,
+        "bathrooms": 1,
         "base_value": 387000,
         "simulated_value": 382000,
         "percent_change": -1.3
@@ -993,20 +720,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.29402610263644,
-          47.623210375832976
+          -122.32604486027871,
+          47.630932349153056
         ]
       },
       "properties": {
-        "id": "P0048",
+        "id": "P0035",
         "neighborhood": "N003",
-        "sqft": 1054,
-        "year_built": 1993,
-        "bedrooms": 3,
-        "bathrooms": 4,
-        "base_value": 155000,
-        "simulated_value": 158000,
-        "percent_change": 1.9
+        "sqft": 1261,
+        "year_built": 1981,
+        "bedrooms": 5,
+        "bathrooms": 2,
+        "base_value": 245000,
+        "simulated_value": 278000,
+        "percent_change": 13.5
       }
     },
     {
@@ -1014,20 +741,293 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.3214936817465,
-          47.62794018482051
+          -122.28996121954725,
+          47.63198364245788
+        ]
+      },
+      "properties": {
+        "id": "P0036",
+        "neighborhood": "N001",
+        "sqft": 2927,
+        "year_built": 1970,
+        "bedrooms": 2,
+        "bathrooms": 4,
+        "base_value": 427000,
+        "simulated_value": 452000,
+        "percent_change": 5.9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.2903261671577,
+          47.615647784899316
+        ]
+      },
+      "properties": {
+        "id": "P0037",
+        "neighborhood": "N001",
+        "sqft": 1544,
+        "year_built": 1974,
+        "bedrooms": 2,
+        "bathrooms": 4,
+        "base_value": 218000,
+        "simulated_value": 216000,
+        "percent_change": -0.9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.32295410368958,
+          47.63824272333771
+        ]
+      },
+      "properties": {
+        "id": "P0038",
+        "neighborhood": "N003",
+        "sqft": 1200,
+        "year_built": 1986,
+        "bedrooms": 3,
+        "bathrooms": 3,
+        "base_value": 211000,
+        "simulated_value": 238000,
+        "percent_change": 12.8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28322773313984,
+          47.6488691210427
+        ]
+      },
+      "properties": {
+        "id": "P0039",
+        "neighborhood": "N002",
+        "sqft": 2638,
+        "year_built": 2004,
+        "bedrooms": 4,
+        "bathrooms": 1,
+        "base_value": 439000,
+        "simulated_value": 454000,
+        "percent_change": 3.4
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.3200108212226,
+          47.63873761204877
+        ]
+      },
+      "properties": {
+        "id": "P0040",
+        "neighborhood": "N003",
+        "sqft": 1822,
+        "year_built": 1987,
+        "bedrooms": 5,
+        "bathrooms": 3,
+        "base_value": 330000,
+        "simulated_value": 343000,
+        "percent_change": 3.9
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.32759763370804,
+          47.62204132932823
+        ]
+      },
+      "properties": {
+        "id": "P0041",
+        "neighborhood": "N003",
+        "sqft": 1116,
+        "year_built": 1997,
+        "bedrooms": 2,
+        "bathrooms": 4,
+        "base_value": 219000,
+        "simulated_value": 231000,
+        "percent_change": 5.5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28839294511234,
+          47.65749302523762
+        ]
+      },
+      "properties": {
+        "id": "P0042",
+        "neighborhood": "N002",
+        "sqft": 2369,
+        "year_built": 1963,
+        "bedrooms": 5,
+        "bathrooms": 2,
+        "base_value": 379000,
+        "simulated_value": 421000,
+        "percent_change": 11.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29426944448959,
+          47.652412292593255
+        ]
+      },
+      "properties": {
+        "id": "P0043",
+        "neighborhood": "N002",
+        "sqft": 2682,
+        "year_built": 2005,
+        "bedrooms": 3,
+        "bathrooms": 1,
+        "base_value": 381000,
+        "simulated_value": 422000,
+        "percent_change": 10.8
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.32750795049961,
+          47.636419575422295
+        ]
+      },
+      "properties": {
+        "id": "P0044",
+        "neighborhood": "N003",
+        "sqft": 1681,
+        "year_built": 1950,
+        "bedrooms": 4,
+        "bathrooms": 1,
+        "base_value": 264000,
+        "simulated_value": 301000,
+        "percent_change": 14.0
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.29286268427619,
+          47.65928763504626
+        ]
+      },
+      "properties": {
+        "id": "P0045",
+        "neighborhood": "N002",
+        "sqft": 3119,
+        "year_built": 1958,
+        "bedrooms": 4,
+        "bathrooms": 2,
+        "base_value": 386000,
+        "simulated_value": 427000,
+        "percent_change": 10.6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.28102432164678,
+          47.628434167041775
+        ]
+      },
+      "properties": {
+        "id": "P0046",
+        "neighborhood": "N001",
+        "sqft": 1495,
+        "year_built": 1955,
+        "bedrooms": 2,
+        "bathrooms": 3,
+        "base_value": 195000,
+        "simulated_value": 200000,
+        "percent_change": 2.6
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.3245252225398,
+          47.63851295056313
+        ]
+      },
+      "properties": {
+        "id": "P0047",
+        "neighborhood": "N003",
+        "sqft": 1463,
+        "year_built": 1959,
+        "bedrooms": 5,
+        "bathrooms": 3,
+        "base_value": 252000,
+        "simulated_value": 281000,
+        "percent_change": 11.5
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.30263815558831,
+          47.65371491135244
+        ]
+      },
+      "properties": {
+        "id": "P0048",
+        "neighborhood": "N002",
+        "sqft": 3288,
+        "year_built": 1980,
+        "bedrooms": 3,
+        "bathrooms": 2,
+        "base_value": 467000,
+        "simulated_value": 514000,
+        "percent_change": 10.1
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Point",
+        "coordinates": [
+          -122.27575262663794,
+          47.62068206209568
         ]
       },
       "properties": {
         "id": "P0049",
         "neighborhood": "N001",
-        "sqft": 3164,
-        "year_built": 1957,
+        "sqft": 2021,
+        "year_built": 1993,
         "bedrooms": 4,
-        "bathrooms": 2,
-        "base_value": 361000,
-        "simulated_value": 373000,
-        "percent_change": 3.3
+        "bathrooms": 4,
+        "base_value": 309000,
+        "simulated_value": 325000,
+        "percent_change": 5.2
       }
     },
     {
@@ -1035,20 +1035,20 @@
       "geometry": {
         "type": "Point",
         "coordinates": [
-          -122.2808198658668,
-          47.61131435093506
+          -122.31754980504327,
+          47.62920211599081
         ]
       },
       "properties": {
         "id": "P0050",
         "neighborhood": "N003",
-        "sqft": 2038,
+        "sqft": 3117,
         "year_built": 1996,
-        "bedrooms": 5,
-        "bathrooms": 4,
-        "base_value": 304000,
-        "simulated_value": 300000,
-        "percent_change": -1.3
+        "bedrooms": 4,
+        "bathrooms": 2,
+        "base_value": 456000,
+        "simulated_value": 521000,
+        "percent_change": 14.3
       }
     }
   ]
