@@ -259,7 +259,9 @@ router.post('/search', asyncHandler(async (req: Request, res: Response) => {
       });
     }
     
-    // Use a more direct script with better error tracing
+    console.log(`Starting ACI search with intent: "${intent}" and limit: ${limit}`);
+    
+    // Use a simplified direct script with clearer error tracing
     const process = spawn('python3', [
       '-c',
       `
@@ -268,27 +270,57 @@ import json
 import os
 import traceback
 
+# Set up detailed logging to stderr
+def log(message):
+    print(f"[ACI Search] {message}", file=sys.stderr)
+
 try:
-    print("Starting ACI function search script...", file=sys.stderr)
+    log("Starting ACI function search script...")
+    
+    # Debug environment variables
+    env_vars = {k: v for k, v in os.environ.items() if k.startswith('ACI_')}
+    log(f"Environment variables: {env_vars}")
     
     # Add current working directory to path
     current_dir = '${process.cwd()}'
     sys.path.append(current_dir)
-    print(f"Added {current_dir} to Python path", file=sys.stderr)
+    log(f"Added {current_dir} to Python path")
     
     # Check for ACI API key
     aci_key = os.environ.get("ACI_API_KEY", "")
     key_status = "present" if aci_key and len(aci_key) > 0 else "missing"
-    print(f"ACI_API_KEY status: {key_status}", file=sys.stderr)
+    key_info = f"length: {len(aci_key)}, first/last chars: {aci_key[:3]}...{aci_key[-3:]}" if aci_key else "not found"
+    log(f"ACI_API_KEY status: {key_status} ({key_info})")
+    
+    # Check Python version and installed packages
+    log(f"Python version: {sys.version}")
+    
+    try:
+        log("Checking for aci package...")
+        import aci
+        log(f"ACI package found: {aci}")
+        log(f"ACI package path: {aci.__file__}")
+        log(f"ACI package contents: {dir(aci)}")
+        
+        # Check if the _client module exists
+        try:
+            import aci._client
+            log(f"ACI client module found: {aci._client}")
+            log(f"ACI client module contents: {dir(aci._client)}")
+        except ImportError as e:
+            log(f"ACI client module import error: {e}")
+    
+    except ImportError as e:
+        log(f"ACI package import error: {e}")
     
     # Import modules
-    print("Importing required modules...", file=sys.stderr)
+    log("Importing required modules...")
     from server.services.aci_direct import search_functions, is_initialized
-    print("Modules imported successfully", file=sys.stderr)
+    log("Modules imported successfully")
     
     # Check if ACI is initialized properly
     init_status = is_initialized()
-    print(f"ACI initialization status: {init_status}", file=sys.stderr)
+    log(f"ACI initialization status: {init_status}")
     
     if not init_status:
         print(json.dumps({"error": "ACI is not initialized. Please check ACI_API_KEY environment variable."}))
@@ -297,15 +329,31 @@ try:
     # Clean and format parameters
     intent = """${intent}"""
     limit = ${limit}
-    print(f"Search params - Intent: '{intent}', Limit: {limit}", file=sys.stderr)
+    log(f"Search params - Intent: '{intent}', Limit: {limit}")
     
     # Execute search
-    print("Executing ACI function search...", file=sys.stderr)
-    result = search_functions(intent, limit)
-    print(f"Search complete, found {len(result)} functions", file=sys.stderr)
+    log("Executing ACI function search...")
     
-    # Return result
-    print(json.dumps(result))
+    try:
+        result = search_functions(intent, limit)
+        
+        # Check if result is an error object
+        if isinstance(result, dict) and "error" in result:
+            log(f"Search returned error: {result['error']}")
+            print(json.dumps(result))
+        else:
+            log(f"Search complete, found {len(result)} functions")
+            print(json.dumps(result))
+            
+    except Exception as search_error:
+        log(f"Search execution error: {search_error}")
+        log(f"Error type: {type(search_error).__name__}")
+        log(f"Error traceback: {traceback.format_exc()}")
+        print(json.dumps({
+            "error": str(search_error),
+            "error_type": str(type(search_error).__name__),
+            "traceback": traceback.format_exc()
+        }))
     
 except ImportError as e:
     print(f"Import error details: {str(e)}", file=sys.stderr)
@@ -317,6 +365,7 @@ except Exception as e:
     print(f"Exception details: {str(e)}", file=sys.stderr)
     print(json.dumps({
         "error": str(e),
+        "error_type": str(type(e).__name__),
         "traceback": traceback.format_exc()
     }))
       `
@@ -337,6 +386,8 @@ except Exception as e:
 
     process.on('close', (code) => {
       console.log(`ACI search process exited with code ${code}`);
+      console.log(`Error data: ${errorData}`);
+      console.log(`Output data: ${outputData}`);
       
       if (code !== 0) {
         logger.error({
@@ -355,6 +406,23 @@ except Exception as e:
 
       try {
         console.log(`Raw Python output: ${outputData.trim()}`);
+        
+        if (!outputData.trim()) {
+          logger.error({
+            message: 'Empty output from Python script',
+            category: 'API', 
+            source: 'aci-routes'
+          });
+          
+          return res.status(500).json({
+            status: 'error',
+            message: 'No results from ACI search',
+            details: {
+              stderr: errorData,
+              stdout: outputData
+            }
+          });
+        }
         
         const result = JSON.parse(outputData.trim());
         
@@ -388,7 +456,11 @@ except Exception as e:
         return res.status(500).json({
           status: 'error',
           message: 'Failed to parse ACI search results',
-          details: outputData
+          details: {
+            error: String(err),
+            stdout: outputData,
+            stderr: errorData
+          }
         });
       }
     });

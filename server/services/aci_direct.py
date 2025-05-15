@@ -74,14 +74,45 @@ def search_functions(intent, limit=10):
         return []
     
     try:
+        # Log the search attempt
+        logger.info(f"Searching ACI functions with intent: '{intent}' and limit: {limit}")
+        
+        # Import detailed debug information
+        import inspect
+        import traceback
+        
+        # Create client with more detailed logging
+        logger.info("Creating ACI client...")
         client = ACI(api_key=ACI_API_KEY)
-        functions = client.functions.search(
-            intent=intent,
-            allowed_apps_only=True,
-            limit=limit
-        )
+        logger.info("ACI client created successfully")
+        
+        # Execute search with enhanced error trapping
+        logger.info("Executing function search...")
+        try:
+            functions = client.functions.search(
+                intent=intent,
+                allowed_apps_only=True,
+                limit=limit
+            )
+            logger.info(f"Search completed successfully, found {len(functions)} functions")
+        except Exception as search_error:
+            # Get detailed error information
+            error_type = type(search_error).__name__
+            error_traceback = traceback.format_exc()
+            error_frame = inspect.trace()[-1]
+            error_file = error_frame[1]
+            error_line = error_frame[2]
+            error_context = error_frame[4]
+            
+            logger.error(f"Search execution error ({error_type} at {error_file}:{error_line}): {str(search_error)}")
+            logger.error(f"Error context: {error_context}")
+            logger.error(f"Traceback: {error_traceback}")
+            
+            # Re-raise to handle it in the outer exception
+            raise
         
         # Format the result
+        logger.info("Formatting search results...")
         formatted_functions = []
         for func in functions:
             formatted_functions.append({
@@ -94,10 +125,23 @@ def search_functions(intent, limit=10):
                 "schema": func.schema
             })
         
+        logger.info(f"Returning {len(formatted_functions)} formatted functions")
         return formatted_functions
     except Exception as e:
+        # Capture and log the error details
         logger.error(f"Error searching functions: {e}")
-        return []
+        logger.error(f"Error type: {type(e).__name__}")
+        logger.error(f"Error traceback: {traceback.format_exc()}")
+        
+        # Return an error object to provide more details to the caller
+        error_info = {
+            "error": str(e),
+            "error_type": type(e).__name__,
+            "traceback": traceback.format_exc()
+        }
+        logger.error(f"Returning error information: {error_info}")
+        
+        return error_info
 
 def execute_function(app_name, function_name, parameters=None):
     """
