@@ -10,118 +10,116 @@ A cutting-edge Real Estate Intelligence Platform that leverages advanced geospat
 - **Narrative Generation**: Plain-language explanations of technical adjustments
 - **Modern UI/UX**: Dark-mode AI-first visual styling with consistent component design
 
-## Deployment Instructions
+## Core Components
 
-### Option 1: Vercel Deployment (Recommended)
+### 1. GAMA Simulation System
 
-1. **Fork this repository**
-   - Create a GitHub account if you don't have one
-   - Click the "Fork" button at the top right of this repository
+The Geographic Assisted Mass Appraisal (GAMA) system provides accurate property valuations using:
 
-2. **Connect to Vercel**
-   - Go to [Vercel](https://vercel.com/) and sign up/login
-   - Click "New Project"
-   - Import your forked repository
-   - Select the repository from the list
+- Spatial regression and machine learning models
+- GIS-based visualization of property values
+- Parameter configuration for valuation adjustments
+- Interactive map viewer built on Leaflet.js
+- Comprehensive audit logging for compliance
 
-3. **Configure project**
-   - Project Name: Choose a name (e.g., "terrafusion-demo")
-   - Framework Preset: Select "Other"
-   - Root Directory: Leave as default
-   - Build Command: `npm run build`
-   - Output Directory: `dist`
-   - Install Command: `npm install`
+### 2. Enterprise Extensions
 
-4. **Environment Variables (Optional)**
-   - No environment variables are required for the basic demo
-   - For extended features, add relevant API keys
+Enterprise-grade extensions for large-scale deployments:
 
-5. **Deploy**
-   - Click "Deploy"
-   - Wait for the build to complete (typically under 2 minutes)
-   - Once deployed, Vercel will provide a URL to access your application
+- **Auto-Updater**: Secure component-level updates with delta patching and rollback capabilities
+- **Audit Logging**: Comprehensive compliance tracking system
+- **Audit Sync Tool**: Synchronizes local audit logs with central secure servers
+- **AI Audit Review**: Analyzes compliance logs for potential issues
+- **Valuation Benchmarking**: Evaluates valuation accuracy against market standards
 
-### Option 2: Render Deployment
+### 3. Spatial Analytics Components
 
-1. **Create a Render account**
-   - Go to [Render](https://render.com/) and sign up/login
+Advanced spatial analysis tools for property valuation:
 
-2. **Set up a new Web Service**
-   - Click "New" and select "Web Service"
-   - Connect to your GitHub repository
-   - Name: Choose a name (e.g., "terrafusion-demo")
-   - Environment: Node
-   - Build Command: `npm install && npm run build`
-   - Start Command: `npm run start`
+- R-tree spatial indexing for efficient spatial queries
+- Feature engineering for spatial variables
+- Geographically Weighted Regression (GWR) modeling
+- Quantile Gradient Boosting predictive models
+- SHAP value analysis for model interpretation
 
-3. **Configure settings**
-   - Select the free plan for testing
-   - Auto-Deploy: Enable
+## Deployment & CI/CD
 
-4. **Deploy**
-   - Click "Create Web Service"
-   - Wait for the build to complete
-   - Render will provide a URL to access your application
+The platform includes a complete CI/CD pipeline for enterprise deployment:
 
-## Local Development
+- **GitHub Actions Integration**: Automated testing, building, and deployment
+- **Multi-environment Support**: Staging and production deployment paths
+- **Windows Installer Generation**: Automated creation of Windows installation packages
+- **Version Management**: Smart versioning and automatic update manifest generation
+- **Component Updates**: Granular updates for specific system components
 
-1. **Clone the repository**
-   ```
-   git clone https://github.com/your-username/terrafusion.git
-   cd terrafusion
-   ```
+## Valuation Benchmarking
 
-2. **Install dependencies**
-   ```
-   npm install
-   ```
+The GAMA Valuation Benchmarking system evaluates the accuracy of property valuations:
 
-3. **Start the development server**
-   ```
-   npm run dev
-   ```
+- **Statistical Analysis**: Calculates industry-standard metrics (COD, PRD, PRB)
+- **Performance Testing**: Measures valuation model speed and scalability
+- **Scenario Testing**: Tests multiple parameter configurations
+- **Professional Standards**: Validates compliance with IAAO and USPAP requirements
+- **Recommendations**: Generates automatic improvement suggestions
 
-4. **Access the application**
-   - Open your browser and navigate to `http://localhost:5000`
+## Installation and Setup
 
-## Demo Data
+### System Requirements
 
-The repository includes demo-safe AI data for testing:
-- `mock_adjustments.json`: Sample adjustment data for properties
-- `mock_comp_data.json`: Sample comparable property data
+- Windows 10/11 (64-bit) or modern Linux distribution
+- Python 3.8 or higher
+- Minimum 4GB RAM, 8GB recommended
+- 500MB free disk space
+- Network connection for updates and sync (optional)
 
-These files provide realistic data for demonstration purposes without requiring a backend connection.
+### Installation Process
 
-## Extending the Platform
+1. Run the TerraFusion Installer package
+2. Follow on-screen prompts to complete installation
+3. Set up network share for audit log synchronization (optional)
+4. Configure authentication for compliance reporting
 
-### Authentication & Audit Backend
+### Configuration
 
-To add user authentication and audit logging capabilities:
+All configuration settings are stored in `config/simulation_params.json`. Key parameters include:
 
-1. Set up Firebase authentication
-2. Implement audit logging middleware
-3. Add user management dashboard
+- `policy_id`: Identifier for valuation policy
+- `value_adjust_factor`: Adjustment factor for valuations
+- `location_weight`: Weight factor for location impact
+- `market_condition_factor`: Factor for market conditions
 
-### Marketing Landing Page
+## Security Features
 
-To create a marketing landing page:
+- **Secure Updates**: All updates verified with SHA-256 checksums
+- **Enterprise Authentication**: Role-based access control
+- **Audit Compliance**: Complete activity logging for regulatory compliance
+- **Encrypted Backups**: Securely store configuration and data
+- **Component Integrity**: Verification of system component integrity
 
-1. Customize the included landing page template
-2. Add your branding and messaging
-3. Deploy to the same or separate domain
+## Documentation
 
-### Pilot Walkthrough Kit
+Complete documentation is available in the `docs` directory, including:
 
-For organizations interested in piloting the platform:
+- User Guide
+- Administrator Guide
+- API Reference
+- Developer Guide
+- Compliance Documentation
 
-1. Use the included pilot onboarding script
-2. Customize the training materials
-3. Schedule a demonstration session
+## Integrations
 
-## Support
+TerraFusion integrates with existing enterprise systems:
 
-For support, please contact our team at support@terrafusion.com
+- MLS Data Systems
+- GIS Platforms
+- County Assessment Software
+- Document Management Systems
+- Enterprise Authentication Services
 
----
+## License
 
-© 2025 TerraFusion. All rights reserved.
+TerraFusion is available under the Business Source License 1.1. See LICENSE file for details.
+
+## Contact
+
+For more information, email info@terrafusion.ai

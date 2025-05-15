@@ -1,0 +1,172 @@
+name: TerraFusion CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main, develop ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+jobs:
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    
+    strategy:
+      matrix:
+        node-version: [16.x]
+        python-version: [3.10]
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: 'npm'
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: 'pip'
+      
+      - name: Install Node.js dependencies
+        run: npm ci
+      
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+      
+      - name: Run TypeScript linting
+        run: npm run lint
+      
+      - name: Run JavaScript/TypeScript tests
+        run: npm test
+      
+      - name: Run Python linting
+        run: |
+          pip install flake8
+          flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+      
+      - name: Run Python tests
+        run: pytest
+  
+  build:
+    name: Build Artifacts
+    needs: test
+    runs-on: windows-latest
+    
+    steps:
+      - uses: actions/checkout@v3
+      
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 16.x
+          cache: 'npm'
+      
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+          cache: 'pip'
+      
+      - name: Install dependencies
+        run: |
+          npm ci
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+          pip install pyinstaller
+      
+      - name: Build Web Application
+        run: npm run build
+      
+      - name: Build Windows Installer
+        run: python build_installer.py
+      
+      - name: Upload Web Build
+        uses: actions/upload-artifact@v3
+        with:
+          name: web-build
+          path: dist/web
+      
+      - name: Upload Windows Installer
+        uses: actions/upload-artifact@v3
+        with:
+          name: windows-installer
+          path: ICSF_GAMA_Simulator-*.exe
+  
+  deploy-staging:
+    name: Deploy to Staging
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'staging')
+    
+    steps:
+      - name: Download Web Build
+        uses: actions/download-artifact@v3
+        with:
+          name: web-build
+          path: web-build
+      
+      - name: Download Windows Installer
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-installer
+          path: installer
+      
+      - name: Deploy to Staging Server
+        run: |
+          # Use deploy keys or other secure authentication mechanism
+          echo "Deploying to staging environment..."
+          # Example deployment commands would go here
+      
+      - name: Update Version Manifest
+        run: |
+          echo "Updating version manifest for auto-updater..."
+          # Commands to update the version manifest on the staging server
+  
+  deploy-production:
+    name: Deploy to Production
+    needs: build
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && github.event.inputs.environment == 'production'
+    environment:
+      name: production
+      url: https://terrafusion.ai
+    
+    steps:
+      - name: Download Web Build
+        uses: actions/download-artifact@v3
+        with:
+          name: web-build
+          path: web-build
+      
+      - name: Download Windows Installer
+        uses: actions/download-artifact@v3
+        with:
+          name: windows-installer
+          path: installer
+      
+      - name: Deploy to Production Server
+        run: |
+          # Use deploy keys or other secure authentication mechanism
+          echo "Deploying to production environment..."
+          # Example deployment commands would go here
+      
+      - name: Update Version Manifest
+        run: |
+          echo "Updating version manifest for auto-updater..."
+          # Commands to update the version manifest on the production server
