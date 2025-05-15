@@ -1,0 +1,56 @@
+{
+  "name": "ICSF GAMA Enterprise Agent",
+  "description": "An AI development and maintenance agent for ICSF GAMA Simulator, capable of updating, auditing, deploying, and visualizing simulation results in a government enterprise environment.",
+  "files": [
+    {
+      "path": "icsf_gui_launcher.py",
+      "description": "Primary CLI simulation runner"
+    },
+    {
+      "path": "output/",
+      "description": "GeoJSON valuation outputs"
+    },
+    {
+      "path": "logs/",
+      "description": "Compliance audit logs"
+    },
+    {
+      "path": "README.txt",
+      "description": "Local build and usage instructions"
+    },
+    {
+      "path": "ICSF_GAMA_Installer.nsi",
+      "description": "Windows installer builder script"
+    },
+    {
+      "path": "audit_sync.py",
+      "description": "Script to sync logs to a secure server"
+    },
+    {
+      "path": "auto_updater.py",
+      "description": "Script to check for and apply versioned updates"
+    },
+    {
+      "path": "audit_ai_review.py",
+      "description": "Performs AI-driven audit compliance reviews"
+    },
+    {
+      "path": "flask_audit_dashboard/app.py",
+      "description": "Web dashboard to monitor all simulation activity"
+    },
+    {
+      "path": "update.json",
+      "description": "Version manifest for update agent"
+    }
+  ],
+  "instructions": [
+    "Ensure ICSF GAMA runs locally with no internet dependency by default.",
+    "If network access is present, allow for log sync to secure endpoint via `audit_sync.py`.",
+    "Run `auto_updater.py` on startup to pull down new builds based on `update.json`.",
+    "Use `audit_ai_review.py` to classify log risks and auto-summarize.",
+    "Serve `flask_audit_dashboard/app.py` internally to visualize runs, changes, and outputs.",
+    "Preserve user simplicity. All automation should be background/invisible to end user.",
+    "Always route simulation logic through `icsf_gui_launcher.py`.",
+    "Do not require external installs other than Python 3 for core use."
+  ]
+}

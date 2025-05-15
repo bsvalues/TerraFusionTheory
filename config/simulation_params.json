@@ -1,6 +1,6 @@
 {
-  "policy_id": "policy_default",
-  "value_adjust_factor": 1.0,
+  "policy_id": "policy_test",
+  "value_adjust_factor": 1.15,
   "location_weight": 0.4,
   "market_condition_factor": 1.05,
   "neighborhood_factor": 1.0,
