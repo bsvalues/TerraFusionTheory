@@ -1,0 +1,151 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi">
+    <!-- Define product information -->
+    <Product Id="*" 
+             UpgradeCode="8A2F1352-D9A2-4E84-A9B3-9E9F8C1F6D34"
+             Name="TerraFusion GAMA Enterprise" 
+             Version="1.2.0" 
+             Manufacturer="TerraFusion" 
+             Language="1033">
+        
+        <!-- Package details -->
+        <Package InstallerVersion="200" 
+                 Compressed="yes" 
+                 InstallScope="perMachine"
+                 Manufacturer="TerraFusion" 
+                 Description="Geographic Assisted Mass Appraisal (GAMA) Enterprise System"
+                 Comments="TerraFusion GAMA Enterprise Suite provides advanced geospatial valuation tools for county assessment professionals." />
+        
+        <!-- Use WiX standard UI -->
+        <UIRef Id="WixUI_Mondo" />
+        <WixVariable Id="WixUILicenseRtf" Value="$(var.ProjectDir)\resources\license.rtf" />
+        <WixVariable Id="WixUIBannerBmp" Value="$(var.ProjectDir)\resources\banner.bmp" />
+        <WixVariable Id="WixUIDialogBmp" Value="$(var.ProjectDir)\resources\dialog.bmp" />
+        
+        <!-- Media definitions -->
+        <Media Id="1" Cabinet="TerraFusion.cab" EmbedCab="yes" />
+        
+        <!-- Major upgrade handling -->
+        <MajorUpgrade DowngradeErrorMessage="A newer version of TerraFusion GAMA Enterprise is already installed. Please uninstall it before installing this version." />
+        
+        <!-- Define directory structure -->
+        <Directory Id="TARGETDIR" Name="SourceDir">
+            <Directory Id="ProgramFilesFolder">
+                <Directory Id="INSTALLFOLDER" Name="TerraFusion">
+                    <Directory Id="GAMAFOLDER" Name="GAMA">
+                        <!-- Bin directory for executables -->
+                        <Directory Id="BinDir" Name="bin" />
+                        <!-- Configuration directory -->
+                        <Directory Id="ConfigDir" Name="config" />
+                        <!-- Data directory -->
+                        <Directory Id="DataDir" Name="data" />
+                        <!-- Documentation directory -->
+                        <Directory Id="DocsDir" Name="docs" />
+                        <!-- Logs directory -->
+                        <Directory Id="LogsDir" Name="logs" />
+                        <!-- Scripts directory -->
+                        <Directory Id="ScriptsDir" Name="scripts" />
+                        <!-- UI directory -->
+                        <Directory Id="UIDir" Name="ui" />
+                        <!-- Output directory -->
+                        <Directory Id="OutputDir" Name="output" />
+                    </Directory>
+                </Directory>
+            </Directory>
+            
+            <!-- Start menu entries -->
+            <Directory Id="ProgramMenuFolder">
+                <Directory Id="ApplicationProgramsFolder" Name="TerraFusion" />
+            </Directory>
+            
+            <!-- Desktop shortcut -->
+            <Directory Id="DesktopFolder" Name="Desktop" />
+        </Directory>
+        
+        <!-- Define components -->
+        <DirectoryRef Id="GAMAFOLDER">
+            <Component Id="MainExecutable" Guid="*">
+                <File Id="GAMA_EXE" Name="GamaLauncher.exe" Source="$(var.SourceDir)\bin\GamaLauncher.exe" KeyPath="yes">
+                    <Shortcut Id="StartMenuShortcut" 
+                              Name="TerraFusion GAMA" 
+                              Description="Launch TerraFusion GAMA" 
+                              Directory="ApplicationProgramsFolder"
+                              WorkingDirectory="GAMAFOLDER"
+                              Advertise="yes" />
+                    <Shortcut Id="DesktopShortcut" 
+                              Name="TerraFusion GAMA" 
+                              Description="Launch TerraFusion GAMA" 
+                              Directory="DesktopFolder"
+                              WorkingDirectory="GAMAFOLDER"
+                              Advertise="yes" />
+                </File>
+            </Component>
+            
+            <!-- Add registry entries -->
+            <Component Id="RegistryEntries" Guid="*">
+                <RegistryKey Root="HKLM" 
+                             Key="Software\TerraFusion\GAMA">
+                    <RegistryValue Type="string" Name="InstallDir" Value="[GAMAFOLDER]" KeyPath="yes" />
+                    <RegistryValue Type="string" Name="Version" Value="1.2.0" />
+                </RegistryKey>
+            </Component>
+        </DirectoryRef>
+        
+        <!-- Create program menu/start menu shortcut folder -->
+        <DirectoryRef Id="ApplicationProgramsFolder">
+            <Component Id="ApplicationShortcuts" Guid="*">
+                <Shortcut Id="UninstallProduct"
+                          Name="Uninstall TerraFusion GAMA"
+                          Description="Uninstalls TerraFusion GAMA"
+                          Target="[SystemFolder]msiexec.exe"
+                          Arguments="/x [ProductCode]" />
+                
+                <RemoveFolder Id="CleanUpShortCut" Directory="ApplicationProgramsFolder" On="uninstall" />
+                <RegistryValue Root="HKCU" Key="Software\TerraFusion\GAMA" Name="installed" Type="integer" Value="1" KeyPath="yes" />
+            </Component>
+        </DirectoryRef>
+        
+        <!-- Configuration validation custom action -->
+        <Binary Id="ConfigValidatorBinary" SourceFile="$(var.ProjectDir)\scripts\ConfigValidator.vbs" />
+        <CustomAction Id="ValidateConfiguration" BinaryKey="ConfigValidatorBinary" VBScriptCall="ValidateConfig" Return="check" />
+        
+        <!-- Define features -->
+        <Feature Id="Complete" Title="TerraFusion GAMA Enterprise" Level="1">
+            <ComponentRef Id="MainExecutable" />
+            <ComponentRef Id="RegistryEntries" />
+            <ComponentRef Id="ApplicationShortcuts" />
+            <ComponentGroupRef Id="BinFiles" />
+            <ComponentGroupRef Id="ConfigFiles" />
+            <ComponentGroupRef Id="DocFiles" />
+            <ComponentGroupRef Id="ScriptFiles" />
+            <ComponentGroupRef Id="UIFiles" />
+        </Feature>
+        
+        <!-- Define installation sequence -->
+        <InstallExecuteSequence>
+            <Custom Action="ValidateConfiguration" After="InstallFiles">NOT Installed</Custom>
+        </InstallExecuteSequence>
+    </Product>
+    
+    <!-- External component group references that will be generated by heat.exe -->
+    <!-- These component groups will contain all files in their respective folders -->
+    <Fragment>
+        <ComponentGroup Id="BinFiles" />
+    </Fragment>
+    
+    <Fragment>
+        <ComponentGroup Id="ConfigFiles" />
+    </Fragment>
+    
+    <Fragment>
+        <ComponentGroup Id="DocFiles" />
+    </Fragment>
+    
+    <Fragment>
+        <ComponentGroup Id="ScriptFiles" />
+    </Fragment>
+    
+    <Fragment>
+        <ComponentGroup Id="UIFiles" />
+    </Fragment>
+</Wix>
