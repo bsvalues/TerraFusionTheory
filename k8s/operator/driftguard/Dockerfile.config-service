@@ -1,0 +1,18 @@
+FROM python:3.9-slim
+
+WORKDIR /app
+
+# Copy configuration service code
+COPY k8s/operator/driftguard/config_service.py .
+
+# Set environment variables
+ENV PYTHONUNBUFFERED=1
+
+# Create entrypoint
+RUN echo '#!/bin/bash\n\
+python config_service.py "$@"\n' > /app/entrypoint.sh && \
+    chmod +x /app/entrypoint.sh
+
+EXPOSE 8000
+
+ENTRYPOINT ["/app/entrypoint.sh"]
