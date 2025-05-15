@@ -38,6 +38,8 @@ import DevAuthAdminPage from './pages/DevAuthAdminPage';
 import UserAdminPage from './pages/UserAdminPage';
 import { RecommendationsPage } from './pages/RecommendationsPage';
 import NotFoundPage from './pages/NotFoundPage';
+import DataQualityPage from './pages/DataQualityPage';
+import PropertyDataPage from './pages/PropertyDataPage';
 
 // TerraFusion integration pages
 import ParcelDetailsPage from './pages/terrafusion/ParcelDetailsPage';

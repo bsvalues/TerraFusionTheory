@@ -11,6 +11,7 @@ import { spawn } from 'child_process';
 import * as fs from 'fs';
 import * as path from 'path';
 import { OptimizedLogger } from '../optimized-logging';
+import { LogCategory } from '../../../shared/schema';
 
 const logger = OptimizedLogger.getInstance();
 
@@ -78,7 +79,7 @@ export class ACIRealEstateConnector {
         logger.info(`ACIRealEstateConnector initialized with ${this.connectedApps.size} connected apps`);
         return true;
       } else {
-        logger.warn('ACI is not properly initialized');
+        logger.warning('ACI is not properly initialized', LogCategory.API);
         return false;
       }
     } catch (error: any) {

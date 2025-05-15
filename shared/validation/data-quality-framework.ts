@@ -7,6 +7,7 @@
  */
 
 import { OptimizedLogger } from '../../server/services/optimized-logging';
+import { LogCategory } from '../schema';
 
 const logger = OptimizedLogger.getInstance();
 
@@ -120,7 +121,7 @@ export class DataQualityFramework {
    */
   public registerRule(rule: ValidationRule): void {
     if (this.rules.has(rule.id)) {
-      logger.warn(`Validation rule with ID ${rule.id} already exists. Overwriting.`);
+      logger.warning(`Validation rule with ID ${rule.id} already exists. Overwriting.`, LogCategory.SYSTEM);
     }
     this.rules.set(rule.id, rule);
     logger.debug(`Registered validation rule: ${rule.id}`);
