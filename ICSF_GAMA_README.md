@@ -1,90 +1,140 @@
-# ICSF GAMA Simulator
+# ICSF GAMA - Geographic Assisted Mass Appraisal System
+
+**Version 1.0.0**
+**Release Date: May 15, 2025**
 
 ## Overview
 
-The ICSF (Intelligent County Solutions Framework) GAMA (Geographic-Assisted Mass Appraisal) Simulator is a specialized tool for property assessment professionals. This simulator enables county assessors to model valuation changes based on policy adjustments, market conditions, and location factors.
+The ICSF GAMA (Geographic Assisted Mass Appraisal) System is a comprehensive property valuation platform designed for county assessment professionals. It leverages advanced spatial analytics, GIS capabilities, and machine learning to provide accurate, data-driven property valuations that meet professional standards including IAAO and USPAP requirements.
 
-## Key Features
+## Core Components
 
-- **Geospatial Simulation**: Models property values with location as a key factor
-- **Policy Testing**: Test different assessment policy factors before implementation
-- **Neighborhood Analysis**: Review valuation changes by neighborhood
-- **GeoJSON Output**: View results on any GIS platform
-- **Compliance Audit Logging**: Maintains detailed logs for compliance purposes
+### 1. ICSF GAMA Simulator
 
-## Getting Started
+The centerpiece of the system is the GAMA Simulator, which provides:
 
-### Installation
+- Property valuation model with spatial regression capabilities
+- GIS-based visualization of property values
+- Parameter configuration for adjusting valuation models
+- Interactive map viewer built on Leaflet.js
+- Audit logging for compliance and review
 
-1. **Windows Installer**: Run the ICSF_GAMA_Installer.exe to install on Windows systems
-2. **Manual Installation**: 
-   - Ensure Python 3.8+ is installed
-   - Clone or download this repository
-   - Run `python icsf_gui_launcher.py` to start the application
+### 2. Enterprise Extensions
 
-### Usage
+The system includes several enterprise-grade extensions for county-wide deployment:
 
-The simulator can be run in two modes:
+- **Auto-Updater**: Securely updates the GAMA system from county network locations
+- **Audit Logging**: Comprehensive logging system for compliance tracking
+- **Audit Sync Tool**: Synchronizes local audit logs with central secure server
+- **AI Audit Review**: Reviews compliance logs for issues and anomalies
+- **Audit Dashboard**: Web-based dashboard for viewing audit logs and reports
 
-#### Interactive Mode
-Launch the application without parameters to access the menu interface:
-```
-python icsf_gui_launcher.py
-```
+### 3. Spatial Analytics Components
 
-#### Command Line Mode
-Use command line parameters for scripted or automated operations:
-```
-python icsf_gui_launcher.py --run          # Run simulation and exit
-python icsf_gui_launcher.py --view-map     # View output map and exit
-python icsf_gui_launcher.py --view-log     # View compliance log and exit
-```
+Advanced spatial analysis tools for property valuation:
 
-## Simulation Parameters
+- R-tree spatial indexing for efficient spatial queries
+- Feature engineering for spatial variables
+- Geographically Weighted Regression (GWR) modeling
+- Quantile Gradient Boosting predictive models
+- SHAP value analysis for model interpretation
 
-The following parameters can be configured:
+## Installation and Setup
 
-| Parameter | Description | Default |
-|-----------|-------------|---------|
-| policy_id | Identifier for the simulation run | policy_default |
-| value_adjust_factor | Overall adjustment factor for property values | 1.0 |
-| location_weight | Weight given to location factors (0.0-1.0) | 0.4 |
-| market_condition_factor | Current market trend adjustment | 1.05 |
-| neighborhood_factor | Neighborhood quality adjustment | 1.0 |
-| randomize_factor | Random variation factor | 0.1 |
-| sample_size | Number of sample properties to generate | 50 |
-| market_year | Current tax year | 2025 |
+### System Requirements
 
-## Output Files
+- Windows 10/11 (64-bit) or modern Linux distribution
+- Python 3.8 or higher
+- Minimum 4GB RAM, 8GB recommended
+- 500MB free disk space
+- Network connection for updates and sync (optional)
 
-- **GeoJSON**: Located in the `output` folder with filename pattern `valuation_layer_[policy_id].geojson`
-- **Audit Logs**: Located in the `logs` folder as `compliance_audit.log`
+### Installation Process
 
-## Interactive Map Viewer
+1. Run the ICSF_GAMA_Installer.exe package
+2. Follow on-screen prompts to complete installation
+3. Set up network share for audit log synchronization (optional)
+4. Configure authentication for compliance reporting
 
-The simulator includes an interactive web-based map viewer for visualizing simulation results:
+### Configuration
 
-- Located at `output/map_viewer.html`
-- Automatically opened when choosing "View Output Map" in the menu
-- Features color-coded property markers based on percent change
-- Provides detailed property information on hover
-- Works with any modern web browser
+All configuration settings are stored in `config/simulation_params.json`. Key parameters include:
 
-## Building from Source
+- `policy_id`: Identifier for valuation policy
+- `value_adjust_factor`: Adjustment factor for valuations
+- `location_weight`: Weight factor for location impact
+- `market_condition_factor`: Factor for market conditions
 
-See [README.txt](README.txt) for detailed build instructions with PyInstaller and NSIS.
+## User Guides
 
-## System Requirements
+### GAMA Simulator
 
-- **Operating System**: Windows 10/11, macOS 12+, or Linux
-- **Python**: 3.8 or higher
-- **Disk Space**: 50MB minimum
-- **Memory**: 256MB minimum
+To run the GAMA Simulator:
 
-## Support
+1. Launch `icsf_gui_launcher.py` or run from command line with options
+2. Configure simulation parameters
+3. Run simulation
+4. View results in the interactive map viewer
+5. Export data as needed for reporting or integration
 
-For technical support, contact your county's IT department.
+### Audit Dashboard
 
-## License
+To access the Audit Dashboard:
 
-This software is licensed for use by authorized county assessment personnel only. Unauthorized distribution or use is prohibited.
+1. Launch the dashboard from the Start menu or run `flask_audit_dashboard/app.py`
+2. View compliance logs, filtering by date, risk level, or category
+3. Generate reports for compliance review
+4. Analyze audit data for trends and potential issues
+
+## Enterprise Features
+
+### Auto-Update System
+
+The auto-update system checks for updates from a designated network location and applies them securely. This system:
+
+- Verifies SHA-256 checksums for security
+- Creates backups of current installation before updates
+- Logs all update activity for audit purposes
+
+### Audit Log Synchronization
+
+The audit sync tool:
+
+- Securely transfers audit logs to a central server
+- Maintains log integrity with checksums
+- Works with or without network connection
+- Tracks sync status and handles retries
+
+### AI Audit Review
+
+The AI audit review tool:
+
+- Analyzes compliance audit logs for issues
+- Identifies patterns and anomalies
+- Classifies entries by risk level and category
+- Produces executive summaries and detailed reports
+
+## Compliance and Standards
+
+ICSF GAMA is designed to meet the following professional standards:
+
+- International Association of Assessing Officers (IAAO) standards
+- Uniform Standards of Professional Appraisal Practice (USPAP)
+- County-specific compliance requirements
+
+## Support and Maintenance
+
+Contact your system administrator or the County Assessor's Office IT Department for support.
+
+- **Email**: icsf.support@county.gov
+- **Phone**: (555) 123-4567
+- **Hours**: Monday-Friday, 8:00 AM - 5:00 PM
+
+## Version History
+
+### Version 1.0.0 (May 15, 2025)
+- Initial release of ICSF GAMA Simulator
+- Full GUI/CLI interface for property valuation simulation
+- Advanced spatial analytics with GWR modeling
+- Interactive map viewer with property details
+- Compliance audit logging and reporting

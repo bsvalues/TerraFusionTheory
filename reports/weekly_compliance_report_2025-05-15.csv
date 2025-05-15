@@ -1,0 +1,37 @@
+Date,Time,Level,Risk,Category,Message
+2025-05-15,10:00:00,INFO,LOW,SYSTEM,ICSF GAMA Simulator started
+2025-05-15,10:00:01,INFO,LOW,CONFIGURATION,Loaded configuration from config/simulation_params.json
+2025-05-15,10:00:01,INFO,LOW,CONFIGURATION,Using policy_id: policy_default
+2025-05-15,10:01:12,INFO,LOW,DATA,Generated 50 properties in 3 neighborhoods
+2025-05-15,10:01:15,INFO,LOW,SIMULATION,"Simulation started with parameters: {""policy_id"": ""policy_default"", ""value_adjust_factor"": 1.0, ""location_weight"": 0.4, ""market_condition_factor"": 1.05}"
+2025-05-15,10:01:22,WARNING,MEDIUM,DATA,Property ID P037 has valuation adjustment exceeds threshold of 15%
+2025-05-15,10:01:25,INFO,LOW,SIMULATION,Simulation completed successfully
+2025-05-15,10:01:26,INFO,LOW,DATA,Output saved to output/valuation_layer_policy_default.geojson
+2025-05-15,10:05:00,INFO,LOW,ACCESS,User john.smith accessed output map viewer
+2025-05-15,10:10:30,INFO,LOW,CONFIGURATION,Configuration parameter value_adjust_factor changed from 1.0 to 1.15
+2025-05-15,10:10:35,INFO,LOW,CONFIGURATION,Configuration parameter policy_id changed from policy_default to policy_test
+2025-05-15,10:11:12,INFO,LOW,SIMULATION,"Simulation started with parameters: {""policy_id"": ""policy_test"", ""value_adjust_factor"": 1.15, ""location_weight"": 0.4, ""market_condition_factor"": 1.05}"
+2025-05-15,10:11:20,WARNING,MEDIUM,DATA,Neighborhood N003 shows extreme value fluctuations
+2025-05-15,10:11:22,ERROR,HIGH,DATA,Failed to process property ID P045 due to invalid coordinates
+2025-05-15,10:11:25,INFO,LOW,SIMULATION,Simulation completed with 1 errors
+2025-05-15,10:11:26,INFO,LOW,DATA,Output saved to output/valuation_layer_policy_test.geojson
+2025-05-15,10:15:00,INFO,LOW,ACCESS,User jane.doe accessed compliance log
+2025-05-15,10:20:30,INFO,LOW,SYSTEM,Data integrity check completed successfully
+2025-05-15,10:25:00,WARNING,MEDIUM,SYSTEM,Low disk space detected: 120MB remaining
+2025-05-15,10:30:30,INFO,LOW,DATA,Exported simulation results to CSV for department review
+2025-05-15,10:35:00,INFO,LOW,ACCESS,User john.smith logged out
+2025-05-15,14:00:00,INFO,LOW,SYSTEM,ICSF GAMA Simulator started
+2025-05-15,14:00:01,INFO,LOW,CONFIGURATION,Loaded configuration from config/simulation_params.json
+2025-05-15,14:00:02,INFO,LOW,CONFIGURATION,Using policy_id: policy_test
+2025-05-15,14:01:15,INFO,LOW,DATA,Generated 75 properties in 4 neighborhoods
+2025-05-15,14:01:20,INFO,LOW,SIMULATION,"Simulation started with parameters: {""policy_id"": ""policy_test"", ""value_adjust_factor"": 1.15, ""location_weight"": 0.4, ""market_condition_factor"": 1.05, ""sample_size"": 75}"
+2025-05-15,14:01:28,WARNING,MEDIUM,DATA,Property ID P052 has valuation adjustment exceeds threshold of 15%
+2025-05-15,14:01:30,WARNING,MEDIUM,DATA,Property ID P059 has valuation adjustment exceeds threshold of 15%
+2025-05-15,14:01:35,INFO,LOW,SIMULATION,Simulation completed successfully
+2025-05-15,14:01:36,INFO,LOW,DATA,Output saved to output/valuation_layer_policy_test_75.geojson
+2025-05-15,14:05:12,ERROR,HIGH,ACCESS,Unauthorized access attempt from IP 192.168.1.105
+2025-05-15,14:10:45,WARNING,MEDIUM,DATA,Integrity check failed for property ID P063
+2025-05-15,14:15:30,INFO,LOW,COMPLIANCE,Manual override applied to property ID P063 by admin
+2025-05-15,14:20:15,INFO,LOW,SYSTEM,Data integrity check completed with 1 warnings
+2025-05-15,14:25:00,INFO,LOW,ACCESS,User admin.user accessed output map viewer
+2025-05-15,14:30:45,INFO,LOW,SYSTEM,ICSF GAMA Simulator shutting down

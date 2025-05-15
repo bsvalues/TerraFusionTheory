@@ -402,7 +402,22 @@ def view_reports():
             # Sort by creation time (newest first)
             reports.sort(key=lambda x: x['created'], reverse=True)
         
-        return render_template('reports.html', reports=reports)
+        # Calculate next report dates
+        now = datetime.datetime.now()
+        day_delta = datetime.timedelta(days=1)
+        week_delta = datetime.timedelta(days=7)
+        month_delta = datetime.timedelta(days=30)
+        quarter_delta = datetime.timedelta(days=90)
+        
+        return render_template(
+            'reports.html', 
+            reports=reports,
+            now=now,
+            day_delta=day_delta,
+            week_delta=week_delta,
+            month_delta=month_delta,
+            quarter_delta=quarter_delta
+        )
     except Exception as e:
         logger.error(f"Error viewing reports: {e}")
         return render_template('error.html', error=str(e))
