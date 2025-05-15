@@ -21,7 +21,8 @@ export enum LogCategory {
   PERFORMANCE = "performance",
   AI = "ai",
   GENERAL = "general",
-  CRITICAL = "critical"
+  CRITICAL = "critical",
+  SPATIAL_ANALYTICS = "spatial_analytics"
 }
 
 // BadgeType enum for categorizing productivity badges

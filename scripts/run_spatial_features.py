@@ -15,6 +15,7 @@ import geopandas as gpd
 from shapely.geometry import Point
 import logging
 from typing import Dict, List, Any, Union, Optional
+import uuid
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(name)s - %(levelname)s - %(message)s')
@@ -64,6 +65,11 @@ def load_dataset(dataset_id: str) -> Optional[gpd.GeoDataFrame]:
             df['geometry'] = gpd.GeoSeries.from_wkt(df['geometry'])
             gdf = gpd.GeoDataFrame(df, crs="EPSG:4326")
             return gdf
+        elif 'geometry_wkt' in df.columns:
+            # Geometry present as WKT in different column
+            df['geometry'] = gpd.GeoSeries.from_wkt(df['geometry_wkt'])
+            gdf = gpd.GeoDataFrame(df, crs="EPSG:4326")
+            return gdf
         else:
             logger.error("No geometry columns found in dataset")
             return None
@@ -84,17 +90,26 @@ def save_dataset(gdf: gpd.GeoDataFrame, dataset_id: str, suffix: str = 'spatial'
     Returns:
         Path to the saved dataset
     """
-    data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
-    output_file = os.path.join(data_dir, f'{dataset_id}_{suffix}.csv')
+    try:
+        # Create a new dataset ID
+        new_dataset_id = f"{dataset_id}_{suffix}"
+        
+        # Save to data directory
+        data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'data')
+        file_path = os.path.join(data_dir, f'{new_dataset_id}.csv')
+        
+        # Convert geometry to WKT before saving
+        gdf_copy = gdf.copy()
+        gdf_copy['geometry_wkt'] = gdf_copy['geometry'].apply(lambda x: x.wkt)
+        
+        # Save to CSV
+        gdf_copy.drop(columns=['geometry']).to_csv(file_path, index=False)
+        
+        return new_dataset_id
     
-    # Convert geometry to WKT for storage
-    gdf_copy = gdf.copy()
-    gdf_copy['geometry_wkt'] = gdf_copy['geometry'].apply(lambda g: g.wkt)
-    
-    # Save to CSV
-    gdf_copy.drop(columns=['geometry']).to_csv(output_file, index=False)
-    
-    return output_file
+    except Exception as e:
+        logger.error(f"Error saving dataset: {e}")
+        return ""
 
 def run_spatial_feature_engineering(
     dataset_id: str, 
@@ -129,45 +144,50 @@ def run_spatial_feature_engineering(
             'message': f'Failed to load dataset: {dataset_id}'
         }
     
-    # Check if POI data is available
-    pois = None
-    if include_pois:
-        try:
-            pois = load_dataset(f"{dataset_id}_pois")
-            if pois is None:
-                logger.warning("POI dataset not found, proceeding without POI features")
-                include_pois = False
-        except Exception as e:
-            logger.warning(f"Error loading POI data: {e}")
-            include_pois = False
-    
     try:
-        # Initialize the spatial feature engineer
-        engineer = SpatialFeatureEngineer(data_dir='./data')
+        # Initialize the feature engineer
+        engineer = SpatialFeatureEngineer()
+        
+        # Parse numeric columns
+        numeric_columns = properties.select_dtypes(include=['number']).columns.tolist()
+        
+        # Spatial lag variables to engineer
+        spatial_lag_vars = []
+        if include_spatial_lag and len(numeric_columns) > 0:
+            # Use first 5 numeric columns or fewer if not available
+            spatial_lag_vars = numeric_columns[:5]
         
         # Engineer features
-        result = engineer.engineer_spatial_features(
-            properties=properties,
-            pois=pois,
-            network_centrality=include_network_centrality,
-            viewshed=include_viewshed,
-            spatial_lag=include_spatial_lag,
-            add_knn_features=include_knn_features,
+        properties_with_features = engineer.engineer_features(
+            data=properties,
+            poi_categories=["school", "hospital", "park", "shopping"] if include_pois else [],
+            include_network_centrality=include_network_centrality,
+            include_viewshed=include_viewshed,
+            spatial_lag_vars=spatial_lag_vars,
+            include_knn_features=include_knn_features,
             k=k
         )
         
-        # Save the results
-        output_file = save_dataset(result, dataset_id)
-        
-        # Get list of added features (columns that didn't exist in original dataset)
+        # Get the list of engineered features
         original_columns = set(properties.columns)
-        engineered_columns = set(result.columns) - original_columns
+        new_columns = set(properties_with_features.columns)
+        engineered_features = list(new_columns - original_columns)
+        
+        # Save the dataset with engineered features
+        new_dataset_id = save_dataset(properties_with_features, dataset_id)
+        
+        if not new_dataset_id:
+            return {
+                'status': 'error',
+                'message': 'Failed to save dataset with engineered features'
+            }
         
         return {
             'status': 'success',
             'message': 'Spatial features engineered successfully',
-            'engineered_features': list(engineered_columns),
-            'output_file': output_file
+            'dataset_id': new_dataset_id,
+            'engineered_features': engineered_features,
+            'feature_count': len(engineered_features)
         }
     
     except Exception as e:
@@ -188,14 +208,14 @@ if __name__ == '__main__':
         sys.exit(1)
     
     dataset_id = sys.argv[1]
-    include_pois = sys.argv[2] == '1' if len(sys.argv) > 2 else False
-    include_network_centrality = sys.argv[3] == '1' if len(sys.argv) > 3 else False
-    include_viewshed = sys.argv[4] == '1' if len(sys.argv) > 4 else False
-    include_spatial_lag = sys.argv[5] == '1' if len(sys.argv) > 5 else False
-    include_knn_features = sys.argv[6] == '1' if len(sys.argv) > 6 else True
+    include_pois = sys.argv[2].lower() == 'true' if len(sys.argv) > 2 else False
+    include_network_centrality = sys.argv[3].lower() == 'true' if len(sys.argv) > 3 else False
+    include_viewshed = sys.argv[4].lower() == 'true' if len(sys.argv) > 4 else False
+    include_spatial_lag = sys.argv[5].lower() == 'true' if len(sys.argv) > 5 else False
+    include_knn_features = sys.argv[6].lower() == 'true' if len(sys.argv) > 6 else True
     k = int(sys.argv[7]) if len(sys.argv) > 7 else 5
     
-    # Run feature engineering
+    # Run spatial feature engineering
     result = run_spatial_feature_engineering(
         dataset_id=dataset_id,
         include_pois=include_pois,

@@ -1,0 +1,114 @@
+#!/usr/bin/env python3
+# ICSF GAMA GUI Launcher (Fallback CLI version)
+# Entry point for county IT deployment if tkinter is not available
+import subprocess
+import os
+import sys
+import webbrowser
+import platform
+
+# Configuration paths
+BASE_PATH = os.path.abspath(".")
+SIM_SCRIPT = os.path.join(BASE_PATH, "icsf_gama_simulation.py")
+OUTPUT_GEOJSON = os.path.join(BASE_PATH, "output", "valuation_layer_policy.geojson")
+LOG_FILE = os.path.join(BASE_PATH, "logs", "compliance_audit.log")
+
+MENU = """
+╔════════════════════════════╗
+║     ICSF GAMA Simulator    ║
+╠════════════════════════════╣
+║ 1. Run Valuation Simulation ║
+║ 2. View Output Map          ║
+║ 3. Open Compliance Log      ║
+║ 4. Exit                     ║
+╚════════════════════════════╝
+"""
+
+def run_simulation():
+    """Execute the GAMA simulation script with error handling"""
+    print("Running simulation...")
+    try:
+        result = subprocess.run([sys.executable, SIM_SCRIPT], 
+                               check=True, 
+                               capture_output=True, 
+                               text=True)
+        print("Simulation completed successfully.")
+        if result.stdout:
+            print("\nOutput:")
+            print(result.stdout)
+        print()
+    except subprocess.CalledProcessError as e:
+        print("ERROR: Simulation failed. Check the log file.")
+        if e.stderr:
+            print("\nError details:")
+            print(e.stderr)
+        print()
+    except FileNotFoundError:
+        print(f"ERROR: Simulation script not found at '{SIM_SCRIPT}'")
+        print("Please ensure the script exists and you have the correct permissions.\n")
+
+def open_output_map():
+    """Open the GeoJSON output map in the default browser"""
+    if os.path.exists(OUTPUT_GEOJSON):
+        try:
+            success = webbrowser.open(f"file://{os.path.abspath(OUTPUT_GEOJSON)}")
+            if success:
+                print("Opened output map in default browser.\n")
+            else:
+                print("Failed to open browser. The output map is located at:")
+                print(f"  {os.path.abspath(OUTPUT_GEOJSON)}\n")
+        except Exception as e:
+            print(f"Error opening map: {e}")
+            print(f"The output map is located at: {os.path.abspath(OUTPUT_GEOJSON)}\n")
+    else:
+        print("Output map not found. Run the simulation first.\n")
+        os.makedirs(os.path.dirname(OUTPUT_GEOJSON), exist_ok=True)
+
+def open_log_file():
+    """Open the log file with platform-specific methods"""
+    if os.path.exists(LOG_FILE):
+        try:
+            if platform.system() == "Windows":
+                os.startfile(os.path.abspath(LOG_FILE))
+            elif platform.system() == "Darwin":
+                subprocess.run(["open", os.path.abspath(LOG_FILE)])
+            else:
+                subprocess.run(["xdg-open", os.path.abspath(LOG_FILE)])
+            print(f"Opening log file: {os.path.abspath(LOG_FILE)}\n")
+        except Exception as e:
+            print(f"Error opening log file: {e}")
+            print(f"The log file is located at: {os.path.abspath(LOG_FILE)}\n")
+    else:
+        print("Log file not found.\n")
+        os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+        print(f"Log directory created at: {os.path.dirname(LOG_FILE)}")
+
+def main():
+    """Main program loop"""
+    os.makedirs(os.path.dirname(OUTPUT_GEOJSON), exist_ok=True)
+    os.makedirs(os.path.dirname(LOG_FILE), exist_ok=True)
+    
+    while True:
+        print(MENU)
+        choice = input("Select an option [1-4]: ").strip()
+        
+        if choice == "1":
+            run_simulation()
+        elif choice == "2":
+            open_output_map()
+        elif choice == "3":
+            open_log_file()
+        elif choice == "4":
+            print("Exiting ICSF GAMA Simulator.")
+            break
+        else:
+            print("Invalid option. Please try again.\n")
+
+if __name__ == "__main__":
+    try:
+        main()
+    except KeyboardInterrupt:
+        print("\nProgram interrupted. Exiting ICSF GAMA Simulator.")
+    except Exception as e:
+        print(f"\nUnexpected error: {e}")
+        print("Please report this issue to your system administrator.")

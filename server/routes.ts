@@ -109,6 +109,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Register ACI property data routes
   app.use('/api/aci', aciPropertyRoutes);
   
+  // Register spatial analytics routes
+  app.use('/api/spatial-analytics', spatialAnalyticsRoutes);
+  
   // API routes - prefix all routes with /api
   
   // Project routes
