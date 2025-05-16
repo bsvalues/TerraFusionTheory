@@ -424,16 +424,12 @@ async function importCSVData(filePath: string): Promise<void> {
         // Map record to property and property sale objects
         const propertyData = mapRecordToProperty(record);
         
-        // Check if property already exists
+        // Check if property already exists using SQL expressions directly
         const existingProperty = await db
           .select({ id: properties.id })
           .from(properties)
-          .where(({ or, eq }) => 
-            or(
-              eq(properties.parcelId, propertyData.parcelId),
-              eq(properties.address, propertyData.address)
-            )
-          );
+          .where(properties.parcelId.equals(propertyData.parcelId))
+          .limit(1);
         
         let propertyId: number;
         
@@ -446,34 +442,52 @@ async function importCSVData(filePath: string): Promise<void> {
               ...propertyData,
               updatedAt: new Date()
             })
-            .where(({ eq }) => eq(properties.id, propertyId));
+            .where(properties.id.equals(propertyId));
             
           log(`Updated existing property: ${propertyData.address}`);
         } else {
-          // Property doesn't exist, insert it
-          const [newProperty] = await db
-            .insert(properties)
-            .values(propertyData)
-            .returning({ id: properties.id });
+          // Try to find by address if parcel ID match failed
+          const existingByAddress = await db
+            .select({ id: properties.id })
+            .from(properties)
+            .where(properties.address.equals(propertyData.address))
+            .limit(1);
             
-          propertyId = newProperty.id;
-          results.propertiesAdded++;
-          log(`Added new property: ${propertyData.address}`);
+          if (existingByAddress && existingByAddress.length > 0) {
+            // Property exists by address, update it
+            propertyId = existingByAddress[0].id;
+            await db
+              .update(properties)
+              .set({
+                ...propertyData,
+                updatedAt: new Date()
+              })
+              .where(properties.id.equals(propertyId));
+              
+            log(`Updated existing property by address: ${propertyData.address}`);
+          } else {
+            // Property doesn't exist, insert it
+            const newProperty = await db
+              .insert(properties)
+              .values(propertyData)
+              .returning({ id: properties.id });
+              
+            propertyId = newProperty[0].id;
+            results.propertiesAdded++;
+            log(`Added new property: ${propertyData.address}`);
+          }
         }
         
         // Only process sales if property has sale data
         const saleData = mapRecordToPropertySale(record, propertyId);
         if (saleData) {
-          // Check if this sale already exists
+          // Check if this sale already exists using SQL expressions directly
           const existingSale = await db
             .select({ id: propertySales.id })
             .from(propertySales)
-            .where(({ and, eq }) => 
-              and(
-                eq(propertySales.propertyId, propertyId),
-                eq(propertySales.saleDate, saleData.saleDate)
-              )
-            );
+            .where(propertySales.propertyId.equals(propertyId))
+            .where(propertySales.saleDate.equals(saleData.saleDate))
+            .limit(1);
             
           if (existingSale && existingSale.length > 0) {
             // Sale exists, skip it
