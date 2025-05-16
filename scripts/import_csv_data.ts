@@ -12,6 +12,7 @@ import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';
 import { db } from '../server/db';
+import { sql } from 'drizzle-orm';
 import { 
   properties, propertySales, neighborhoods,
   PropertyType, PropertyStatus, TransactionType
@@ -501,7 +502,7 @@ async function importCSVData(filePath: string): Promise<void> {
               ...propertyData,
               updatedAt: new Date()
             })
-            .where(`id = $1`, [propertyId]);
+            .where(sql`id = ${propertyId}`);
             
           log(`Updated existing property: ${propertyData.address}`);
         } else {
@@ -509,7 +510,7 @@ async function importCSVData(filePath: string): Promise<void> {
           const existingByAddress = await db
             .select({ id: properties.id })
             .from(properties)
-            .where(`address = $1`, [propertyData.address])
+            .where(sql`address = ${propertyData.address}`)
             .limit(1);
             
           if (existingByAddress && existingByAddress.length > 0) {
@@ -521,7 +522,7 @@ async function importCSVData(filePath: string): Promise<void> {
                 ...propertyData,
                 updatedAt: new Date()
               })
-              .where(`id = $1`, [propertyId]);
+              .where(sql`id = ${propertyId}`);
               
             log(`Updated existing property by address: ${propertyData.address}`);
           } else {
