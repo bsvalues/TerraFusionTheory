@@ -86,6 +86,44 @@ const AISpecialistChat = () => {
     }
   }, [isOpen, activeSpecialist, messages.length]);
 
+  // Process tutorial commands and start tutorials
+  const processTutorialCommand = (message: string): boolean => {
+    const lowerMessage = message.toLowerCase().trim();
+    
+    // Check if this is a tutorial command
+    if (lowerMessage.includes('start tutorial') || lowerMessage === 'tutorial') {
+      startTutorial('overview');
+      // Add AI response about starting tutorial
+      addAIMessage('I\'ve started the overview tutorial for you. Follow the instructions on screen to learn about the key features of IntelligentEstate.');
+      return true;
+    }
+    
+    // Check for specific tutorial category requests
+    if (categories) {
+      for (const category of categories) {
+        if (lowerMessage.includes(`${category} tutorial`)) {
+          startTutorial(category);
+          addAIMessage(`I've started the ${category} tutorial for you. Follow the on-screen instructions to learn how to use this feature.`);
+          return true;
+        }
+      }
+    }
+    
+    // Check for help requests that should trigger the tutorial
+    if (
+      lowerMessage.includes('how do i use') || 
+      lowerMessage.includes('help me with') || 
+      lowerMessage.includes('show me how') ||
+      lowerMessage.includes('i need help')
+    ) {
+      // Show tutorial suggestion
+      addAIMessage("It looks like you need some guidance. I can start a tutorial to help you learn the platform. Try saying 'start tutorial' or ask about a specific feature.");
+      return true;
+    }
+    
+    return false;
+  };
+
   // Handle sending a message
   const handleSendMessage = async () => {
     if (!input.trim() || isProcessing) return;
@@ -102,6 +140,20 @@ const AISpecialistChat = () => {
     setMessages(prev => [...prev, userMessage]);
     setInput('');
     setIsProcessing(true);
+    
+    // Handle tutorial commands if in tutorial mode
+    if (activeSpecialist === SpecialistType.TUTORIAL) {
+      const processed = processTutorialCommand(userMessage.content);
+      if (processed) {
+        setIsProcessing(false);
+        return;
+      }
+      
+      // If not a tutorial command, just respond with tutorial info
+      addAIMessage(aiAssistantMessage || "I can help guide you through using IntelligentEstate. Try asking about specific features or say 'start tutorial' to begin a guided tour.");
+      setIsProcessing(false);
+      return;
+    }
     
     // Add typing indicator
     const typingIndicatorId = generateId();
