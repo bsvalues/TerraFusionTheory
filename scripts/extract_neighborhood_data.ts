@@ -102,8 +102,8 @@ async function calculateNeighborhoodMetrics() {
         
         // Calculate metrics for this neighborhood
         log(`Processing neighborhood: ${neighborhoodName}, city: ${city}, code: ${neighborhoodCode}`);
-      
-      const metrics = await db.execute(sql`
+        
+        const metrics = await db.execute(sql`
         WITH neighborhood_properties AS (
           SELECT 
             p.id,
@@ -261,50 +261,20 @@ async function calculateNeighborhoodMetrics() {
         })) : []
       };
       
-      // Check if neighborhood already exists
-      const existingNeighborhood = await db
-        .select({ id: neighborhoods.id })
-        .from(neighborhoods)
-        .where(sql`code = ${neighborhoodCode}`)
-        .limit(1);
-      
-      if (existingNeighborhood && existingNeighborhood.length > 0) {
-        // Update existing neighborhood
-        await db
-          .update(neighborhoods)
-          .set({
-            name: neighborhoodName,
-            city: city,
-            county: county,
-            state: state,
-            description: description,
-            characteristics: characteristics,
-            median_home_value: nhMetrics.median_home_value || null,
-            avg_home_value: nhMetrics.avg_home_value || null,
-            avg_year_built: nhMetrics.avg_year_built || null,
-            total_properties: nhMetrics.total_properties || 0,
-            total_sales: nhMetrics.total_sales || 0,
-            avg_sale_price: nhMetrics.avg_sale_price || null,
-            median_sale_price: nhMetrics.median_sale_price || null,
-            updatedAt: new Date()
-          })
-          .where(sql`id = ${existingNeighborhood[0].id}`);
-          
-        log(`Updated existing neighborhood: ${neighborhoodName}`);
-        
-      } else {
-        // Check if the neighborhood exists with a different code
-        const existingByName = await db
-          .select({ id: neighborhoods.id, code: neighborhoods.code })
+      try {
+        // Check if neighborhood already exists
+        const existingNeighborhood = await db
+          .select({ id: neighborhoods.id })
           .from(neighborhoods)
-          .where(sql`name = ${neighborhoodName}`)
+          .where(sql`code = ${neighborhoodCode}`)
           .limit(1);
-          
-        if (existingByName && existingByName.length > 0) {
-          // Update the existing record using the existing code
+        
+        if (existingNeighborhood && existingNeighborhood.length > 0) {
+          // Update existing neighborhood
           await db
             .update(neighborhoods)
             .set({
+              name: neighborhoodName,
               city: city,
               county: county,
               state: state,
@@ -319,38 +289,69 @@ async function calculateNeighborhoodMetrics() {
               median_sale_price: nhMetrics.median_sale_price || null,
               updatedAt: new Date()
             })
-            .where(sql`id = ${existingByName[0].id}`);
+            .where(sql`id = ${existingNeighborhood[0].id}`);
             
-          log(`Updated existing neighborhood by name: ${neighborhoodName} with code ${existingByName[0].code}`);
+          log(`Updated existing neighborhood: ${neighborhoodName}`);
           
         } else {
-          // Insert new neighborhood
-          await db
-            .insert(neighborhoods)
-            .values({
-              name: neighborhoodName,
-              code: neighborhoodCode,
-              city: city,
-              county: county,
-              state: state,
-              description: description,
-              characteristics: characteristics,
-              median_home_value: nhMetrics.median_home_value || null,
-              avg_home_value: nhMetrics.avg_home_value || null,
-              avg_year_built: nhMetrics.avg_year_built || null,
-              total_properties: nhMetrics.total_properties || 0,
-              total_sales: nhMetrics.total_sales || 0,
-              avg_sale_price: nhMetrics.avg_sale_price || null,
-              median_sale_price: nhMetrics.median_sale_price || null,
-              createdAt: new Date(),
-              updatedAt: new Date()
-            });
-          
-          log(`Added new neighborhood: ${neighborhoodName}`);
+          // Check if the neighborhood exists with a different code
+          const existingByName = await db
+            .select({ id: neighborhoods.id, code: neighborhoods.code })
+            .from(neighborhoods)
+            .where(sql`name = ${neighborhoodName}`)
+            .limit(1);
+            
+          if (existingByName && existingByName.length > 0) {
+            // Update the existing record using the existing code
+            await db
+              .update(neighborhoods)
+              .set({
+                city: city,
+                county: county,
+                state: state,
+                description: description,
+                characteristics: characteristics,
+                median_home_value: nhMetrics.median_home_value || null,
+                avg_home_value: nhMetrics.avg_home_value || null,
+                avg_year_built: nhMetrics.avg_year_built || null,
+                total_properties: nhMetrics.total_properties || 0,
+                total_sales: nhMetrics.total_sales || 0,
+                avg_sale_price: nhMetrics.avg_sale_price || null,
+                median_sale_price: nhMetrics.median_sale_price || null,
+                updatedAt: new Date()
+              })
+              .where(sql`id = ${existingByName[0].id}`);
+              
+            log(`Updated existing neighborhood by name: ${neighborhoodName} with code ${existingByName[0].code}`);
+            
+          } else {
+            // Insert new neighborhood
+            await db
+              .insert(neighborhoods)
+              .values({
+                name: neighborhoodName,
+                code: neighborhoodCode,
+                city: city,
+                county: county,
+                state: state,
+                description: description,
+                characteristics: characteristics,
+                median_home_value: nhMetrics.median_home_value || null,
+                avg_home_value: nhMetrics.avg_home_value || null,
+                avg_year_built: nhMetrics.avg_year_built || null,
+                total_properties: nhMetrics.total_properties || 0,
+                total_sales: nhMetrics.total_sales || 0,
+                avg_sale_price: nhMetrics.avg_sale_price || null,
+                median_sale_price: nhMetrics.median_sale_price || null,
+                createdAt: new Date(),
+                updatedAt: new Date()
+              });
+            
+            log(`Added new neighborhood: ${neighborhoodName}`);
+          }
         }
       } catch (error) {
-        log(`Error processing neighborhood ${nhd.name || 'Unknown'}: ${error instanceof Error ? error.message : String(error)}`, true);
-        // Continue with next neighborhood
+        log(`Error processing neighborhood data for ${neighborhoodName}: ${error instanceof Error ? error.message : String(error)}`, true);
       }
     }
     
