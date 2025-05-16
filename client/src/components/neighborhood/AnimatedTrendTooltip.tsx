@@ -29,9 +29,9 @@ import { cn } from '@/lib/utils';
 export type TrendDirection = 'up' | 'down' | 'stable' | 'volatile';
 export type TrendStrength = 'strong' | 'moderate' | 'weak';
 export type TrendData = {
-  value: number | null;
-  previousValue?: number | null;
-  percentChange?: number | null;
+  value: number | null | undefined;
+  previousValue?: number | null | undefined;
+  percentChange?: number | null | undefined;
   timeframe?: string;
   label?: string;
   trendDirection?: TrendDirection;
@@ -81,13 +81,13 @@ export const AnimatedTrendTooltip: React.FC<AnimatedTrendTooltipProps> = ({
       : 'weak');
 
   // Format the percent change
-  const formattedChange = data.percentChange 
+  const formattedChange = data.percentChange != null 
     ? `${data.percentChange > 0 ? '+' : ''}${data.percentChange.toFixed(1)}%` 
     : null;
 
   // Format value based on type
   const formatValue = (val: number | null) => {
-    if (val === null) return 'N/A';
+    if (val === null || val === undefined) return 'N/A';
     
     if (data.isPrice) {
       return new Intl.NumberFormat('en-US', {
