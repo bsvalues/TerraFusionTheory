@@ -154,114 +154,113 @@ async function calculateNeighborhoodMetrics() {
         LEFT JOIN neighborhood_sales ns ON np.id = ns.property_id
       `);
       
-      const nhMetrics = metrics?.rows && metrics.rows.length > 0 ? metrics.rows[0] as any : {
-        total_properties: 0,
-        total_sales: 0,
-        avg_building_area: null,
-        avg_lot_size: null,
-        avg_bedrooms: null,
-        avg_bathrooms: null,
-        avg_year_built: null,
-        median_home_value: null,
-        avg_home_value: null,
-        median_sale_price: null,
-        avg_sale_price: null,
-        min_sale_price: null,
-        max_sale_price: null,
-        sales_date_range_days: null
-      };
-      
-      // Get property samples for this neighborhood
-      const propertySamples = await db.execute(sql`
-        SELECT 
-          p.id, 
-          p.address, 
-          p.property_type,
-          p.year_built, 
-          p.building_area, 
-          p.lot_size,
-          p.bedrooms, 
-          p.bathrooms, 
-          p.market_value
-        FROM properties p
-        WHERE 
-          CASE 
-            WHEN p.neighborhood IS NULL THEN 'Unassigned'
-            WHEN TRIM(p.neighborhood) = '' THEN 'Unassigned'
-            WHEN LOWER(p.neighborhood) IN ('none', 'n/a', 'none/na') THEN 'Unassigned'
-            WHEN LOWER(p.neighborhood) IN ('other') THEN 'Miscellaneous'
-            ELSE TRIM(p.neighborhood)
-          END = ${neighborhoodName}
-        LIMIT 5
-      `);
-      
-      const samples = propertySamples?.rows && propertySamples.rows.length > 0 ? propertySamples.rows as any[] : [];
-      
-      // Get recent sales for this neighborhood
-      const recentSales = await db.execute(sql`
-        SELECT 
-          ps.property_id,
-          p.address,
-          ps.sale_price,
-          ps.sale_date,
-          ps.transaction_type
-        FROM property_sales ps
-        JOIN properties p ON ps.property_id = p.id
-        WHERE 
-          CASE 
-            WHEN p.neighborhood IS NULL THEN 'Unassigned'
-            WHEN TRIM(p.neighborhood) = '' THEN 'Unassigned'
-            WHEN LOWER(p.neighborhood) IN ('none', 'n/a', 'none/na') THEN 'Unassigned'
-            WHEN LOWER(p.neighborhood) IN ('other') THEN 'Miscellaneous'
-            ELSE TRIM(p.neighborhood)
-          END = ${neighborhoodName}
-        ORDER BY ps.sale_date DESC
-        LIMIT 5
-      `);
-      
-      const sales = recentSales?.rows && recentSales.rows.length > 0 ? recentSales.rows as any[] : [];
-      
-      // Build a description based on metrics
-      let description = `${neighborhoodName} is a residential area in ${city || 'Unknown City'}, ${state || 'Unknown State'}`;
-      if (nhMetrics?.avg_year_built) {
-        description += ` with homes built around ${Math.round(Number(nhMetrics.avg_year_built))}`;
-      }
-      if (nhMetrics?.avg_building_area) {
-        description += `. Typical homes are approximately ${Math.round(Number(nhMetrics.avg_building_area))} sq ft`;
-      }
-      if (nhMetrics?.avg_bedrooms && nhMetrics?.avg_bathrooms) {
-        try {
-          const avgBeds = typeof nhMetrics.avg_bedrooms === 'number' ? nhMetrics.avg_bedrooms.toFixed(1) : Number(nhMetrics.avg_bedrooms).toFixed(1);
-          const avgBaths = typeof nhMetrics.avg_bathrooms === 'number' ? nhMetrics.avg_bathrooms.toFixed(1) : Number(nhMetrics.avg_bathrooms).toFixed(1);
-          description += ` with ${avgBeds} bedrooms and ${avgBaths} bathrooms`;
-        } catch (error) {
-          log(`Error formatting bedroom/bathroom data: ${error}`);
+        const nhMetrics = metrics?.rows && metrics.rows.length > 0 ? metrics.rows[0] as any : {
+          total_properties: 0,
+          total_sales: 0,
+          avg_building_area: null,
+          avg_lot_size: null,
+          avg_bedrooms: null,
+          avg_bathrooms: null,
+          avg_year_built: null,
+          median_home_value: null,
+          avg_home_value: null,
+          median_sale_price: null,
+          avg_sale_price: null,
+          min_sale_price: null,
+          max_sale_price: null,
+          sales_date_range_days: null
+        };
+        
+        // Get property samples for this neighborhood
+        const propertySamples = await db.execute(sql`
+          SELECT 
+            p.id, 
+            p.address, 
+            p.property_type,
+            p.year_built, 
+            p.building_area, 
+            p.lot_size,
+            p.bedrooms, 
+            p.bathrooms, 
+            p.market_value
+          FROM properties p
+          WHERE 
+            CASE 
+              WHEN p.neighborhood IS NULL THEN 'Unassigned'
+              WHEN TRIM(p.neighborhood) = '' THEN 'Unassigned'
+              WHEN LOWER(p.neighborhood) IN ('none', 'n/a', 'none/na') THEN 'Unassigned'
+              WHEN LOWER(p.neighborhood) IN ('other') THEN 'Miscellaneous'
+              ELSE TRIM(p.neighborhood)
+            END = ${neighborhoodName}
+          LIMIT 5
+        `);
+        
+        const samples = propertySamples?.rows && propertySamples.rows.length > 0 ? propertySamples.rows as any[] : [];
+        
+        // Get recent sales for this neighborhood
+        const recentSales = await db.execute(sql`
+          SELECT 
+            ps.property_id,
+            p.address,
+            ps.sale_price,
+            ps.sale_date,
+            ps.transaction_type
+          FROM property_sales ps
+          JOIN properties p ON ps.property_id = p.id
+          WHERE 
+            CASE 
+              WHEN p.neighborhood IS NULL THEN 'Unassigned'
+              WHEN TRIM(p.neighborhood) = '' THEN 'Unassigned'
+              WHEN LOWER(p.neighborhood) IN ('none', 'n/a', 'none/na') THEN 'Unassigned'
+              WHEN LOWER(p.neighborhood) IN ('other') THEN 'Miscellaneous'
+              ELSE TRIM(p.neighborhood)
+            END = ${neighborhoodName}
+          ORDER BY ps.sale_date DESC
+          LIMIT 5
+        `);
+        
+        const sales = recentSales?.rows && recentSales.rows.length > 0 ? recentSales.rows as any[] : [];
+        
+        // Build a description based on metrics
+        let description = `${neighborhoodName} is a residential area in ${city || 'Unknown City'}, ${state || 'Unknown State'}`;
+        if (nhMetrics?.avg_year_built) {
+          description += ` with homes built around ${Math.round(Number(nhMetrics.avg_year_built))}`;
         }
-      }
-      description += '.';
-      
-      // Prepare characteristics JSON object
-      const characteristics = {
-        propertyCount: nhMetrics?.total_properties || 0,
-        salesCount: nhMetrics?.total_sales || 0,
-        averageSqFt: nhMetrics?.avg_building_area ? Math.round(Number(nhMetrics.avg_building_area)) : null,
-        averageLotSize: nhMetrics?.avg_lot_size ? Math.round(Number(nhMetrics.avg_lot_size)) : null,
-        averageBedrooms: nhMetrics?.avg_bedrooms ? Number(Number(nhMetrics.avg_bedrooms).toFixed(1)) : null,
-        averageBathrooms: nhMetrics?.avg_bathrooms ? Number(Number(nhMetrics.avg_bathrooms).toFixed(1)) : null,
-        propertySamples: samples && samples.length ? samples.map(s => ({
-          address: s.address || 'Unknown',
-          size: s.building_area || 0,
-          bedBath: `${s.bedrooms || 0}/${s.bathrooms || 0}`,
-          value: s.market_value || 0
-        })) : [],
-        recentSales: sales && sales.length ? sales.map(s => ({
-          address: s.address || 'Unknown',
-          price: s.sale_price || 0,
-          date: s.sale_date || new Date()
-        })) : []
-      };
-      
-      try {
+        if (nhMetrics?.avg_building_area) {
+          description += `. Typical homes are approximately ${Math.round(Number(nhMetrics.avg_building_area))} sq ft`;
+        }
+        if (nhMetrics?.avg_bedrooms && nhMetrics?.avg_bathrooms) {
+          try {
+            const avgBeds = typeof nhMetrics.avg_bedrooms === 'number' ? nhMetrics.avg_bedrooms.toFixed(1) : Number(nhMetrics.avg_bedrooms).toFixed(1);
+            const avgBaths = typeof nhMetrics.avg_bathrooms === 'number' ? nhMetrics.avg_bathrooms.toFixed(1) : Number(nhMetrics.avg_bathrooms).toFixed(1);
+            description += ` with ${avgBeds} bedrooms and ${avgBaths} bathrooms`;
+          } catch (error) {
+            log(`Error formatting bedroom/bathroom data: ${error}`);
+          }
+        }
+        description += '.';
+        
+        // Prepare characteristics JSON object
+        const characteristics = {
+          propertyCount: nhMetrics?.total_properties || 0,
+          salesCount: nhMetrics?.total_sales || 0,
+          averageSqFt: nhMetrics?.avg_building_area ? Math.round(Number(nhMetrics.avg_building_area)) : null,
+          averageLotSize: nhMetrics?.avg_lot_size ? Math.round(Number(nhMetrics.avg_lot_size)) : null,
+          averageBedrooms: nhMetrics?.avg_bedrooms ? Number(Number(nhMetrics.avg_bedrooms).toFixed(1)) : null,
+          averageBathrooms: nhMetrics?.avg_bathrooms ? Number(Number(nhMetrics.avg_bathrooms).toFixed(1)) : null,
+          propertySamples: samples && samples.length ? samples.map(s => ({
+            address: s.address || 'Unknown',
+            size: s.building_area || 0,
+            bedBath: `${s.bedrooms || 0}/${s.bathrooms || 0}`,
+            value: s.market_value || 0
+          })) : [],
+          recentSales: sales && sales.length ? sales.map(s => ({
+            address: s.address || 'Unknown',
+            price: s.sale_price || 0,
+            date: s.sale_date || new Date()
+          })) : []
+        };
+        
         // Check if neighborhood already exists
         const existingNeighborhood = await db
           .select({ id: neighborhoods.id })
@@ -351,7 +350,8 @@ async function calculateNeighborhoodMetrics() {
           }
         }
       } catch (error) {
-        log(`Error processing neighborhood data for ${neighborhoodName}: ${error instanceof Error ? error.message : String(error)}`, true);
+        const name = nhd?.name || 'Unknown';
+        log(`Error processing neighborhood data for ${name}: ${error instanceof Error ? error.message : String(error)}`, true);
       }
     }
     
