@@ -100,6 +100,8 @@ async function calculateNeighborhoodMetrics() {
       const neighborhoodCode = generateNeighborhoodCode(neighborhoodName);
       
       // Calculate metrics for this neighborhood
+      log(`Processing neighborhood: ${neighborhoodName}, city: ${city}, code: ${neighborhoodCode}`);
+      
       const metrics = await db.execute(sql`
         WITH neighborhood_properties AS (
           SELECT 
@@ -151,7 +153,22 @@ async function calculateNeighborhoodMetrics() {
         LEFT JOIN neighborhood_sales ns ON np.id = ns.property_id
       `);
       
-      const nhMetrics = metrics.rows[0] as any;
+      const nhMetrics = metrics?.rows && metrics.rows.length > 0 ? metrics.rows[0] as any : {
+        total_properties: 0,
+        total_sales: 0,
+        avg_building_area: null,
+        avg_lot_size: null,
+        avg_bedrooms: null,
+        avg_bathrooms: null,
+        avg_year_built: null,
+        median_home_value: null,
+        avg_home_value: null,
+        median_sale_price: null,
+        avg_sale_price: null,
+        min_sale_price: null,
+        max_sale_price: null,
+        sales_date_range_days: null
+      };
       
       // Get property samples for this neighborhood
       const propertySamples = await db.execute(sql`
@@ -177,7 +194,7 @@ async function calculateNeighborhoodMetrics() {
         LIMIT 5
       `);
       
-      const samples = propertySamples.rows as any[];
+      const samples = propertySamples?.rows && propertySamples.rows.length > 0 ? propertySamples.rows as any[] : [];
       
       // Get recent sales for this neighborhood
       const recentSales = await db.execute(sql`
@@ -201,42 +218,46 @@ async function calculateNeighborhoodMetrics() {
         LIMIT 5
       `);
       
-      const sales = recentSales.rows as any[];
+      const sales = recentSales?.rows && recentSales.rows.length > 0 ? recentSales.rows as any[] : [];
       
       // Build a description based on metrics
-      let description = `${neighborhoodName} is a residential area in ${city}, ${state}`;
-      if (nhMetrics.avg_year_built) {
-        description += ` with homes built around ${Math.round(nhMetrics.avg_year_built)}`;
+      let description = `${neighborhoodName} is a residential area in ${city || 'Unknown City'}, ${state || 'Unknown State'}`;
+      if (nhMetrics?.avg_year_built) {
+        description += ` with homes built around ${Math.round(Number(nhMetrics.avg_year_built))}`;
       }
-      if (nhMetrics.avg_building_area) {
-        description += `. Typical homes are approximately ${Math.round(nhMetrics.avg_building_area)} sq ft`;
+      if (nhMetrics?.avg_building_area) {
+        description += `. Typical homes are approximately ${Math.round(Number(nhMetrics.avg_building_area))} sq ft`;
       }
-      if (nhMetrics.avg_bedrooms && nhMetrics.avg_bathrooms) {
-        const avgBeds = typeof nhMetrics.avg_bedrooms === 'number' ? nhMetrics.avg_bedrooms.toFixed(1) : Number(nhMetrics.avg_bedrooms).toFixed(1);
-        const avgBaths = typeof nhMetrics.avg_bathrooms === 'number' ? nhMetrics.avg_bathrooms.toFixed(1) : Number(nhMetrics.avg_bathrooms).toFixed(1);
-        description += ` with ${avgBeds} bedrooms and ${avgBaths} bathrooms`;
+      if (nhMetrics?.avg_bedrooms && nhMetrics?.avg_bathrooms) {
+        try {
+          const avgBeds = typeof nhMetrics.avg_bedrooms === 'number' ? nhMetrics.avg_bedrooms.toFixed(1) : Number(nhMetrics.avg_bedrooms).toFixed(1);
+          const avgBaths = typeof nhMetrics.avg_bathrooms === 'number' ? nhMetrics.avg_bathrooms.toFixed(1) : Number(nhMetrics.avg_bathrooms).toFixed(1);
+          description += ` with ${avgBeds} bedrooms and ${avgBaths} bathrooms`;
+        } catch (error) {
+          log(`Error formatting bedroom/bathroom data: ${error}`);
+        }
       }
       description += '.';
       
       // Prepare characteristics JSON object
       const characteristics = {
-        propertyCount: nhMetrics.total_properties || 0,
-        salesCount: nhMetrics.total_sales || 0,
-        averageSqFt: nhMetrics.avg_building_area ? Math.round(Number(nhMetrics.avg_building_area)) : null,
-        averageLotSize: nhMetrics.avg_lot_size ? Math.round(Number(nhMetrics.avg_lot_size)) : null,
-        averageBedrooms: nhMetrics.avg_bedrooms ? Number(Number(nhMetrics.avg_bedrooms).toFixed(1)) : null,
-        averageBathrooms: nhMetrics.avg_bathrooms ? Number(Number(nhMetrics.avg_bathrooms).toFixed(1)) : null,
-        propertySamples: samples.map(s => ({
-          address: s.address,
-          size: s.building_area,
+        propertyCount: nhMetrics?.total_properties || 0,
+        salesCount: nhMetrics?.total_sales || 0,
+        averageSqFt: nhMetrics?.avg_building_area ? Math.round(Number(nhMetrics.avg_building_area)) : null,
+        averageLotSize: nhMetrics?.avg_lot_size ? Math.round(Number(nhMetrics.avg_lot_size)) : null,
+        averageBedrooms: nhMetrics?.avg_bedrooms ? Number(Number(nhMetrics.avg_bedrooms).toFixed(1)) : null,
+        averageBathrooms: nhMetrics?.avg_bathrooms ? Number(Number(nhMetrics.avg_bathrooms).toFixed(1)) : null,
+        propertySamples: samples && samples.length ? samples.map(s => ({
+          address: s.address || 'Unknown',
+          size: s.building_area || 0,
           bedBath: `${s.bedrooms || 0}/${s.bathrooms || 0}`,
-          value: s.market_value
-        })),
-        recentSales: sales.map(s => ({
-          address: s.address,
-          price: s.sale_price,
-          date: s.sale_date
-        }))
+          value: s.market_value || 0
+        })) : [],
+        recentSales: sales && sales.length ? sales.map(s => ({
+          address: s.address || 'Unknown',
+          price: s.sale_price || 0,
+          date: s.sale_date || new Date()
+        })) : []
       };
       
       // Check if neighborhood already exists
