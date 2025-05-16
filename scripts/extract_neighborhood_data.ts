@@ -74,7 +74,7 @@ async function calculateNeighborhoodMetrics() {
           WHEN TRIM(neighborhood) = '' THEN 'Unassigned'
           WHEN LOWER(neighborhood) IN ('none', 'n/a', 'none/na') THEN 'Unassigned'
           WHEN LOWER(neighborhood) IN ('other') THEN 'Miscellaneous'
-          ELSE INITCAP(TRIM(neighborhood)) 
+          ELSE TRIM(neighborhood)
         END AS name,
         city,
         state,
@@ -119,7 +119,7 @@ async function calculateNeighborhoodMetrics() {
               WHEN TRIM(p.neighborhood) = '' THEN 'Unassigned'
               WHEN LOWER(p.neighborhood) IN ('none', 'n/a', 'none/na') THEN 'Unassigned'
               WHEN LOWER(p.neighborhood) IN ('other') THEN 'Miscellaneous'
-              ELSE INITCAP(TRIM(p.neighborhood)) 
+              ELSE TRIM(p.neighborhood)
             END = ${neighborhoodName}
         ),
         neighborhood_sales AS (
@@ -172,7 +172,7 @@ async function calculateNeighborhoodMetrics() {
             WHEN TRIM(p.neighborhood) = '' THEN 'Unassigned'
             WHEN LOWER(p.neighborhood) IN ('none', 'n/a', 'none/na') THEN 'Unassigned'
             WHEN LOWER(p.neighborhood) IN ('other') THEN 'Miscellaneous'
-            ELSE INITCAP(TRIM(p.neighborhood)) 
+            ELSE TRIM(p.neighborhood)
           END = ${neighborhoodName}
         LIMIT 5
       `);
@@ -195,7 +195,7 @@ async function calculateNeighborhoodMetrics() {
             WHEN TRIM(p.neighborhood) = '' THEN 'Unassigned'
             WHEN LOWER(p.neighborhood) IN ('none', 'n/a', 'none/na') THEN 'Unassigned'
             WHEN LOWER(p.neighborhood) IN ('other') THEN 'Miscellaneous'
-            ELSE INITCAP(TRIM(p.neighborhood)) 
+            ELSE TRIM(p.neighborhood)
           END = ${neighborhoodName}
         ORDER BY ps.sale_date DESC
         LIMIT 5
@@ -212,7 +212,9 @@ async function calculateNeighborhoodMetrics() {
         description += `. Typical homes are approximately ${Math.round(nhMetrics.avg_building_area)} sq ft`;
       }
       if (nhMetrics.avg_bedrooms && nhMetrics.avg_bathrooms) {
-        description += ` with ${nhMetrics.avg_bedrooms.toFixed(1)} bedrooms and ${nhMetrics.avg_bathrooms.toFixed(1)} bathrooms`;
+        const avgBeds = typeof nhMetrics.avg_bedrooms === 'number' ? nhMetrics.avg_bedrooms.toFixed(1) : Number(nhMetrics.avg_bedrooms).toFixed(1);
+        const avgBaths = typeof nhMetrics.avg_bathrooms === 'number' ? nhMetrics.avg_bathrooms.toFixed(1) : Number(nhMetrics.avg_bathrooms).toFixed(1);
+        description += ` with ${avgBeds} bedrooms and ${avgBaths} bathrooms`;
       }
       description += '.';
       
@@ -220,10 +222,10 @@ async function calculateNeighborhoodMetrics() {
       const characteristics = {
         propertyCount: nhMetrics.total_properties || 0,
         salesCount: nhMetrics.total_sales || 0,
-        averageSqFt: nhMetrics.avg_building_area ? Math.round(nhMetrics.avg_building_area) : null,
-        averageLotSize: nhMetrics.avg_lot_size ? Math.round(nhMetrics.avg_lot_size) : null,
-        averageBedrooms: nhMetrics.avg_bedrooms ? parseFloat(nhMetrics.avg_bedrooms.toFixed(1)) : null,
-        averageBathrooms: nhMetrics.avg_bathrooms ? parseFloat(nhMetrics.avg_bathrooms.toFixed(1)) : null,
+        averageSqFt: nhMetrics.avg_building_area ? Math.round(Number(nhMetrics.avg_building_area)) : null,
+        averageLotSize: nhMetrics.avg_lot_size ? Math.round(Number(nhMetrics.avg_lot_size)) : null,
+        averageBedrooms: nhMetrics.avg_bedrooms ? Number(Number(nhMetrics.avg_bedrooms).toFixed(1)) : null,
+        averageBathrooms: nhMetrics.avg_bathrooms ? Number(Number(nhMetrics.avg_bathrooms).toFixed(1)) : null,
         propertySamples: samples.map(s => ({
           address: s.address,
           size: s.building_area,
@@ -447,12 +449,16 @@ async function analyzeNeighborhoodMarketTrends() {
         ),
         quarters AS (
           SELECT 
-            TO_CHAR(sale_date, 'YYYY-Q') AS quarter,
+            DATE_TRUNC('quarter', sale_date) AS quarter_date,
+            CONCAT(
+              EXTRACT(YEAR FROM sale_date), '-Q', 
+              CEILING(EXTRACT(MONTH FROM sale_date) / 3)
+            ) AS quarter,
             AVG(sale_price) AS avg_price,
             COUNT(*) AS sales_count
           FROM neighborhood_sales
-          GROUP BY TO_CHAR(sale_date, 'YYYY-Q')
-          ORDER BY quarter
+          GROUP BY quarter_date, quarter
+          ORDER BY quarter_date
         )
         SELECT 
           quarter,
@@ -583,13 +589,5 @@ export async function main() {
   }
 }
 
-// Run the main function
-if (require.main === module) {
-  main().then(() => {
-    log('Script completed successfully');
-    process.exit(0);
-  }).catch(error => {
-    log(`Fatal error: ${error instanceof Error ? error.message : 'Unknown error'}`, true);
-    process.exit(1);
-  });
-}
+// This function can be run directly or imported
+// Direct execution is handled by the run_neighborhood_extraction.ts file
