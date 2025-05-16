@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Info, Map } from 'lucide-react';
 import { SentimentLevel } from '@/services/neighborhood-sentiment.service';
+import AppNavigation from '@/components/layout/AppNavigation';
 
 // Placeholder component for the sentiment map
 // In a real application, this would use a mapping library like Leaflet or Mapbox
@@ -49,11 +50,11 @@ const SentimentMapPage: React.FC = () => {
     <div className="min-h-screen bg-background flex flex-col">
       <AppNavigation currentPath="/sentiment-map" />
       <div className="container mx-auto py-6 px-4 flex-1">
-      <Helmet>
+        <Helmet>
         <title>Sentiment Map | IntelligentEstate</title>
-      </Helmet>
-      
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
+        </Helmet>
+        
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
           <h1 className="text-3xl font-bold tracking-tight flex items-center">
             <Map className="mr-2 h-8 w-8" />

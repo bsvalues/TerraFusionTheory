@@ -18,6 +18,7 @@ import {
 } from 'lucide-react';
 import { useLocation } from 'wouter';
 import { Helmet } from 'react-helmet';
+import AppNavigation from '@/components/layout/AppNavigation';
 import {
   Card,
   CardContent,
