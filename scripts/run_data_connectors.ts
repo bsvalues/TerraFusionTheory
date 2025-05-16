@@ -50,8 +50,8 @@ async function testCAMAConnector() {
       throw new Error('CAMA connector not found');
     }
     
-    // Update API key
-    connector.config.apiKey = RAPIDAPI_KEY;
+    // Update API key with type assertion
+    (connector as any).config.apiKey = RAPIDAPI_KEY;
     
     // Test connection
     const connected = await connector.testConnection();
@@ -92,8 +92,8 @@ async function testGISConnector() {
       throw new Error('GIS connector not found');
     }
     
-    // Update API key
-    connector.config.apiKey = RAPIDAPI_KEY;
+    // Update API key with type assertion
+    (connector as any).config.apiKey = RAPIDAPI_KEY;
     
     // Test connection
     const connected = await connector.testConnection();
@@ -176,13 +176,13 @@ async function testPDFConnector() {
     log(`PDF connector connection test: ${connected ? 'SUCCESS' : 'FAILED'}`);
     
     if (connected) {
-      // List available PDF files
-      const files = await connector.listFiles();
+      // List available PDF files - using type assertion for non-interface methods
+      const files = await (connector as any).listFiles();
       log(`PDF connector: Found ${files.length} PDF files`);
       
       if (files.length > 0) {
-        // Parse first PDF file
-        const result = await connector.parseFile(files[0]);
+        // Parse first PDF file - using type assertion for non-interface methods
+        const result = await (connector as any).parseFile(files[0]);
         
         log(`PDF parse: Extracted ${Object.keys(result).length} fields`);
         
@@ -212,8 +212,8 @@ async function testWeatherConnector() {
       throw new Error('Weather connector not found');
     }
     
-    // Update API key
-    connector.config.apiKey = WEATHER_API_KEY;
+    // Update API key with type assertion
+    (connector as any).config.apiKey = WEATHER_API_KEY;
     
     // Test connection
     const connected = await connector.testConnection();
@@ -253,9 +253,9 @@ async function testCensusConnector() {
       throw new Error('Census connector not found');
     }
     
-    // Update API key if available
+    // Update API key if available with type assertion
     if (CENSUS_API_KEY) {
-      connector.config.apiKey = CENSUS_API_KEY;
+      (connector as any).config.apiKey = CENSUS_API_KEY;
     }
     
     // Test connection
@@ -296,14 +296,14 @@ async function runSpatialAnalysis(properties: any[]) {
       return;
     }
     
-    // Extract location data
+    // Extract location data with proper type handling
     const locations = properties
       .filter(p => p.latitude && p.longitude)
       .map(p => ({
         id: p.mlsNumber || p.id,
-        lat: p.latitude,
-        lng: p.longitude,
-        price: p.price || p.marketValue || 0,
+        lat: parseFloat(p.latitude),
+        lng: parseFloat(p.longitude),
+        price: parseFloat(p.price || p.marketValue || '0'),
         address: p.address
       }));
     
