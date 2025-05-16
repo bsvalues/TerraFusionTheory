@@ -89,18 +89,19 @@ async function calculateNeighborhoodMetrics() {
     
     // Process each neighborhood
     for (const nhd of neighborhoods) {
-      const neighborhoodName = nhd.name;
-      const city = nhd.city;
-      const state = nhd.state;
-      const county = nhd.county || 'Yakima'; // Default to Yakima if missing
-      
-      log(`Processing neighborhood: ${neighborhoodName}`);
-      
-      // Generate neighborhood code if needed
-      const neighborhoodCode = generateNeighborhoodCode(neighborhoodName);
-      
-      // Calculate metrics for this neighborhood
-      log(`Processing neighborhood: ${neighborhoodName}, city: ${city}, code: ${neighborhoodCode}`);
+      try {
+        const neighborhoodName = nhd.name || 'Unknown';
+        const city = nhd.city || 'Unknown City';
+        const state = nhd.state || 'WA';
+        const county = nhd.county || 'Yakima'; // Default to Yakima if missing
+        
+        log(`Processing neighborhood: ${neighborhoodName}`);
+        
+        // Generate neighborhood code if needed
+        const neighborhoodCode = generateNeighborhoodCode(neighborhoodName);
+        
+        // Calculate metrics for this neighborhood
+        log(`Processing neighborhood: ${neighborhoodName}, city: ${city}, code: ${neighborhoodCode}`);
       
       const metrics = await db.execute(sql`
         WITH neighborhood_properties AS (
@@ -347,6 +348,9 @@ async function calculateNeighborhoodMetrics() {
           
           log(`Added new neighborhood: ${neighborhoodName}`);
         }
+      } catch (error) {
+        log(`Error processing neighborhood ${nhd.name || 'Unknown'}: ${error instanceof Error ? error.message : String(error)}`, true);
+        // Continue with next neighborhood
       }
     }
     
