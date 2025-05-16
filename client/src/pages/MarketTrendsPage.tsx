@@ -289,6 +289,7 @@ const MarketTrendsPage: React.FC = () => {
           </CardContent>
         </Card>
       </div>
+      </div>
     </div>
   );
 };
