@@ -1,0 +1,32 @@
+[
+  {
+    "neighborhood": "North Heights",
+    "quarters": 0,
+    "priceChangeYoY": null,
+    "salesVolumeChange": null
+  },
+  {
+    "neighborhood": "East Valley",
+    "quarters": 0,
+    "priceChangeYoY": null,
+    "salesVolumeChange": null
+  },
+  {
+    "neighborhood": "South Side",
+    "quarters": 1,
+    "priceChangeYoY": null,
+    "salesVolumeChange": null
+  },
+  {
+    "neighborhood": "Downtown",
+    "quarters": 0,
+    "priceChangeYoY": null,
+    "salesVolumeChange": null
+  },
+  {
+    "neighborhood": "Rural",
+    "quarters": 1,
+    "priceChangeYoY": null,
+    "salesVolumeChange": null
+  }
+]
