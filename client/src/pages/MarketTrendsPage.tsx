@@ -73,10 +73,12 @@ const MarketTrendsPage: React.FC = () => {
   };
   
   return (
-    <div className="container mx-auto py-6 px-4">
-      <Helmet>
-        <title>Market Trends | IntelligentEstate</title>
-      </Helmet>
+    <div className="min-h-screen bg-background flex flex-col">
+      <AppNavigation currentPath="/market-trends" />
+      <div className="container mx-auto py-6 px-4 flex-1">
+        <Helmet>
+          <title>Market Trends | IntelligentEstate</title>
+        </Helmet>
       
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6">
         <div>
