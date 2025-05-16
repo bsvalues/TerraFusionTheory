@@ -135,14 +135,11 @@ const App = () => {
             </Switch>
             
             <TutorialButton position="bottom-right" />
-            <AIAssistant />
             <ComparisonButton position="bottom-right" />
             <ComparisonFloatingButton />
             
-            {/* Add the new AI Specialist Chat with fix positioned button in the header */}
-            <div className="fixed top-4 right-4 z-40">
-              <AISpecialistChat />
-            </div>
+            {/* Enhanced AI Assistant with specialist capabilities */}
+            <AISpecialistChat />
             
             {showWelcome && (
               <WelcomeScreen onClose={handleCloseWelcome} />

@@ -1,16 +1,16 @@
 /**
- * AISpecialistChat Component
+ * Enhanced AISpecialistChat Component
  *
- * This component provides an AI-powered chat interface that offers specialized
- * assistance for real estate analysis and technical integration questions.
+ * This unified AI assistant component integrates tutorial guidance functionality 
+ * with specialized AI-powered chat for real estate analysis and technical support.
  * It features different AI specialists with contextual property insights
  * that automatically appear when discussing specific properties.
  * 
- * Enhanced with voice-activated property search functionality.
+ * Enhanced with voice-activated property search functionality and tutorial integration.
  */
 
 import { useState, useRef, useEffect } from 'react';
-import { MessageSquare, X, MinusCircle, ChevronUp, RefreshCw } from 'lucide-react';
+import { MessageSquare, X, MinusCircle, ChevronUp, RefreshCw, LifeBuoy, Send } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
@@ -20,6 +20,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
+import { useTutorial } from '../onboarding/TutorialContext';
 import agentService, { QueryContext } from '@/services/agent.service';
 import PropertyInsightCard, { PropertyInsight } from './PropertyInsightCard';
 import propertyInsightsService from '@/services/property-insights.service';
@@ -29,7 +30,8 @@ import VoiceSearch from '../voice/VoiceSearch';
 enum SpecialistType {
   PROPERTY = 'property',
   TECHNICAL = 'technical',
-  COLLABORATIVE = 'collaborative'
+  COLLABORATIVE = 'collaborative',
+  TUTORIAL = 'tutorial'
 }
 
 // Message interface
@@ -56,6 +58,7 @@ const AISpecialistChat = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
+  const { aiAssistantMessage, startTutorial, categories } = useTutorial();
   
   // Scroll to bottom of chat when messages change
   useEffect(() => {
@@ -73,7 +76,9 @@ const AISpecialistChat = () => {
         [SpecialistType.TECHNICAL]: 
           "Welcome! I'm your Technical Integration Specialist. I can help with integrating data sources, troubleshooting technical issues, and optimizing your analytics workflow. What can I help you with?",
         [SpecialistType.COLLABORATIVE]:
-          "Welcome to Collaborative Mode! Here, both the Real Estate and Technical specialists work together to provide comprehensive answers that combine real estate expertise with technical implementation knowledge.\n\nTry asking about specific properties or neighborhoods like:\n• 'Tell me about Columbia Point in Richland'\n• 'What's the market like in Meadow Springs?'\n• 'Property values in South Richland'\n\nHow can we assist you today?"
+          "Welcome to Collaborative Mode! Here, both the Real Estate and Technical specialists work together to provide comprehensive answers that combine real estate expertise with technical implementation knowledge.\n\nTry asking about specific properties or neighborhoods like:\n• 'Tell me about Columbia Point in Richland'\n• 'What's the market like in Meadow Springs?'\n• 'Property values in South Richland'\n\nHow can we assist you today?",
+        [SpecialistType.TUTORIAL]:
+          "Welcome to IntelligentEstate! I'm your AI assistant and I'll guide you through this powerful real estate analytics platform. You can ask me about features like the property map, market analytics, or start a tutorial by saying 'start tutorial'."
       };
       
       // Add welcome message for active specialist
@@ -346,7 +351,7 @@ const AISpecialistChat = () => {
                   onValueChange={(value) => handleSpecialistChange(value as SpecialistType)}
                   className="h-full flex flex-col"
                 >
-                  <TabsList className="w-full h-auto p-0 bg-muted/30 grid grid-cols-3">
+                  <TabsList className="w-full h-auto p-0 bg-muted/30 grid grid-cols-4">
                     <TabsTrigger 
                       value={SpecialistType.PROPERTY}
                       className="text-xs py-2"
@@ -364,6 +369,12 @@ const AISpecialistChat = () => {
                       className="text-xs py-2"
                     >
                       Collaborative
+                    </TabsTrigger>
+                    <TabsTrigger 
+                      value={SpecialistType.TUTORIAL}
+                      className="text-xs py-2"
+                    >
+                      Tutorial
                     </TabsTrigger>
                   </TabsList>
 
