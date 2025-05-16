@@ -12,7 +12,7 @@ import * as fs from 'fs';
 import * as path from 'path';
 
 // Output directory for saved data
-const OUTPUT_DIR = './output';
+const OUTPUT_DIR = '../output';
 if (!fs.existsSync(OUTPUT_DIR)) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 }
