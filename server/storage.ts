@@ -16,6 +16,7 @@ import {
 import { z } from "zod";
 import { db } from "./db";
 import { eq, and, like, gte, lte, desc, asc, inArray, isNull, sql } from "drizzle-orm";
+import { testDatabaseConnection } from "./db";
 
 // Define types for new schemas
 type InsertProperty = z.infer<typeof insertPropertySchema>;

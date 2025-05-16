@@ -36,6 +36,7 @@ import {
   Users
 } from 'lucide-react';
 import Footer from '@/components/layout/Footer';
+import AppNavigation from '@/components/layout/AppNavigation';
 
 export default function PropertyValuationPage() {
   const [activeTab, setActiveTab] = useState('valuation');
