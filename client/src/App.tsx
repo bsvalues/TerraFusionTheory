@@ -88,18 +88,26 @@ const App = () => {
           <div className="min-h-screen bg-background font-sans antialiased">
             <Switch>
               <Route path="/" component={RealEstateAnalyticsPage} />
+              {/* Consolidated valuation routes */}
               <Route path="/valuation" component={PropertyValuationPage} />
+              <Route path="/property-valuation-demo" component={PropertyValuationPage} />
+              
+              {/* Sentiment analysis pages - will consolidate these next */}
               <Route path="/neighborhood-sentiment" component={NeighborhoodSentimentPage} />
               <Route path="/sentiment-map" component={SentimentMapPage} />
               <Route path="/sentiment-trends" component={SentimentTrendPage} />
               <Route path="/property-enrichment" component={PropertyEnrichmentDemo} />
-              <Route path="/property-valuation-demo" component={PropertyValuationDemo} />
               <Route path="/neighborhood-comparison" component={NeighborhoodComparisonPage} />
               <Route path="/school-economic-analysis" component={SchoolAndEconomicAnalysisPage} />
               <Route path="/economic-indicators" component={EconomicIndicatorsPage} />
-              <Route path="/property/:propertyId" component={PropertyDetailPage} />
+              {/* Property consolidated routes */}
+              <Route path="/property/:propertyId" component={ParcelDetailsPageNew} />
+              <Route path="/parcel/:id" component={ParcelDetailsPageNew} />
+              
+              {/* Comparison consolidated routes - will consolidate these next */}
               <Route path="/property-comparison" component={PropertyComparisonPage} />
               <Route path="/advanced-property-comparison" component={AdvancedPropertyComparisonPage} />
+              
               <Route path="/market-trends" component={MarketTrendsPage} />
               <Route path="/natural-hazards" component={NaturalHazardPage} />
               <Route path="/mass-appraisal" component={MassAppraisalPage} />
@@ -117,10 +125,6 @@ const App = () => {
               <Route path="/admin/users" component={UserAdminPage} />
               <Route path="/data-quality" component={DataQualityPage} />
               <Route path="/property-data" component={PropertyDataPage} />
-              
-              {/* TerraFusion Integration Routes */}
-              <Route path="/parcel/:id" component={ParcelDetailsPageNew} />
-              <Route path="/parcel-old/:id" component={ParcelDetailsPage} />
               <Route path="/audit/:parcelId" component={AuditTrailPage} />
               <Route path="/comps/:parcelId" component={ComparisonGridPage} />
               {/* These routes will be implemented as components are created */}
