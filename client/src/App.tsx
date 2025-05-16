@@ -14,10 +14,8 @@ import { ComparisonProvider } from './context/ComparisonContext';
 import RealEstateAnalyticsPage from './pages/RealEstateAnalyticsPage';
 import PropertyValuationPage from './pages/PropertyValuationPage';
 import NeighborhoodSentimentPage from './pages/NeighborhoodSentimentPage';
-import SentimentMapPage from './pages/SentimentMapPage';
-import SentimentTrendPage from './pages/SentimentTrendPage';
+import ConsolidatedSentimentPage from './pages/ConsolidatedSentimentPage';
 import PropertyEnrichmentDemo from './pages/PropertyEnrichmentDemo';
-import PropertyValuationDemo from './pages/PropertyValuationDemo';
 import NeighborhoodComparisonPage from './pages/NeighborhoodComparisonPage';
 import SchoolAndEconomicAnalysisPage from './pages/SchoolAndEconomicAnalysisPage';
 import EconomicIndicatorsPage from './pages/EconomicIndicatorsPage';
@@ -40,7 +38,6 @@ import { RecommendationsPage } from './pages/RecommendationsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import DataQualityPage from './pages/DataQualityPage';
 import PropertyDataPage from './pages/PropertyDataPage';
-import ConsolidatedSentimentPage from './pages/ConsolidatedSentimentPage';
 import UnifiedEconomicAnalysisPage from './pages/UnifiedEconomicAnalysisPage';
 
 // TerraFusion integration pages
