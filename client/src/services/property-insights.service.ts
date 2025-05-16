@@ -6,6 +6,7 @@
  */
 
 import { PropertyInsight } from "@/components/ai/PropertyInsightCard";
+import Fuse from 'fuse.js';
 
 // Pattern to detect common property address formats in text
 const ADDRESS_PATTERNS = [
@@ -509,16 +510,27 @@ export async function getPropertyInsight(propertyId: string): Promise<PropertyIn
  */
 export async function searchProperties(query: string, limit: number = 5): Promise<PropertyInsight[]> {
   try {
-    // In a real application, this would search via an API
-    // For now, we'll filter our mock data
-    const normalizedQuery = query.toLowerCase().trim();
+    if (!query || query.trim() === '') {
+      return [];
+    }
+
+    // Create Fuse instance with search options for fuzzy matching
+    const options = {
+      includeScore: true,
+      threshold: 0.4, // Lower threshold = stricter matching
+      keys: [
+        { name: 'address', weight: 1.0 },
+        { name: 'neighborhood', weight: 0.8 },
+        { name: 'propertyType', weight: 0.4 },
+        { name: 'tags', weight: 0.3 }
+      ]
+    };
+
+    const fuse = new Fuse(Object.values(mockProperties), options);
+    const results = fuse.search(query);
     
-    const matches = Object.values(mockProperties).filter(property => 
-      property.address.toLowerCase().includes(normalizedQuery) ||
-      (property.neighborhood && property.neighborhood.toLowerCase().includes(normalizedQuery))
-    );
-    
-    return matches.slice(0, limit);
+    // Return the items, sorted by match score (best matches first)
+    return results.map(result => result.item).slice(0, limit);
   } catch (error) {
     console.error('Error searching properties:', error);
     return [];
