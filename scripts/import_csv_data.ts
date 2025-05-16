@@ -380,7 +380,7 @@ async function extractAndSaveNeighborhoods(propertyRecords: any[]): Promise<void
           const existingNeighborhood = await db
             .select({ id: neighborhoods.id })
             .from(neighborhoods)
-            .where(neighborhoods.code.equals(neighborhood.code))
+            .where(sql`code = ${neighborhood.code}`)
             .limit(1);
             
           if (existingNeighborhood && existingNeighborhood.length > 0) {
@@ -403,7 +403,7 @@ async function extractAndSaveNeighborhoods(propertyRecords: any[]): Promise<void
                 medianSalePrice: neighborhood.medianSalePrice || null,
                 updatedAt: new Date()
               })
-              .where(neighborhoods.id.equals(existingNeighborhood[0].id));
+              .where(sql`id = ${existingNeighborhood[0].id}`);
               
             savedCount++;
           } else {
@@ -541,12 +541,11 @@ async function importCSVData(filePath: string): Promise<void> {
         // Only process sales if property has sale data
         const saleData = mapRecordToPropertySale(record, propertyId);
         if (saleData) {
-          // Check if this sale already exists using SQL expressions directly
+          // Check if this sale already exists using SQL expressions
           const existingSale = await db
             .select({ id: propertySales.id })
             .from(propertySales)
-            .where(propertySales.propertyId.equals(propertyId))
-            .where(propertySales.saleDate.equals(saleData.saleDate))
+            .where(sql`property_id = ${propertyId} AND sale_date = ${saleData.saleDate}`)
             .limit(1);
             
           if (existingSale && existingSale.length > 0) {
