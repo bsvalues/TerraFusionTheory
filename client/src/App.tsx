@@ -114,6 +114,7 @@ const App = () => {
               <Route path="/natural-hazards" component={NaturalHazardPage} />
               <Route path="/mass-appraisal" component={MassAppraisalPage} />
               <Route path="/market-heat-map" component={MarketHeatMapPage} />
+              <Route path="/neighborhood-trends" component={NeighborhoodTrendsPage} />
               <Route path="/valuation-assistant" component={ValuationAssistantPage} />
               <Route path="/adaptive-color-scheme" component={AdaptiveColorSchemePage} />
               <Route path="/mcp-tool" component={MCPToolPage} />

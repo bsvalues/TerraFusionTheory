@@ -25,7 +25,7 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import NeighborhoodTrendCard from './NeighborhoodTrendCard';
 import { Search, RefreshCw, MapPin } from 'lucide-react';
-import { useNavigate } from 'wouter';
+import { useLocation } from 'wouter';
 
 // Sample data interface matching the NeighborhoodMetrics
 interface NeighborhoodTrendData {
@@ -59,7 +59,7 @@ const NeighborhoodTrendsGrid: React.FC<NeighborhoodTrendsGridProps> = ({
   const [filteredNeighborhoods, setFilteredNeighborhoods] = useState<NeighborhoodTrendData[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [sortOrder, setSortOrder] = useState<string>('price-desc');
-  const navigate = useNavigate();
+  const [_, setLocation] = useLocation();
   
   useEffect(() => {
     // If we already have neighborhoods from props, use those
@@ -138,7 +138,7 @@ const NeighborhoodTrendsGrid: React.FC<NeighborhoodTrendsGridProps> = ({
   
   // Handle view details click for a neighborhood
   const handleViewDetails = (neighborhoodCode: string) => {
-    navigate(`/neighborhoods/${neighborhoodCode}`);
+    setLocation(`/neighborhoods/${neighborhoodCode}`);
   };
   
   // Refresh the data
