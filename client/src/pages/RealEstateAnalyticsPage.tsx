@@ -40,16 +40,22 @@ const RealEstateAnalyticsPage = () => {
           </div>
           
           <nav className="hidden md:flex space-x-6">
-            {['Dashboard', 'Properties', 'Market Analytics', 'Predictions', 'Reports'].map((item, index) => (
-              <a 
-                key={item} 
-                href="#"
+            {[
+              { name: 'Dashboard', path: '/' },
+              { name: 'Properties', path: '/property-data' },
+              { name: 'Market Analytics', path: '/market-trends' },
+              { name: 'Predictions', path: '/market-heat-map' },
+              { name: 'Reports', path: '/mass-appraisal' }
+            ].map((item, index) => (
+              <Link
+                key={item.name}
+                href={item.path}
                 className="text-sm font-medium relative group animate-in slide-in-from-top-3 duration-700"
                 style={{ animationDelay: `${150 + index * 100}ms` }}
               >
-                <span className="transition-colors duration-200 group-hover:text-primary">{item}</span>
+                <span className="transition-colors duration-200 group-hover:text-primary">{item.name}</span>
                 <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
-              </a>
+              </Link>
             ))}
           </nav>
           
