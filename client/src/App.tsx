@@ -40,6 +40,7 @@ import { RecommendationsPage } from './pages/RecommendationsPage';
 import NotFoundPage from './pages/NotFoundPage';
 import DataQualityPage from './pages/DataQualityPage';
 import PropertyDataPage from './pages/PropertyDataPage';
+import ConsolidatedSentimentPage from './pages/ConsolidatedSentimentPage';
 
 // TerraFusion integration pages
 import ParcelDetailsPage from './pages/terrafusion/ParcelDetailsPage';
@@ -92,10 +93,10 @@ const App = () => {
               <Route path="/valuation" component={PropertyValuationPage} />
               <Route path="/property-valuation-demo" component={PropertyValuationPage} />
               
-              {/* Sentiment analysis pages - will consolidate these next */}
-              <Route path="/neighborhood-sentiment" component={NeighborhoodSentimentPage} />
-              <Route path="/sentiment-map" component={SentimentMapPage} />
-              <Route path="/sentiment-trends" component={SentimentTrendPage} />
+              {/* Consolidated sentiment analysis pages */}
+              <Route path="/neighborhood-sentiment" component={ConsolidatedSentimentPage} />
+              <Route path="/sentiment-map" component={ConsolidatedSentimentPage} />
+              <Route path="/sentiment-trends" component={ConsolidatedSentimentPage} />
               <Route path="/property-enrichment" component={PropertyEnrichmentDemo} />
               <Route path="/neighborhood-comparison" component={NeighborhoodComparisonPage} />
               <Route path="/school-economic-analysis" component={SchoolAndEconomicAnalysisPage} />
