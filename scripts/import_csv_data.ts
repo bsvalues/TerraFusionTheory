@@ -371,10 +371,69 @@ async function extractAndSaveNeighborhoods(propertyRecords: any[]): Promise<void
     log(`Saving ${neighborhoodData.length} neighborhoods to database`);
     
     try {
+      // Insert each neighborhood, one at a time
+      let savedCount = 0;
       for (const neighborhood of neighborhoodData) {
-        await db.insert(neighborhoods).values(neighborhood);
+        try {
+          // Check if neighborhood already exists
+          const existingNeighborhood = await db
+            .select({ id: neighborhoods.id })
+            .from(neighborhoods)
+            .where(neighborhoods.code.equals(neighborhood.code))
+            .limit(1);
+            
+          if (existingNeighborhood && existingNeighborhood.length > 0) {
+            // Update existing neighborhood
+            await db
+              .update(neighborhoods)
+              .set({
+                name: neighborhood.name,
+                city: neighborhood.city,
+                county: neighborhood.county,
+                state: neighborhood.state,
+                description: neighborhood.description,
+                characteristics: neighborhood.characteristics,
+                medianHomeValue: neighborhood.medianHomeValue || 0,
+                avgHomeValue: neighborhood.avgHomeValue || 0,
+                avgYearBuilt: neighborhood.avgYearBuilt || null,
+                totalProperties: neighborhood.totalProperties || 0,
+                totalSales: neighborhood.totalSales || 0,
+                avgSalePrice: neighborhood.avgSalePrice || null,
+                medianSalePrice: neighborhood.medianSalePrice || null,
+                updatedAt: new Date()
+              })
+              .where(neighborhoods.id.equals(existingNeighborhood[0].id));
+              
+            savedCount++;
+          } else {
+            // Insert new neighborhood
+            await db
+              .insert(neighborhoods)
+              .values({
+                name: neighborhood.name,
+                code: neighborhood.code,
+                city: neighborhood.city,
+                county: neighborhood.county,
+                state: neighborhood.state,
+                description: neighborhood.description,
+                characteristics: neighborhood.characteristics,
+                medianHomeValue: neighborhood.medianHomeValue || 0,
+                avgHomeValue: neighborhood.avgHomeValue || 0,
+                avgYearBuilt: neighborhood.avgYearBuilt || null,
+                totalProperties: neighborhood.totalProperties || 0,
+                totalSales: neighborhood.totalSales || 0,
+                avgSalePrice: neighborhood.avgSalePrice || null,
+                medianSalePrice: neighborhood.medianSalePrice || null
+              });
+              
+            savedCount++;
+          }
+        } catch (error) {
+          log(`Error saving neighborhood ${neighborhood.name}: ${error instanceof Error ? error.message : 'Unknown error'}`, true);
+        }
       }
-      log(`Successfully saved ${neighborhoodData.length} neighborhoods`);
+      
+      log(`Successfully saved ${savedCount} neighborhoods`);
     } catch (error) {
       log(`Error saving neighborhoods: ${error instanceof Error ? error.message : 'Unknown error'}`, true);
     }
@@ -424,11 +483,11 @@ async function importCSVData(filePath: string): Promise<void> {
         // Map record to property and property sale objects
         const propertyData = mapRecordToProperty(record);
         
-        // Check if property already exists using SQL expressions directly
+        // Check if property already exists using a simpler approach
         const existingProperty = await db
           .select({ id: properties.id })
           .from(properties)
-          .where(properties.parcelId.equals(propertyData.parcelId))
+          .where(sql`parcel_id = ${propertyData.parcelId}`)
           .limit(1);
         
         let propertyId: number;
@@ -442,7 +501,7 @@ async function importCSVData(filePath: string): Promise<void> {
               ...propertyData,
               updatedAt: new Date()
             })
-            .where(properties.id.equals(propertyId));
+            .where(`id = $1`, [propertyId]);
             
           log(`Updated existing property: ${propertyData.address}`);
         } else {
@@ -450,7 +509,7 @@ async function importCSVData(filePath: string): Promise<void> {
           const existingByAddress = await db
             .select({ id: properties.id })
             .from(properties)
-            .where(properties.address.equals(propertyData.address))
+            .where(`address = $1`, [propertyData.address])
             .limit(1);
             
           if (existingByAddress && existingByAddress.length > 0) {
@@ -462,7 +521,7 @@ async function importCSVData(filePath: string): Promise<void> {
                 ...propertyData,
                 updatedAt: new Date()
               })
-              .where(properties.id.equals(propertyId));
+              .where(`id = $1`, [propertyId]);
               
             log(`Updated existing property by address: ${propertyData.address}`);
           } else {
