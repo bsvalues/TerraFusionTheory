@@ -410,68 +410,39 @@ export async function detectPropertyInsights(message: string): Promise<PropertyI
 }
 
 /**
- * Simple helper to find a property that might match a detected address
- * In a real application, this would perform a database query or API call
+ * Enhanced helper to find a property that might match a detected address
+ * Uses fuzzy matching for more flexible address recognition
  */
 function findMatchingProperty(address: string): PropertyInsight | null {
-  // Normalize the address for comparison
+  if (!address || address.trim() === '') {
+    return null;
+  }
+  
+  // Configure Fuse.js for address matching
+  const options = {
+    includeScore: true,
+    threshold: 0.5, // Slightly more lenient threshold for address matching
+    keys: [
+      { name: 'address', weight: 1.0 },
+      { name: 'neighborhood', weight: 0.7 }
+    ]
+  };
+  
+  // Create Fuse instance with our properties
+  const fuse = new Fuse(Object.values(mockProperties), options);
+  
+  // Perform fuzzy search
+  const results = fuse.search(address);
+  
+  // If we have any matches, return the best one
+  if (results.length > 0) {
+    return results[0].item;
+  }
+  
+  // Fallback: Check for city or neighborhood matches
   const normalizedAddress = address.toLowerCase().trim();
   
-  // If we find an exact match in our mock data, return it
-  for (const propertyId in mockProperties) {
-    if (mockProperties[propertyId].address.toLowerCase().includes(normalizedAddress)) {
-      return mockProperties[propertyId];
-    }
-  }
-  
-  // If we detect specific street names from our mock data
-  for (const propertyId in mockProperties) {
-    const propertyAddress = mockProperties[propertyId].address.toLowerCase();
-    const streetName = propertyAddress.split(',')[0].split(' ').slice(1).join(' ');
-    
-    if (normalizedAddress.includes(streetName)) {
-      return mockProperties[propertyId];
-    }
-  }
-  
-  // Check if certain addresses contain specific keywords for Grandview
-  if (normalizedAddress.includes('main')) {
-    return mockProperties.p1;
-  } else if (normalizedAddress.includes('vine')) {
-    return mockProperties.p2;
-  } else if (normalizedAddress.includes('cherry')) {
-    return mockProperties.p3;
-  } else if (normalizedAddress.includes('hill')) {
-    return mockProperties.p4;
-  }
-  
-  // Check if certain addresses contain specific keywords for Richland
-  if (normalizedAddress.includes('newcomer')) {
-    return mockProperties.r1;
-  } else if (normalizedAddress.includes('columbia point')) {
-    return mockProperties.r2;
-  } else if (normalizedAddress.includes('aaron')) {
-    return mockProperties.r3;
-  } else if (normalizedAddress.includes('jadwin')) {
-    return mockProperties.r4;
-  } else if (normalizedAddress.includes('bellerive')) {
-    return mockProperties.r5;
-  }
-  
-  // Check for Richland neighborhood names
-  if (normalizedAddress.includes('south richland')) {
-    return mockProperties.r1;
-  } else if (normalizedAddress.includes('columbia point')) {
-    return mockProperties.r2;
-  } else if (normalizedAddress.includes('horn rapids')) {
-    return mockProperties.r3;
-  } else if (normalizedAddress.includes('central richland')) {
-    return mockProperties.r4;
-  } else if (normalizedAddress.includes('meadow springs')) {
-    return mockProperties.r5;
-  }
-  
-  // Look for city names and return a random property from that city
+  // Check for city names and return a relevant property
   if (normalizedAddress.includes('grandview')) {
     const grandviewProperties = ['p1', 'p2', 'p3', 'p4'];
     const randomPropertyId = grandviewProperties[Math.floor(Math.random() * grandviewProperties.length)];
@@ -480,6 +451,27 @@ function findMatchingProperty(address: string): PropertyInsight | null {
     const richlandProperties = ['r1', 'r2', 'r3', 'r4', 'r5'];
     const randomPropertyId = richlandProperties[Math.floor(Math.random() * richlandProperties.length)];
     return mockProperties[randomPropertyId];
+  }
+  
+  // Additional fallback for common street names
+  if (normalizedAddress.includes('main')) {
+    return mockProperties.p1;
+  } else if (normalizedAddress.includes('vine')) {
+    return mockProperties.p2;
+  } else if (normalizedAddress.includes('cherry')) {
+    return mockProperties.p3;
+  } else if (normalizedAddress.includes('hill')) {
+    return mockProperties.p4;
+  } else if (normalizedAddress.includes('newcomer')) {
+    return mockProperties.r1;
+  } else if (normalizedAddress.includes('columbia')) {
+    return mockProperties.r2;
+  } else if (normalizedAddress.includes('aaron')) {
+    return mockProperties.r3;
+  } else if (normalizedAddress.includes('jadwin')) {
+    return mockProperties.r4;
+  } else if (normalizedAddress.includes('bellerive')) {
+    return mockProperties.r5;
   }
   
   // No match found
@@ -514,7 +506,7 @@ export async function searchProperties(query: string, limit: number = 5): Promis
       return [];
     }
 
-    // Create Fuse instance with search options for fuzzy matching
+    // Configure Fuse.js for fuzzy searching
     const options = {
       includeScore: true,
       threshold: 0.4, // Lower threshold = stricter matching
@@ -526,7 +518,10 @@ export async function searchProperties(query: string, limit: number = 5): Promis
       ]
     };
 
+    // Create a new Fuse instance with our properties
     const fuse = new Fuse(Object.values(mockProperties), options);
+    
+    // Perform the fuzzy search
     const results = fuse.search(query);
     
     // Return the items, sorted by match score (best matches first)
