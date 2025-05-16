@@ -39,6 +39,7 @@ import NotFoundPage from './pages/NotFoundPage';
 import DataQualityPage from './pages/DataQualityPage';
 import PropertyDataPage from './pages/PropertyDataPage';
 import UnifiedEconomicAnalysisPage from './pages/UnifiedEconomicAnalysisPage';
+import NeighborhoodTrendsPage from './pages/NeighborhoodTrendsPage';
 
 // TerraFusion integration pages
 import ParcelDetailsPage from './pages/terrafusion/ParcelDetailsPage';
