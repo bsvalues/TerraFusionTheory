@@ -9,21 +9,15 @@ import { useState } from 'react';
 import { Link } from 'wouter';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
-  LucideMapPin, 
-  LucideBarChart, 
-  LucideSearch, 
-  LucideHome, 
-  LucideBriefcase, 
-  LucideSettings,
-  LucideHelpCircle,
-  LucideMonitor,
-  Calculator as LucideCalculator,
-  Palette as LucidePalette,
-  CircuitBoard as LucideCircuitBoard
+  MapPin, 
+  BarChart, 
+  Calculator,
+  Home
 } from 'lucide-react';
 import MapContainer from '@/components/mapping/MapContainer';
 import MarketDashboard from '@/components/dashboard/MarketDashboard';
 import Footer from '@/components/layout/Footer';
+import MainNavigation from '@/components/layout/MainNavigation';
 
 // Main component
 const RealEstateAnalyticsPage = () => {
@@ -31,136 +25,34 @@ const RealEstateAnalyticsPage = () => {
 
   return (
     <div className="flex flex-col h-screen bg-background">
-      {/* Header */}
-      <header className="border-b">
-        <div className="container mx-auto px-4 py-4 flex justify-between items-center">
-          <div className="flex items-center animate-in slide-in-from-left-5 duration-500">
-            <LucideHome className="h-6 w-6 mr-2 text-primary animate-pulse-glow" />
-            <h1 className="text-xl font-bold bg-gradient-to-r from-primary/80 to-primary bg-clip-text text-transparent">IntelligentEstate</h1>
+      {/* Main Navigation Bar */}
+      <MainNavigation />
+      
+      {/* Sub Header with action buttons */}
+      <div className="border-b bg-muted/10">
+        <div className="container mx-auto px-4 py-2 flex justify-between items-center">
+          <div className="flex items-center">
+            <MapPin className="h-6 w-6 mr-2 text-primary" />
+            <h1 className="text-xl font-medium">Real Estate Analytics</h1>
           </div>
           
-          <nav className="hidden md:flex space-x-6">
-            {[
-              { name: 'Dashboard', path: '/' },
-              { name: 'Properties', path: '/property-data' },
-              { name: 'Market Analytics', path: '/market-trends' },
-              { name: 'Predictions', path: '/market-heat-map' },
-              { name: 'Reports', path: '/mass-appraisal' }
-            ].map((item, index) => (
-              <Link
-                key={item.name}
-                href={item.path}
-                className="text-sm font-medium relative group animate-in slide-in-from-top-3 duration-700"
-                style={{ animationDelay: `${150 + index * 100}ms` }}
-              >
-                <span className="transition-colors duration-200 group-hover:text-primary">{item.name}</span>
-                <span className="absolute -bottom-1.5 left-0 w-0 h-0.5 bg-primary transition-all duration-300 group-hover:w-full"></span>
-              </Link>
-            ))}
-          </nav>
-          
-          <div className="flex items-center space-x-4 animate-in slide-in-from-right-5 duration-500">
-            {/* Property Valuation Link */}
+          <div className="flex items-center space-x-2">
             <Link href="/valuation">
-              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
-                <LucideCalculator className="h-5 w-5 mr-1" />
-                <span className="hidden md:inline">Valuation</span>
+              <button className="p-2 rounded transition-all hover:bg-secondary flex items-center text-sm font-medium">
+                <Calculator className="h-4 w-4 mr-1" />
+                <span>Valuation</span>
               </button>
             </Link>
             
-            {/* Market Heat Map Link */}
             <Link href="/market-heat-map">
-              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
-                <LucideBarChart className="h-5 w-5 mr-1 text-red-500" />
-                <span className="hidden md:inline">Heat Map</span>
+              <button className="p-2 rounded transition-all hover:bg-secondary flex items-center text-sm font-medium">
+                <BarChart className="h-4 w-4 mr-1" />
+                <span>Heat Map</span>
               </button>
             </Link>
-            
-            {/* Mass Appraisal Link */}
-            <Link href="/mass-appraisal">
-              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
-                <LucideCalculator className="h-5 w-5 mr-1 text-blue-500" />
-                <span className="hidden md:inline">Mass Appraisal</span>
-              </button>
-            </Link>
-            
-            {/* AI Valuation Assistant Link */}
-            <Link href="/valuation-assistant">
-              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
-                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="h-5 w-5 mr-1 text-green-500">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 16v-4"/>
-                  <path d="M12 8h.01"/>
-                </svg>
-                <span className="hidden md:inline">AI Assistant</span>
-              </button>
-            </Link>
-            
-            {/* Property Valuation Demo Link */}
-            <Link href="/property-valuation-demo">
-              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium bg-secondary/40">
-                <LucideCalculator className="h-5 w-5 mr-1 text-primary" />
-                <span className="hidden md:inline">Valuation Demo</span>
-              </button>
-            </Link>
-
-            {/* Adaptive Color Scheme Link */}
-            <Link href="/adaptive-color-scheme">
-              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
-                <LucidePalette className="h-5 w-5 mr-1 text-purple-500" />
-                <span className="hidden md:inline">Color Schemes</span>
-              </button>
-            </Link>
-            
-            {/* MCP Tool Link */}
-            <Link href="/mcp-tool">
-              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
-                <LucideCircuitBoard className="h-5 w-5 mr-1 text-cyan-500" />
-                <span className="hidden md:inline">MCP Tool</span>
-              </button>
-            </Link>
-            
-            {/* Help Links */}
-            <div className="relative group">
-              <button className="p-2 rounded-full transition-all duration-300 hover:bg-secondary group-hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700 flex items-center text-sm font-medium">
-                <LucideHelpCircle className="h-5 w-5 mr-1" />
-                <span className="hidden md:inline">Help</span>
-              </button>
-              <div className="absolute right-0 mt-2 w-48 rounded-md shadow-lg bg-popover border hidden group-hover:block z-50 animate-in slide-in-from-top-5 fade-in-50 duration-200">
-                <div className="py-1 rounded-md bg-popover">
-                  <div className="px-4 py-2 text-sm hover:bg-secondary transition-colors cursor-pointer" onClick={() => window.location.href = '/help'}>
-                    <div className="flex items-center">
-                      <LucideHelpCircle className="h-4 w-4 mr-2" />
-                      Help Center
-                    </div>
-                  </div>
-                  <div className="px-4 py-2 text-sm hover:bg-secondary transition-colors cursor-pointer" onClick={() => window.location.href = '/fix-my-screen/help'}>
-                    <div className="flex items-center">
-                      <LucideMonitor className="h-4 w-4 mr-2" />
-                      Display Issues
-                    </div>
-                  </div>
-                </div>
-              </div>
-            </div>
-            
-            {/* Other action buttons */}
-            {[
-              { icon: <LucideSearch className="h-5 w-5" />, delay: 100 },
-              { icon: <LucideBriefcase className="h-5 w-5" />, delay: 200 },
-              { icon: <LucideSettings className="h-5 w-5" />, delay: 300 }
-            ].map((button, index) => (
-              <button 
-                key={index}
-                className="p-2 rounded-full transition-all duration-300 hover:bg-secondary hover:shadow-md hover:scale-110 animate-in fade-in duration-700"
-                style={{ animationDelay: `${button.delay}ms` }}
-              >
-                {button.icon}
-              </button>
-            ))}
           </div>
         </div>
-      </header>
+      </div>
       
       {/* Main content */}
       <main className="flex-1 overflow-hidden">
@@ -169,28 +61,18 @@ const RealEstateAnalyticsPage = () => {
             <TabsList className="h-16 w-full justify-start bg-transparent animate-in slide-in-from-bottom-3 duration-700">
               <TabsTrigger 
                 value="map" 
-                className="data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-300 hover:bg-secondary/40 animate-in fade-in slide-in-from-left-3 duration-500"
+                className="data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-300 hover:bg-secondary/40"
               >
-                <LucideMapPin className={`mr-2 h-4 w-4 transition-transform duration-300 ${activeTab === 'map' ? 'scale-125 text-primary' : ''}`} />
-                <span className={`relative ${activeTab === 'map' ? 'text-primary font-medium' : ''}`}>
-                  Property Map
-                  {activeTab === 'map' && (
-                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-primary animate-in fade-in slide-in-from-left duration-300"></span>
-                  )}
-                </span>
+                <MapPin className="mr-2 h-4 w-4" />
+                <span>Property Map</span>
               </TabsTrigger>
               
               <TabsTrigger 
                 value="market" 
-                className="data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-300 hover:bg-secondary/40 animate-in fade-in slide-in-from-left-3 duration-500 delay-100"
+                className="data-[state=active]:bg-background data-[state=active]:shadow-sm transition-all duration-300 hover:bg-secondary/40"
               >
-                <LucideBarChart className={`mr-2 h-4 w-4 transition-transform duration-300 ${activeTab === 'market' ? 'scale-125 text-primary' : ''}`} />
-                <span className={`relative ${activeTab === 'market' ? 'text-primary font-medium' : ''}`}>
-                  Market Analytics
-                  {activeTab === 'market' && (
-                    <span className="absolute -bottom-1 left-0 w-full h-0.5 bg-primary animate-in fade-in slide-in-from-left duration-300"></span>
-                  )}
-                </span>
+                <BarChart className="mr-2 h-4 w-4" />
+                <span>Market Analytics</span>
               </TabsTrigger>
               {/* Add more tabs as needed */}
             </TabsList>
