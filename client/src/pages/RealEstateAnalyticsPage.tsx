@@ -17,7 +17,7 @@ import {
 import MapContainer from '@/components/mapping/MapContainer';
 import MarketDashboard from '@/components/dashboard/MarketDashboard';
 import Footer from '@/components/layout/Footer';
-import MainNavigation from '@/components/layout/MainNavigation';
+import AppNavigation from '@/components/layout/AppNavigation';
 
 // Main component
 const RealEstateAnalyticsPage = () => {
@@ -26,7 +26,7 @@ const RealEstateAnalyticsPage = () => {
   return (
     <div className="flex flex-col h-screen bg-background">
       {/* Main Navigation Bar */}
-      <MainNavigation />
+      <AppNavigation currentPath="/" />
       
       {/* Sub Header with action buttons */}
       <div className="border-b bg-muted/10">

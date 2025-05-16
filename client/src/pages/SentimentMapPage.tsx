@@ -46,7 +46,9 @@ const SentimentMapPage: React.FC = () => {
   const [selectedTimeframe, setSelectedTimeframe] = useState<string>('current');
 
   return (
-    <div className="container mx-auto py-6 px-4">
+    <div className="min-h-screen bg-background flex flex-col">
+      <AppNavigation currentPath="/sentiment-map" />
+      <div className="container mx-auto py-6 px-4 flex-1">
       <Helmet>
         <title>Sentiment Map | IntelligentEstate</title>
       </Helmet>
