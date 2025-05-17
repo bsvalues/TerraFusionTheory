@@ -200,33 +200,13 @@ export const AnimatedTrendTooltip: React.FC<AnimatedTrendTooltipProps> = ({
           >
             {showIcon && (
               <div className="relative">
-                <motion.div
-                  animate={
-                    pulseEffect && effectiveStrength === 'strong' 
-                      ? { scale: [1, 1.15, 1] } 
-                      : {}
-                  }
-                  transition={{ 
-                    repeat: pulseEffect && effectiveStrength === 'strong' ? Infinity : 0, 
-                    duration: 1.5,
-                    repeatType: "loop"
-                  }}
-                >
-                  {getTrendIcon()}
-                </motion.div>
+                {getTrendIcon()}
               </div>
             )}
             
             {!iconOnly && (
-              <AnimatePresence mode="wait">
-                <motion.div
-                  key={`${data.value}-${data.percentChange}`}
-                  initial={{ opacity: 0, y: 5 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  exit={{ opacity: 0, y: -5 }}
-                  transition={{ duration: 0.2 }}
-                  className="flex items-center gap-1"
-                >
+              <div className="flex items-center gap-1">
+                
                   {showValue && data.value !== null && (
                     <span className="text-sm font-medium">
                       {formatValue(data.value)}
@@ -238,26 +218,12 @@ export const AnimatedTrendTooltip: React.FC<AnimatedTrendTooltipProps> = ({
                       {formattedChange}
                     </span>
                   )}
-                </motion.div>
-              </AnimatePresence>
+                </div>
             )}
           </div>
         </TooltipTrigger>
-        <TooltipContent asChild>
-          <AnimatePresence>
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95, y: 5 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: -5 }}
-              transition={{ 
-                type: "spring", 
-                stiffness: 300, 
-                damping: 30 
-              }}
-            >
-              {tooltipContent}
-            </motion.div>
-          </AnimatePresence>
+        <TooltipContent>
+          {tooltipContent}
         </TooltipContent>
       </Tooltip>
     </TooltipProvider>
