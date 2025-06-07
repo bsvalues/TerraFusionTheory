@@ -25,6 +25,7 @@ import {
   Users
 } from 'lucide-react';
 import { GAMAMap } from '@/components/gama/GAMAMap';
+import SmartFilterBar from '@/components/gama/SmartFilterBar';
 
 interface PropertyData {
   id: string;
@@ -57,6 +58,8 @@ const TerraGAMAPage: React.FC = () => {
   const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
   const [isProcessingComplete, setIsProcessingComplete] = useState(false);
   const [processingProgress, setProcessingProgress] = useState(0);
+  const [filteredProperties, setFilteredProperties] = useState<PropertyData[]>([]);
+  const [currentFilters, setCurrentFilters] = useState<any>({});
 
   // Fetch Benton County statistics
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -86,6 +89,28 @@ const TerraGAMAPage: React.FC = () => {
       setIsProcessingComplete(progress >= 100);
     }
   }, [propertyData]);
+
+  // Filter handler for SmartFilterBar
+  const handleFiltersChange = async (filters: any) => {
+    setCurrentFilters(filters);
+    
+    try {
+      const response = await fetch('/api/terragama/filter', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(filters),
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        setFilteredProperties(data.properties || []);
+      }
+    } catch (error) {
+      console.error('Filter error:', error);
+    }
+  };
 
   const handleProcessComplete = async () => {
     try {
