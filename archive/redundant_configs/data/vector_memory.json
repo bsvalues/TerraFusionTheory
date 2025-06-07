@@ -1,6 +1,6 @@
 [
   {
-    "id": "mem_25d9493d-1934-4039-8d1a-07d3b4bab068",
+    "id": "mem_a90d9c03-5f04-455b-a416-da4863615eb0",
     "text": "The real estate market in Grandview, WA has been showing strong appreciation in the past year. Average home prices have increased by 8.5% year-over-year, with the median home value now at $325,000. Days on market has decreased from 45 to 32 days.",
     "embedding": [
       0,
@@ -1549,15 +1549,15 @@
       ],
       "importance": 0.9,
       "confidence": 0.95,
-      "timestamp": "2025-06-07T11:25:09.083Z",
+      "timestamp": "2025-05-03T04:57:43.069Z",
       "source": "market-report",
-      "expiresAt": "2025-07-07T11:25:09.084Z"
+      "expiresAt": "2025-06-02T04:57:43.071Z"
     },
-    "createdAt": "2025-06-07T11:25:09.084Z",
-    "updatedAt": "2025-06-07T11:25:09.084Z"
+    "createdAt": "2025-05-03T04:57:43.071Z",
+    "updatedAt": "2025-05-03T04:57:43.071Z"
   },
   {
-    "id": "mem_4ae6810d-3d61-4e79-8e61-f9d1b46ed26f",
+    "id": "mem_b2e07f7d-6d44-4dd9-b536-1b4b198b5cd9",
     "text": "Grandview neighborhoods with the highest growth include Westside (12% appreciation) and Eastridge (9.5% appreciation). These areas are particularly popular with first-time homebuyers due to good school districts and proximity to major employers.",
     "embedding": [
       0,
@@ -3107,15 +3107,15 @@
       ],
       "importance": 0.85,
       "confidence": 0.9,
-      "timestamp": "2025-06-07T11:25:09.083Z",
+      "timestamp": "2025-05-03T04:57:43.069Z",
       "source": "neighborhood-analysis",
-      "expiresAt": "2025-07-07T11:25:09.085Z"
+      "expiresAt": "2025-06-02T04:57:43.072Z"
     },
-    "createdAt": "2025-06-07T11:25:09.085Z",
-    "updatedAt": "2025-06-07T11:25:09.085Z"
+    "createdAt": "2025-05-03T04:57:43.072Z",
+    "updatedAt": "2025-05-03T04:57:43.072Z"
   },
   {
-    "id": "mem_d3d048c3-1adc-4f59-b2ed-8f19f02cf16a",
+    "id": "mem_0d803c3a-ec4e-400c-91b4-a29a54af3c80",
     "text": "Rental rates in Grandview have increased by an average of 6.8% over the past year. One-bedroom apartments now average $950/month, while three-bedroom homes average $1,750/month. Vacancy rates remain low at 3.2%.",
     "embedding": [
       0,
@@ -4664,15 +4664,15 @@
       ],
       "importance": 0.8,
       "confidence": 0.92,
-      "timestamp": "2025-06-07T11:25:09.083Z",
+      "timestamp": "2025-05-03T04:57:43.069Z",
       "source": "rental-report",
-      "expiresAt": "2025-07-07T11:25:09.086Z"
+      "expiresAt": "2025-06-02T04:57:43.073Z"
     },
-    "createdAt": "2025-06-07T11:25:09.086Z",
-    "updatedAt": "2025-06-07T11:25:09.086Z"
+    "createdAt": "2025-05-03T04:57:43.073Z",
+    "updatedAt": "2025-05-03T04:57:43.073Z"
   },
   {
-    "id": "mem_3ab31e62-09ba-43a0-b360-913b64b375e4",
+    "id": "mem_914431d2-39ae-4528-870b-aa9ac4209b29",
     "text": "Investment opportunities in Grandview are concentrated in multifamily properties and single-family homes in emerging neighborhoods. Cap rates for multifamily properties average 6.5%, while single-family home investors are seeing ROI of approximately 7.2% when accounting for both appreciation and rental income.",
     "embedding": [
       0.02284311777690687,
@@ -6222,15 +6222,15 @@
       ],
       "importance": 0.88,
       "confidence": 0.9,
-      "timestamp": "2025-06-07T11:25:09.083Z",
+      "timestamp": "2025-05-03T04:57:43.069Z",
       "source": "investment-analysis",
-      "expiresAt": "2025-07-07T11:25:09.087Z"
+      "expiresAt": "2025-06-02T04:57:43.074Z"
     },
-    "createdAt": "2025-06-07T11:25:09.087Z",
-    "updatedAt": "2025-06-07T11:25:09.087Z"
+    "createdAt": "2025-05-03T04:57:43.074Z",
+    "updatedAt": "2025-05-03T04:57:43.074Z"
   },
   {
-    "id": "mem_a0700c6e-70aa-4d10-940f-4caf069be44d",
+    "id": "mem_2d2eda5e-056c-4dae-a09b-c0b1f5059d11",
     "text": "The commercial real estate market in Grandview is showing signs of recovery post-pandemic. Retail vacancies have decreased from 12% to 7.5% in the past year, while office space demand remains subdued with vacancy rates at 15%. Industrial properties are performing strongest with only 4% vacancy.",
     "embedding": [
       0,
@@ -7781,11 +7781,11 @@
       ],
       "importance": 0.75,
       "confidence": 0.88,
-      "timestamp": "2025-06-07T11:25:09.083Z",
+      "timestamp": "2025-05-03T04:57:43.069Z",
       "source": "commercial-report",
-      "expiresAt": "2025-07-07T11:25:09.088Z"
+      "expiresAt": "2025-06-02T04:57:43.074Z"
     },
-    "createdAt": "2025-06-07T11:25:09.088Z",
-    "updatedAt": "2025-06-07T11:25:09.088Z"
+    "createdAt": "2025-05-03T04:57:43.074Z",
+    "updatedAt": "2025-05-03T04:57:43.074Z"
   }
 ]
