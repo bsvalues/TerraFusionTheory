@@ -35,50 +35,19 @@ import UnifiedEconomicAnalysisPage from './pages/UnifiedEconomicAnalysisPage';
 import NeighborhoodTrendsPage from './pages/NeighborhoodTrendsPage';
 
 // TerraFusion integration pages
-import ParcelDetailsPage from './pages/terrafusion/ParcelDetailsPage';
 import ParcelDetailsPageNew from './pages/terrafusion/ParcelDetailsPageNew';
-import AuditTrailPage from './pages/terrafusion/AuditTrailPage';
-import ComparisonGridPage from './pages/terrafusion/ComparisonGridPage';
-// Additional TerraFusion pages will be imported here once created
 
-import { 
-  TutorialManager, 
-  TutorialButton, 
-  WelcomeScreen,
-  AIAssistant 
-} from './components/onboarding';
 import { AISpecialistChat } from './components/ai';
 import ComparisonButton from './components/property/ComparisonButton';
 import ComparisonFloatingButton from './components/property/ComparisonFloatingButton';
-import SystemMonitorPage from './pages/SystemMonitorPage';
+
 
 // Main App component
 const App = () => {
-  const [showWelcome, setShowWelcome] = useState(false);
-  
-  // Check if this is the user's first visit
-  useEffect(() => {
-    const hasVisitedBefore = localStorage.getItem('hasVisitedBefore');
-    if (!hasVisitedBefore) {
-      // Show welcome screen after a short delay for better UX
-      const timer = setTimeout(() => {
-        setShowWelcome(true);
-      }, 1000);
-      
-      return () => clearTimeout(timer);
-    }
-  }, []);
-  
-  const handleCloseWelcome = () => {
-    setShowWelcome(false);
-    localStorage.setItem('hasVisitedBefore', 'true');
-  };
-
   return (
     <QueryClientProvider client={queryClient}>
       <ComparisonProvider>
-        <TutorialManager>
-          <div className="min-h-screen bg-background font-sans antialiased">
+        <div className="min-h-screen bg-background font-sans antialiased">
             <Switch>
               <Route path="/" component={RealEstateAnalyticsPage} />
               {/* Consolidated valuation routes */}
@@ -110,7 +79,6 @@ const App = () => {
               <Route path="/valuation-assistant" component={ValuationAssistantPage} />
               <Route path="/mcp-tool" component={MCPToolPage} />
               <Route path="/recommendations" component={RecommendationsPage} />
-              <Route path="/system/monitor" component={SystemMonitorPage} />
               <Route path="/help" component={HelpCenterPage} />
               <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
               <Route path="/dev-auth" component={DevAuthLoginPage} />
@@ -118,8 +86,8 @@ const App = () => {
               <Route path="/admin/users" component={UserAdminPage} />
               <Route path="/data-quality" component={DataQualityPage} />
               <Route path="/property-data" component={PropertyDataPage} />
-              <Route path="/audit/:parcelId" component={AuditTrailPage} />
-              <Route path="/comps/:parcelId" component={ComparisonGridPage} />
+              <Route path="/audit/:parcelId" component={ParcelDetailsPageNew} />
+              <Route path="/comps/:parcelId" component={ParcelDetailsPageNew} />
               {/* These routes will be implemented as components are created */}
               {/* <Route path="/valuation/:id" component={ValuationSummaryPage} /> */}
               
