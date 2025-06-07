@@ -86,71 +86,24 @@ interface GAMAMetrics {
 }
 
 // Mock data generators
-const generateMockProperties = (): PropertyData[] => {
-  const properties: PropertyData[] = [];
-  const neighborhoods = ['West Richland', 'Kennewick Heights', 'Finley', 'Badger Mountain', 'Columbia Point', 'Southridge', 'Canyon Lakes'];
-  
-  for (let i = 0; i < 150; i++) {
-    // Distribute properties across actual Benton County cities on land areas only
-    let lat, lng;
-    const cityRandom = Math.random();
-    
-    if (cityRandom < 0.4) {
-      // Kennewick (east side of rivers, actual city boundaries)
-      lat = 46.2012 + Math.random() * 0.035; // North of river
-      lng = -119.1772 + Math.random() * 0.045; // East of river
-    } else if (cityRandom < 0.7) {
-      // Richland (west side, between rivers)
-      lat = 46.2757 + Math.random() * 0.025; // Controlled area
-      lng = -119.3044 + Math.random() * 0.03; // West of Yakima River
-    } else if (cityRandom < 0.85) {
-      // West Richland (furthest west)
-      lat = 46.2943 + Math.random() * 0.02;
-      lng = -119.3714 + Math.random() * 0.025; // Safe west zone
-    } else {
-      // Rural Benton County (eastern agricultural areas)
-      lat = 46.12 + Math.random() * 0.18; // North-south spread
-      lng = -119.75 + Math.random() * 0.35; // Western rural areas only
+const fetchBentonCountyProperties = async (): Promise<PropertyData[]> => {
+  try {
+    const response = await fetch('/api/benton-county/properties?limit=150');
+    if (!response.ok) {
+      throw new Error(`Failed to fetch properties: ${response.status}`);
     }
     
-    const assessedValue = 180000 + Math.random() * 600000;
-    
-    properties.push({
-      id: `prop_${i}`,
-      address: `${1000 + i} ${['Columbia River Rd', 'Queensgate Dr', 'Clearwater Ave', 'Road 68', 'Bombing Range Rd', 'Canal Dr', 'Richland Hills Dr'][Math.floor(Math.random() * 7)]}`,
-      coordinates: [lat, lng],
-      assessedValue,
-      marketValue: assessedValue * (0.9 + Math.random() * 0.2),
-      salePrice: Math.random() > 0.7 ? assessedValue * (0.85 + Math.random() * 0.3) : undefined,
-      saleDate: Math.random() > 0.7 ? '2024-05-15' : undefined,
-      confidence: 0.6 + Math.random() * 0.35,
-      status: ['pending', 'processing', 'completed', 'flagged'][Math.floor(Math.random() * 4)] as any,
-      agentInsights: {
-        zoning: { 
-          score: 0.7 + Math.random() * 0.3, 
-          issues: Math.random() > 0.8 ? ['Compliance issue detected'] : [] 
-        },
-        mra: { 
-          value: assessedValue * (0.95 + Math.random() * 0.1), 
-          confidence: 0.6 + Math.random() * 0.3 
-        },
-        comps: { 
-          count: 3 + Math.floor(Math.random() * 7), 
-          similarity: 0.6 + Math.random() * 0.3 
-        },
-        equity: { 
-          score: 0.7 + Math.random() * 0.3, 
-          warnings: Math.random() > 0.9 ? ['Assessment disparity detected'] : [] 
-        }
-      },
-      propertyType: 'Single Family',
-      livingArea: 1200 + Math.random() * 2800,
-      lotSize: 5000 + Math.random() * 15000,
-      neighborhood: neighborhoods[Math.floor(Math.random() * neighborhoods.length)]
-    });
+    const data = await response.json();
+    if (data.success && data.properties) {
+      return data.properties;
+    } else {
+      throw new Error('Invalid response format from Benton County API');
+    }
+  } catch (error) {
+    console.error('Error fetching Benton County properties:', error);
+    // Return empty array on error - component will show loading state
+    return [];
   }
-  
-  return properties;
 };
 
 const generateMockMarketClusters = (): MarketCluster[] => {
@@ -417,7 +370,8 @@ export const GAMAPage: React.FC = () => {
   const [workflowSteps, setWorkflowSteps] = useState<WorkflowStep[]>(initialWorkflowSteps);
   const [selectedStep, setSelectedStep] = useState<WorkflowStep | null>(null);
   const [isRunning, setIsRunning] = useState(false);
-  const [properties] = useState<PropertyData[]>(generateMockProperties());
+  const [properties, setProperties] = useState<PropertyData[]>([]);
+  const [loading, setLoading] = useState(true);
   const [marketClusters] = useState<MarketCluster[]>(generateMockMarketClusters());
   const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
 

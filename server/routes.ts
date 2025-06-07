@@ -24,6 +24,7 @@ import { registerTestRoutes } from "./utils/terrafusion-test";
 import { dataQualityRoutes } from "./routes/data-quality.routes";
 import spatialAnalyticsRoutes from "./routes/spatial-analytics.routes";
 import { registerBadgesRoutes } from "./routes/badges.routes";
+import bentonCountyRoutes from "./routes/bentonCounty.routes";
 import swaggerUi from 'swagger-ui-express';
 import { openApiSpec } from './openapi';
 
@@ -74,6 +75,7 @@ export function registerRoutes(app: Express): Promise<Server> {
     
     app.use('/api/data-quality', dataQualityRoutes);
     app.use('/api/spatial-analytics', spatialAnalyticsRoutes);
+    app.use('/api/benton-county', bentonCountyRoutes);
     
     app.use('/api-docs', swaggerUi.serve, swaggerUi.setup(openApiSpec));
     
