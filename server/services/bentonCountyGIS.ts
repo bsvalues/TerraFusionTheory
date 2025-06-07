@@ -102,6 +102,7 @@ export class BentonCountyGISService {
               // Fetch all records - use max batch size
               batchParams.set('resultRecordCount', maxRecordCount.toString());
               batchParams.set('resultOffset', offset.toString());
+              console.log(`[BentonCountyGIS] Fetching batch ${Math.floor(offset / maxRecordCount) + 1}: offset=${offset}, limit=${maxRecordCount}`);
             }
 
             const response = await fetch(`${url}?${batchParams}`, {
@@ -127,13 +128,25 @@ export class BentonCountyGISService {
               );
               allProperties.push(...batchProperties);
               
+              // Progress logging for production deployment
+              if (limit === 0) {
+                const progress = ((allProperties.length / 78472) * 100).toFixed(1);
+                console.log(`[BentonCountyGIS] Progress: ${allProperties.length}/78,472 parcels (${progress}%)`);
+              }
+              
               // Check if we need to fetch more records
               if (limit === 0) {
                 // Fetching all records
                 if (data.features.length < maxRecordCount) {
                   hasMoreRecords = false;
+                  console.log(`[BentonCountyGIS] Complete dataset fetch finished: ${allProperties.length} total parcels`);
                 } else {
                   offset += maxRecordCount;
+                  // Safety limit to prevent infinite loops
+                  if (offset > 100000) {
+                    console.log(`[BentonCountyGIS] Safety limit reached at ${allProperties.length} parcels`);
+                    hasMoreRecords = false;
+                  }
                 }
               } else {
                 // Limited fetch - we got what we needed
