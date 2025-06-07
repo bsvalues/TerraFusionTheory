@@ -48,7 +48,7 @@ interface PropertyData {
 
 export class BentonCountyGISService {
   private apiKey: string;
-  private baseUrl = 'https://maps.bentoncountywa.gov/arcgis/rest/services';
+  private baseUrl = 'https://gis.co.benton.wa.us/arcgis/rest/services';
   
   constructor() {
     this.apiKey = process.env.BENTON_COUNTY_ARCGIS_API || '';

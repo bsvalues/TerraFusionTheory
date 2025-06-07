@@ -39,7 +39,7 @@ const App = () => {
         <ComparisonProvider>
           <div className="min-h-screen bg-background font-sans antialiased">
           <Switch>
-            <Route path="/" component={RealEstateAnalyticsPage} />
+            <Route path="/" component={GAMAPage} />
             <Route path="/valuation" component={PropertyValuationPage} />
             <Route path="/property-valuation-demo" component={PropertyValuationPage} />
             <Route path="/neighborhood-sentiment" component={ConsolidatedSentimentPage} />
