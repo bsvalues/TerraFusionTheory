@@ -157,11 +157,8 @@ class SpatialFilterService {
     }
 
     try {
-      const rawData = await this.gisService.fetchParcels({
-        limit,
-        spatialBounds,
-        includeAssessment: true
-      });
+      // Directly use the GIS service to fetch parcels
+      const rawData = await this.gisService.fetchParcels(limit);
 
       // Transform to filtered property format
       this.cachedData = this.transformToFilteredProperties(rawData);

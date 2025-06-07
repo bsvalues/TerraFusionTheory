@@ -243,6 +243,18 @@ const TerraGAMAPage: React.FC = () => {
         </CardContent>
       </Card>
 
+      {/* Smart Filtering */}
+      <SmartFilterBar
+        onFiltersChange={handleFiltersChange}
+        totalParcels={gamaStats.totalParcels}
+        filteredCount={filteredProperties.length || gamaStats.processedParcels}
+        suggestedFilters={[
+          { type: 'price', label: 'High-value properties', reason: 'Properties above $500K' },
+          { type: 'anomaly', label: 'Assessment anomalies', reason: 'Potential valuation discrepancies' },
+          { type: 'commercial', label: 'Commercial properties', reason: 'Non-residential parcels' }
+        ]}
+      />
+
       {/* Interactive Map */}
       <Card>
         <CardHeader>
@@ -254,7 +266,7 @@ const TerraGAMAPage: React.FC = () => {
         <CardContent>
           <div className="h-[600px] w-full rounded-lg overflow-hidden border">
             <GAMAMap 
-              properties={propertyData?.properties || []}
+              properties={(filteredProperties.length > 0 ? filteredProperties : propertyData?.properties) || []}
               onPropertySelect={setSelectedProperty}
             />
           </div>
