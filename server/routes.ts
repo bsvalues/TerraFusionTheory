@@ -23,6 +23,7 @@ import { registerAnalysisRoutes } from "./routes/analysis-routes";
 import { registerTestRoutes } from "./utils/terrafusion-test";
 import { dataQualityRoutes } from "./routes/data-quality.routes";
 import spatialAnalyticsRoutes from "./routes/spatial-analytics.routes";
+import { registerBadgesRoutes } from "./routes/badges.routes";
 import swaggerUi from 'swagger-ui-express';
 import { openApiSpec } from './openapi';
 
@@ -69,6 +70,7 @@ export function registerRoutes(app: Express): Promise<Server> {
     registerTerraFusionRoutes(app);
     registerTestRoutes(app);
     registerAnalysisRoutes(app);
+    registerBadgesRoutes(app);
     
     app.use('/api/data-quality', dataQualityRoutes);
     app.use('/api/spatial-analytics', spatialAnalyticsRoutes);

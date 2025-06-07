@@ -403,7 +403,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       updateData.metadata = {
-        ...userBadge.metadata,
+        ...(userBadge.metadata as Record<string, any> || {}),
         ...metadata
       };
     }

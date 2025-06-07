@@ -6,6 +6,54 @@
 
 import { apiRequest } from '@/lib/queryClient';
 
+// Economic trend direction enum
+export enum TrendDirection {
+  UP_STRONG = 'up-strong',
+  UP_MODERATE = 'up-moderate', 
+  STABLE = 'stable',
+  DOWN_MODERATE = 'down-moderate',
+  DOWN_STRONG = 'down-strong'
+}
+
+// Economic trend interface
+export interface EconomicTrend {
+  direction: TrendDirection;
+  percentChange: number;
+  description: string;
+}
+
+// Employment data interface  
+export interface EmploymentData {
+  unemploymentRate: number;
+  employmentTrend: EconomicTrend;
+  laborForceParticipation: number;
+  majorEmployers: Array<{
+    name: string;
+    sector: string;
+    employees: number;
+  }>;
+  sectorBreakdown: Array<{
+    sector: string;
+    percentage: number;
+    trend: EconomicTrend;
+  }>;
+  jobGrowthRate: number;
+}
+
+// Economic indicators interface
+export interface EconomicIndicators {
+  locationName: string;
+  locationType: 'city' | 'county' | 'zip' | 'metro' | 'state';
+  lastUpdated: string;
+  overallEconomicHealth: number;
+  economicHealthTrend: EconomicTrend;
+  employment: EmploymentData;
+  income: any;
+  business: any;
+  housingMarket: any;
+  dataQuality: number;
+}
+
 // Economic data types and interfaces
 export interface EconomicIndicator {
   id: string;
