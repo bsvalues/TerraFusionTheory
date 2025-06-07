@@ -64,10 +64,31 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-import schoolDistrictService, { 
-  School, 
-  SchoolDistrict,
-  SchoolSearchParams
+// School district types
+interface School {
+  id: string;
+  name: string;
+  latitude: number;
+  longitude: number;
+  type: 'elementary' | 'middle' | 'high';
+  rating: number;
+  enrollment: number;
+  districtId: string;
+}
+
+interface SchoolDistrict {
+  id: string;
+  name: string;
+  boundary: number[][];
+  schools: School[];
+  averageRating: number;
+}
+
+interface SchoolSearchParams {
+  districtId?: string;
+  type?: string;
+  rating?: number;
+}
 } from '@/services/school-district.service';
 
 // Define component props

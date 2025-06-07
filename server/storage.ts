@@ -101,6 +101,7 @@ export interface IStorage {
     level?: LogLevel;
     category?: LogCategory;
   }): Promise<number>;
+  deleteLogs(olderThan: Date): Promise<number>;
 }
 
 // Database-backed implementation of the storage interface
@@ -698,6 +699,14 @@ export class DatabaseStorage implements IStorage {
     }
     
     const result = await query.returning();
+    return result.length;
+  }
+
+  async deleteLogs(olderThan: Date): Promise<number> {
+    const result = await db
+      .delete(logs)
+      .where(lte(logs.timestamp, olderThan))
+      .returning();
     return result.length;
   }
 
