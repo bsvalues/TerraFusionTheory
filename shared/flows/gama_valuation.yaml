@@ -1,0 +1,275 @@
+name: "GAMA Mass Appraisal Workflow"
+description: "Government Automated Mass Appraisal workflow for property valuation"
+version: "1.0.0"
+type: "valuation"
+
+metadata:
+  created: "2025-06-07"
+  author: "TerraFusion GAMA Module"
+  tags: ["mass-appraisal", "government", "valuation", "automated"]
+
+steps:
+  - id: "load_parcel_data"
+    name: "Load Parcel & Neighborhood Data"
+    type: "data_loading"
+    description: "Load property parcel data and surrounding neighborhood context"
+    agents: ["data_loader", "neighborhood_analyzer"]
+    inputs:
+      - name: "parcel_id"
+        type: "string"
+        required: true
+        description: "Unique parcel identifier"
+      - name: "assessment_year"
+        type: "number"
+        required: true
+        description: "Assessment year for valuation"
+    outputs:
+      - name: "parcel_data"
+        type: "object"
+        description: "Complete parcel information including physical characteristics"
+      - name: "neighborhood_context"
+        type: "object"
+        description: "Neighborhood demographics, zoning, and market context"
+    validation:
+      - "parcel_data must contain valid coordinates"
+      - "neighborhood_context must include market segment classification"
+
+  - id: "identify_market_cluster"
+    name: "Identify Market Cluster"
+    type: "analysis"
+    description: "Classify property into appropriate market segment and comparable universe"
+    agents: ["market_analyzer", "clustering_agent"]
+    depends_on: ["load_parcel_data"]
+    inputs:
+      - name: "parcel_data"
+        type: "object"
+        source: "load_parcel_data.parcel_data"
+      - name: "neighborhood_context"
+        type: "object"
+        source: "load_parcel_data.neighborhood_context"
+    outputs:
+      - name: "market_cluster"
+        type: "object"
+        description: "Market cluster assignment with confidence score"
+      - name: "cluster_characteristics"
+        type: "array"
+        description: "Key characteristics defining the market cluster"
+    validation:
+      - "market_cluster confidence must be >= 0.7"
+      - "cluster_characteristics must contain at least 3 elements"
+
+  - id: "run_regression_model"
+    name: "Run Mass Regression Analysis"
+    type: "modeling"
+    description: "Execute market regression analysis for property value estimation"
+    agents: ["mra_agent", "model_validator"]
+    depends_on: ["identify_market_cluster"]
+    inputs:
+      - name: "parcel_data"
+        type: "object"
+        source: "load_parcel_data.parcel_data"
+      - name: "market_cluster"
+        type: "object"
+        source: "identify_market_cluster.market_cluster"
+    outputs:
+      - name: "regression_value"
+        type: "number"
+        description: "Model-predicted property value"
+      - name: "model_confidence"
+        type: "number"
+        description: "Model confidence score (0-1)"
+      - name: "value_drivers"
+        type: "array"
+        description: "Key factors driving the valuation"
+    validation:
+      - "regression_value must be positive"
+      - "model_confidence must be >= 0.6"
+      - "value_drivers must be ranked by impact"
+
+  - id: "comp_set_selection"
+    name: "Comparable Sales Selection"
+    type: "comparison"
+    description: "Select and analyze comparable sales for validation and adjustment"
+    agents: ["comp_agent", "similarity_analyzer"]
+    depends_on: ["identify_market_cluster"]
+    inputs:
+      - name: "parcel_data"
+        type: "object"
+        source: "load_parcel_data.parcel_data"
+      - name: "market_cluster"
+        type: "object"
+        source: "identify_market_cluster.market_cluster"
+      - name: "time_window_months"
+        type: "number"
+        default: 12
+        description: "Time window for comparable sales in months"
+    outputs:
+      - name: "comparable_sales"
+        type: "array"
+        description: "Selected comparable sales with similarity scores"
+      - name: "comp_adjustments"
+        type: "object"
+        description: "Recommended adjustments for differences"
+      - name: "comp_indicated_value"
+        type: "number"
+        description: "Value indicated by comparable sales"
+    validation:
+      - "comparable_sales must contain 3-10 properties"
+      - "each comparable must have similarity score >= 0.6"
+      - "comp_indicated_value must be within 30% of regression_value"
+
+  - id: "valuation_adjustment"
+    name: "Valuation & Adjustment Overlay"
+    type: "reconciliation"
+    description: "Reconcile regression and comparable sales approaches with adjustments"
+    agents: ["valuation_agent", "adjustment_analyzer"]
+    depends_on: ["run_regression_model", "comp_set_selection"]
+    inputs:
+      - name: "regression_value"
+        type: "number"
+        source: "run_regression_model.regression_value"
+      - name: "model_confidence"
+        type: "number"
+        source: "run_regression_model.model_confidence"
+      - name: "comp_indicated_value"
+        type: "number"
+        source: "comp_set_selection.comp_indicated_value"
+      - name: "comparable_sales"
+        type: "array"
+        source: "comp_set_selection.comparable_sales"
+    outputs:
+      - name: "final_value"
+        type: "number"
+        description: "Final reconciled property value"
+      - name: "weight_distribution"
+        type: "object"
+        description: "Weight given to each valuation approach"
+      - name: "adjustment_factors"
+        type: "array"
+        description: "Applied adjustments and their rationale"
+    validation:
+      - "final_value must be positive"
+      - "weight_distribution values must sum to 1.0"
+      - "adjustment_factors must include rationale for each"
+
+  - id: "equity_quality_check"
+    name: "Equity & Quality Assurance"
+    type: "validation"
+    description: "Check for assessment equity and quality issues"
+    agents: ["equity_guard", "quality_assessor"]
+    depends_on: ["valuation_adjustment"]
+    inputs:
+      - name: "final_value"
+        type: "number"
+        source: "valuation_adjustment.final_value"
+      - name: "parcel_data"
+        type: "object"
+        source: "load_parcel_data.parcel_data"
+      - name: "neighborhood_context"
+        type: "object"
+        source: "load_parcel_data.neighborhood_context"
+    outputs:
+      - name: "equity_score"
+        type: "number"
+        description: "Assessment equity score (0-1)"
+      - name: "quality_flags"
+        type: "array"
+        description: "Quality assurance flags and issues"
+      - name: "peer_comparison"
+        type: "object"
+        description: "Comparison with similar properties in area"
+    validation:
+      - "equity_score must be >= 0.7"
+      - "quality_flags must be reviewed if count > 2"
+
+  - id: "narrator_summary"
+    name: "NarratorAI Value Story"
+    type: "explanation"
+    description: "Generate human-readable explanation of valuation process and result"
+    agents: ["narrator_ai", "story_generator"]
+    depends_on: ["valuation_adjustment", "equity_quality_check"]
+    inputs:
+      - name: "final_value"
+        type: "number"
+        source: "valuation_adjustment.final_value"
+      - name: "value_drivers"
+        type: "array"
+        source: "run_regression_model.value_drivers"
+      - name: "adjustment_factors"
+        type: "array"
+        source: "valuation_adjustment.adjustment_factors"
+      - name: "equity_score"
+        type: "number"
+        source: "equity_quality_check.equity_score"
+    outputs:
+      - name: "valuation_story"
+        type: "string"
+        description: "Human-readable valuation explanation"
+      - name: "key_insights"
+        type: "array"
+        description: "Key insights and notable factors"
+      - name: "confidence_explanation"
+        type: "string"
+        description: "Explanation of valuation confidence level"
+    validation:
+      - "valuation_story must be 200-500 words"
+      - "key_insights must contain 3-5 points"
+
+  - id: "submit_final_value"
+    name: "Submit Final Assessment Value"
+    type: "submission"
+    description: "Submit final assessed value with supporting documentation"
+    agents: ["submission_agent", "documentation_generator"]
+    depends_on: ["narrator_summary"]
+    inputs:
+      - name: "final_value"
+        type: "number"
+        source: "valuation_adjustment.final_value"
+      - name: "valuation_story"
+        type: "string"
+        source: "narrator_summary.valuation_story"
+      - name: "quality_flags"
+        type: "array"
+        source: "equity_quality_check.quality_flags"
+      - name: "assessment_year"
+        type: "number"
+        source: "load_parcel_data.assessment_year"
+    outputs:
+      - name: "assessment_record"
+        type: "object"
+        description: "Complete assessment record for submission"
+      - name: "supporting_documentation"
+        type: "object"
+        description: "Supporting documentation and evidence"
+      - name: "review_recommendations"
+        type: "array"
+        description: "Recommendations for human review if needed"
+    validation:
+      - "assessment_record must include all required fields"
+      - "review_recommendations must be provided if quality_flags > 2"
+
+# Global configuration
+config:
+  timeout_minutes: 30
+  retry_attempts: 3
+  parallel_execution: false
+  human_review_threshold:
+    equity_score: 0.7
+    model_confidence: 0.6
+    quality_flags: 2
+  
+quality_gates:
+  - step: "run_regression_model"
+    condition: "model_confidence >= 0.6"
+    action: "require_human_review"
+  - step: "equity_quality_check"
+    condition: "equity_score < 0.7"
+    action: "flag_for_review"
+  - step: "comp_set_selection"
+    condition: "comparable_sales.length < 3"
+    action: "expand_search_criteria"
+
+error_handling:
+  data_unavailable: "proceed_with_available_data"
+  model_failure: "fallback_to_comparable_sales"
+  validation_failure: "flag_for_manual_review"
