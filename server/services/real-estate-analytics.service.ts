@@ -1,10 +1,7 @@
 import { LogLevel, LogCategory } from '@shared/schema';
 import { storage } from '../storage';
 import { connectorFactory } from './connectors/connector.factory';
-import { dataValidator } from './enrichment/data.validator';
-import { geospatialEnricher } from './enrichment/geospatial.enricher';
-import { dataRefreshService } from './scheduler/data.refresh';
-import { marketMonitor, MarketAlert, MarketMetricsSnapshot } from './monitoring/market.monitor';
+
 import { PropertyListing } from './connectors/market.connector';
 import { PropertyData } from './connectors/cama.connector';
 import { GeoJSONFeatureCollection } from './connectors/gis.connector';
@@ -22,10 +19,10 @@ export class RealEstateAnalyticsService {
 
   // Cache for expensive operations
   private cache: {
-    marketSnapshots: Map<string, { timestamp: number; data: MarketMetricsSnapshot }>;
+    marketSnapshots: Map<string, { timestamp: number; data: any }>;
     propertyDetails: Map<string, { timestamp: number; data: PropertyListing | PropertyData }>;
     geoJsonData: Map<string, { timestamp: number; data: GeoJSONFeatureCollection }>;
-    alerts: MarketAlert[];
+    alerts: any[];
   };
 
   // Cache expiration time (in milliseconds)
