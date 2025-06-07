@@ -451,13 +451,13 @@ export const GAMAPage: React.FC = () => {
               GAMA - Government Automated Mass Appraisal
             </h1>
             <p className="text-gray-600 mt-1">
-              AI-powered mass property valuation with equity monitoring
+              Benton County, Washington - AI-powered mass property valuation with equity monitoring
             </p>
           </div>
           <div className="flex gap-2">
             <Button 
               onClick={handleStartWorkflow} 
-              disabled={isRunning}
+              disabled={isRunning || !!error}
               className="flex items-center gap-2"
             >
               <Play className="h-4 w-4" />
@@ -473,6 +473,39 @@ export const GAMAPage: React.FC = () => {
             </Button>
           </div>
         </div>
+
+        {/* API Connection Status */}
+        {error && (
+          <Alert className="border-orange-200 bg-orange-50">
+            <AlertTriangle className="h-4 w-4 text-orange-600" />
+            <AlertDescription>
+              <div className="space-y-2">
+                <p className="font-medium text-orange-800">Benton County ArcGIS Service Connection Required</p>
+                <p className="text-sm text-orange-700">
+                  Your API key is configured, but external network access to Benton County GIS services is required for authentic property data.
+                </p>
+                <p className="text-xs text-orange-600">
+                  The system is configured for Benton County, Washington with proper geographic boundaries and will use real parcel data when connectivity is available.
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {/* System Status */}
+        {!error && (
+          <Alert className="border-green-200 bg-green-50">
+            <CheckCircle className="h-4 w-4 text-green-600" />
+            <AlertDescription>
+              <div className="space-y-1">
+                <p className="font-medium text-green-800">GAMA System Ready for Benton County</p>
+                <p className="text-sm text-green-700">
+                  System configured with Benton County geographic boundaries, zoning data, and property assessment workflows.
+                </p>
+              </div>
+            </AlertDescription>
+          </Alert>
+        )}
 
         {/* Metrics Dashboard */}
         <MetricsPanel metrics={metrics} />

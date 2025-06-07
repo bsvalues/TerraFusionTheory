@@ -30,6 +30,15 @@ import {
 } from 'lucide-react';
 import 'leaflet/dist/leaflet.css';
 
+// Benton County, Washington geographic boundaries
+const BENTON_COUNTY_CENTER: [number, number] = [46.2619, -119.2706]; // Richland, WA area
+const BENTON_COUNTY_BOUNDS = {
+  north: 46.4500,
+  south: 46.0500, 
+  east: -118.9000,
+  west: -119.7000
+};
+
 // Interfaces
 interface PropertyData {
   id: string;
@@ -449,7 +458,7 @@ export const GAMAMap: React.FC<{
   properties?: PropertyData[];
   marketClusters?: MarketCluster[];
 }> = ({ 
-  center = [46.2619, -119.2706], // Benton County, WA (Tri-Cities area)
+  center = BENTON_COUNTY_CENTER, // Benton County, WA (Tri-Cities area)
   zoom = 10,
   onPropertySelect,
   properties = [],

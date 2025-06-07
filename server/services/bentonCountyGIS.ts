@@ -48,7 +48,7 @@ interface PropertyData {
 
 export class BentonCountyGISService {
   private apiKey: string;
-  private baseUrl = 'https://services.arcgis.com/YWmuSGSGV7ixfRcf/arcgis/rest/services';
+  private baseUrl = 'https://services.arcgis.com';
   
   constructor() {
     this.apiKey = process.env.BENTON_COUNTY_ARCGIS_API || '';
