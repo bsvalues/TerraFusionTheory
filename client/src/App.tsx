@@ -28,6 +28,7 @@ import UnifiedEconomicAnalysisPage from './pages/UnifiedEconomicAnalysisPage';
 import NeighborhoodTrendsPage from './pages/NeighborhoodTrendsPage';
 import ParcelDetailsPageNew from './pages/terrafusion/ParcelDetailsPageNew';
 import GAMAPage from './pages/GAMAPage';
+import TerraGAMAPage from './pages/TerraGAMAPage';
 import { AISpecialistChat } from './components/ai';
 import ComparisonButton from './components/property/ComparisonButton';
 import ComparisonFloatingButton from './components/property/ComparisonFloatingButton';
@@ -39,7 +40,8 @@ const App = () => {
         <ComparisonProvider>
           <div className="min-h-screen bg-background font-sans antialiased">
           <Switch>
-            <Route path="/" component={GAMAPage} />
+            <Route path="/" component={TerraGAMAPage} />
+            <Route path="/gama" component={GAMAPage} />
             <Route path="/valuation" component={PropertyValuationPage} />
             <Route path="/property-valuation-demo" component={PropertyValuationPage} />
             <Route path="/neighborhood-sentiment" component={ConsolidatedSentimentPage} />
