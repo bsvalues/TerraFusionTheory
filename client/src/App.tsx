@@ -27,6 +27,7 @@ import PropertyDataPage from './pages/PropertyDataPage';
 import UnifiedEconomicAnalysisPage from './pages/UnifiedEconomicAnalysisPage';
 import NeighborhoodTrendsPage from './pages/NeighborhoodTrendsPage';
 import ParcelDetailsPageNew from './pages/terrafusion/ParcelDetailsPageNew';
+import GAMAPage from './pages/GAMAPage';
 import { AISpecialistChat } from './components/ai';
 import ComparisonButton from './components/property/ComparisonButton';
 import ComparisonFloatingButton from './components/property/ComparisonFloatingButton';
@@ -54,6 +55,7 @@ const App = () => {
             <Route path="/market-trends" component={MarketTrendsPage} />
             <Route path="/natural-hazards" component={NaturalHazardPage} />
             <Route path="/mass-appraisal" component={MassAppraisalPage} />
+            <Route path="/gama" component={GAMAPage} />
             <Route path="/market-heat-map" component={MarketHeatMapPage} />
             <Route path="/neighborhood-trends" component={NeighborhoodTrendsPage} />
             <Route path="/valuation-assistant" component={ValuationAssistantPage} />
