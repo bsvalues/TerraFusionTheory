@@ -60,7 +60,7 @@ export class BentonCountyGISService {
   /**
    * Fetch authentic parcel data from Benton County GIS
    */
-  async fetchParcelData(limit: number = 150): Promise<PropertyData[]> {
+  async fetchParcelData(limit: number = 0): Promise<PropertyData[]> {
     // Note: API key is configured but external service connectivity is required
 
     try {
@@ -71,47 +71,82 @@ export class BentonCountyGISService {
         'https://services7.arcgis.com/NURlY7V8UHl6XumF/ArcGIS/rest/services/DashboardParcelPoints/FeatureServer/0/query'
       ];
 
-      const params = new URLSearchParams({
+      const baseParams = {
         f: 'json',
         where: '1=1',
         outFields: 'OBJECTID,Parcel_ID,Prop_ID,CENTROID_X,CENTROID_Y,situs_address,owner_name,appraised_val,primary_use,legal_acres,neighborhood_name,year_blt',
         returnGeometry: 'true',
-        spatialRel: 'esriSpatialRelIntersects',
-        resultRecordCount: limit.toString()
-      });
+        spatialRel: 'esriSpatialRelIntersects'
+      };
+
+      const params = new URLSearchParams(baseParams);
 
       // Test without token first for public services
       // Token will be added only if authentication is required
 
       let lastError: Error | null = null;
+      const maxRecordCount = 3000; // Benton County's max records per request
       
       for (const url of potentialUrls) {
         try {
           console.log(`[BentonCountyGIS] Attempting connection to: ${url}`);
           
-          const response = await fetch(`${url}?${params}`, {
-            headers: {
-              'User-Agent': 'TerraFusion-GAMA/1.0',
-              'Accept': 'application/json'
+          let allProperties: PropertyData[] = [];
+          let offset = 0;
+          let hasMoreRecords = true;
+
+          while (hasMoreRecords) {
+            // Create params for this batch with pagination
+            const batchParams = new URLSearchParams(params);
+            if (limit === 0) {
+              // Fetch all records - use max batch size
+              batchParams.set('resultRecordCount', maxRecordCount.toString());
+              batchParams.set('resultOffset', offset.toString());
             }
-          });
 
-          if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            const response = await fetch(`${url}?${batchParams}`, {
+              headers: {
+                'User-Agent': 'TerraFusion-GAMA/1.0',
+                'Accept': 'application/json'
+              }
+            });
+
+            if (!response.ok) {
+              throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+
+            if (data.error) {
+              throw new Error(`ArcGIS Error: ${data.error.message || JSON.stringify(data.error)}`);
+            }
+
+            if (data.features && data.features.length > 0) {
+              const batchProperties = data.features.map((feature: any, index: number) => 
+                this.mapParcelToPropertyData(feature, offset + index)
+              );
+              allProperties.push(...batchProperties);
+              
+              // Check if we need to fetch more records
+              if (limit === 0) {
+                // Fetching all records
+                if (data.features.length < maxRecordCount) {
+                  hasMoreRecords = false;
+                } else {
+                  offset += maxRecordCount;
+                }
+              } else {
+                // Limited fetch - we got what we needed
+                hasMoreRecords = false;
+              }
+            } else {
+              hasMoreRecords = false;
+            }
           }
 
-          const data = await response.json();
-
-          if (data.error) {
-            throw new Error(`ArcGIS Error: ${data.error.message || JSON.stringify(data.error)}`);
-          }
-
-          if (data.features && data.features.length > 0) {
-            console.log(`[BentonCountyGIS] Successfully connected to Benton County GIS: ${data.features.length} parcels retrieved`);
-            
-            return data.features.map((feature: any, index: number) => 
-              this.mapParcelToPropertyData(feature, index)
-            );
+          if (allProperties.length > 0) {
+            console.log(`[BentonCountyGIS] Successfully connected to Benton County GIS: ${allProperties.length} total parcels retrieved`);
+            return allProperties;
           }
         } catch (error) {
           lastError = error instanceof Error ? error : new Error(String(error));
