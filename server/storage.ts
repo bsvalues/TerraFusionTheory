@@ -425,14 +425,15 @@ export class DatabaseStorage implements IStorage {
       const badge = await this.getBadgeById(userBadge.badgeId);
       
       if (badge) {
+        const progress = userBadge.progress ?? 0;
         const badgeWithProgress: BadgeWithProgress = {
           ...badge,
-          progress: userBadge.progress,
-          isUnlocked: userBadge.progress >= 100,
-          metadata: userBadge.metadata,
+          progress: progress,
+          isUnlocked: progress >= 100,
+          metadata: userBadge.metadata as Record<string, any> || {},
           variant: this.getBadgeVariantByLevel(badge.level as BadgeLevel),
           tooltip: this.generateBadgeTooltip(badge, userBadge),
-          unlockDate: userBadge.progress >= 100 ? userBadge.awardedAt.toLocaleDateString() : undefined
+          unlockDate: progress >= 100 ? userBadge.awardedAt.toLocaleDateString() : undefined
         };
         
         badgesWithProgress.push(badgeWithProgress);
