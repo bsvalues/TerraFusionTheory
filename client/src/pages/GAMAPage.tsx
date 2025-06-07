@@ -91,8 +91,28 @@ const generateMockProperties = (): PropertyData[] => {
   const neighborhoods = ['West Richland', 'Kennewick Heights', 'Finley', 'Badger Mountain', 'Columbia Point', 'Southridge', 'Canyon Lakes'];
   
   for (let i = 0; i < 150; i++) {
-    const lat = 46.2619 + (Math.random() - 0.5) * 0.08;
-    const lng = -119.2706 + (Math.random() - 0.5) * 0.12;
+    // Distribute properties across actual Benton County cities
+    let lat, lng;
+    const cityRandom = Math.random();
+    
+    if (cityRandom < 0.4) {
+      // Kennewick (largest city)
+      lat = 46.2112 + (Math.random() - 0.5) * 0.04;
+      lng = -119.1372 + (Math.random() - 0.5) * 0.06;
+    } else if (cityRandom < 0.7) {
+      // Richland
+      lat = 46.2857 + (Math.random() - 0.5) * 0.03;
+      lng = -119.2844 + (Math.random() - 0.5) * 0.04;
+    } else if (cityRandom < 0.85) {
+      // West Richland
+      lat = 46.3043 + (Math.random() - 0.5) * 0.025;
+      lng = -119.3614 + (Math.random() - 0.5) * 0.03;
+    } else {
+      // Rural Benton County
+      lat = 46.15 + Math.random() * 0.25;
+      lng = -119.6 + Math.random() * 0.4;
+    }
+    
     const assessedValue = 180000 + Math.random() * 600000;
     
     properties.push({
