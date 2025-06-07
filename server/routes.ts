@@ -11,26 +11,19 @@ import * as agentController from "./controllers/agent.controller";
 import * as propertyValuationController from "./controllers/property-valuation.controller";
 import * as massAppraisalController from "./controllers/mass-appraisal.controller";
 import * as mcpController from "./controllers/mcp.controller";
-import * as enhancedMcpController from "./controllers/enhanced-mcp.controller";
-import * as memoryManagerController from "./controllers/memory-manager.controller";
-import * as aciController from "./controllers/aci-controller";
+
 import { asyncHandler } from "./middleware/errorHandler";
 import { performanceLogger, startMemoryMonitoring, stopMemoryMonitoring } from "./middleware/performanceLogger";
-import { alertManager, AlertSeverity } from "./services/alert";
+
 import { realEstateAnalyticsService } from "./services/real-estate-analytics.service";
 import registerDevAuthRoutes from "./routes/dev-auth.routes";
 import registerUserRoutes from "./routes/users.routes";
 import registerRecommendationsRoutes from "./routes/recommendations.routes";
 import { registerValuationAgentRoutes } from "./routes/valuation-agent.routes";
-import { registerMicroservicesRoutes } from "./routes/microservices-routes";
 import { registerTerraFusionRoutes } from "./routes/terrafusion-routes";
-import { registerDiagnosticsRoutes } from "./routes/diagnostics.routes";
 import { registerAnalysisRoutes } from "./routes/analysis-routes";
-import microservicesClient from "./services/microservices-client";
 import { registerTestRoutes } from "./utils/terrafusion-test";
 import { dataQualityRoutes } from "./routes/data-quality.routes";
-import { aciRoutes } from "./routes/aci-routes";
-import { aciPropertyRoutes } from "./routes/aci-property-routes";
 import spatialAnalyticsRoutes from "./routes/spatial-analytics.routes";
 
 // Swagger documentation imports

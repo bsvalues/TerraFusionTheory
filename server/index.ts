@@ -8,7 +8,7 @@ import { LogCategory, LogLevel } from "@shared/schema";
 import { scheduler } from "./services/scheduler.service";
 import { initializeConnectors } from "./services/connectors";
 import { initializeAgentSystem } from "../agents";
-import { startMicroservices, stopMicroservices } from "./controllers/microservices.controller";
+
 import { initializeOptimizedLogger } from "./services/optimized-logging";
 import { testDatabaseConnection } from "./db";
 
@@ -170,10 +170,7 @@ app.use((req, res, next) => {
             .then(() => {
               log('Agent system initialized');
               
-              // Start microservices
-              return startMicroservices()
-                .then(() => log('Microservices started successfully'))
-                .catch(err => console.error('Failed to start microservices:', err));
+
             })
             .catch(err => console.error('Failed to initialize agent system:', err));
         })
