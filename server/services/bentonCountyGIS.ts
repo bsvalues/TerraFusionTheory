@@ -61,46 +61,72 @@ export class BentonCountyGISService {
    * Fetch authentic parcel data from Benton County GIS
    */
   async fetchParcelData(limit: number = 150): Promise<PropertyData[]> {
-    if (!this.apiKey) {
-      throw new Error('[BentonCountyGIS] API key required for authentic data access. Please configure BENTON_COUNTY_ARCGIS_API environment variable.');
-    }
+    // Note: API key is configured but external service connectivity is required
 
     try {
-      const parcelsUrl = `${this.baseUrl}/Benton_County_Parcels/FeatureServer/0/query`;
+      // Test multiple potential Benton County ArcGIS service endpoints
+      const potentialUrls = [
+        'https://giswebservice.bentoncountywa.gov/arcgis/rest/services/BentonCo_Public/Parcels_Public/FeatureServer/0/query',
+        'https://services3.arcgis.com/q7zPNeKmTWeh7Aor/arcgis/rest/services/Benton_County_Parcels/FeatureServer/0/query',
+        'https://gis.bentoncountywa.gov/arcgis/rest/services/Public/Parcels/FeatureServer/0/query'
+      ];
+
       const params = new URLSearchParams({
         f: 'json',
         where: '1=1',
-        outFields: '*',
-        geometryType: 'esriGeometryPolygon',
-        spatialRel: 'esriSpatialRelIntersects',
+        outFields: 'OBJECTID,PARCEL_ID,SITE_ADDR,OWNER_NAME,ASSESSED_VALUE,MARKET_VALUE,LAND_USE,ZONE_CLASS,ACRES',
         returnGeometry: 'true',
-        returnCentroid: 'true',
-        resultRecordCount: limit.toString(),
-        token: this.apiKey
+        spatialRel: 'esriSpatialRelIntersects',
+        resultRecordCount: limit.toString()
       });
 
-      console.log(`[BentonCountyGIS] Requesting parcel data from Benton County: ${parcelsUrl}`);
-      
-      const response = await fetch(`${parcelsUrl}?${params}`);
-      const data = await response.json();
-
-      if (data.error) {
-        throw new Error(`[BentonCountyGIS] Benton County API Error: ${data.error.message || JSON.stringify(data.error)}`);
+      // Add token if provided
+      if (this.apiKey) {
+        params.set('token', this.apiKey);
       }
 
-      if (!data.features || data.features.length === 0) {
-        throw new Error('[BentonCountyGIS] No parcel data available from Benton County GIS service at this time');
+      let lastError: Error | null = null;
+      
+      for (const url of potentialUrls) {
+        try {
+          console.log(`[BentonCountyGIS] Attempting connection to: ${url}`);
+          
+          const response = await fetch(`${url}?${params}`, {
+            headers: {
+              'User-Agent': 'TerraFusion-GAMA/1.0',
+              'Accept': 'application/json'
+            }
+          });
+
+          if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+          }
+
+          const data = await response.json();
+
+          if (data.error) {
+            throw new Error(`ArcGIS Error: ${data.error.message || JSON.stringify(data.error)}`);
+          }
+
+          if (data.features && data.features.length > 0) {
+            console.log(`[BentonCountyGIS] Successfully connected to Benton County GIS: ${data.features.length} parcels retrieved`);
+            
+            return data.features.map((feature: any, index: number) => 
+              this.mapParcelToPropertyData(feature, index)
+            );
+          }
+        } catch (error) {
+          lastError = error instanceof Error ? error : new Error(String(error));
+          console.log(`[BentonCountyGIS] Failed to connect to ${url}: ${lastError.message}`);
+          continue;
+        }
       }
 
-      console.log(`[BentonCountyGIS] Successfully retrieved ${data.features.length} authentic parcels from Benton County`);
-      
-      return data.features.map((feature: any, index: number) => 
-        this.mapParcelToPropertyData(feature, index)
-      );
+      throw new Error(`[BentonCountyGIS] Unable to establish connection to any Benton County ArcGIS service endpoints. Last error: ${lastError?.message || 'Unknown error'}`);
 
     } catch (error) {
-      console.error('[BentonCountyGIS] Failed to retrieve authentic Benton County data:', error);
-      throw new Error(`[BentonCountyGIS] Unable to connect to Benton County ArcGIS services. Please verify network connectivity and API key permissions. Original error: ${error instanceof Error ? error.message : String(error)}`);
+      console.error('[BentonCountyGIS] External service connectivity required:', error);
+      throw new Error(`[BentonCountyGIS] Benton County ArcGIS service access required for authentic property data. Please ensure network connectivity and verify API credentials if needed. Details: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
