@@ -139,17 +139,10 @@ export class BentonCountyGISService {
     let coordinates: [number, number] = [0, 0];
     
     if (attrs.CENTROID_X && attrs.CENTROID_Y) {
-      // Convert Washington State Plane South (WKID 2927) to WGS84
-      const statePlaneX = attrs.CENTROID_X;
-      const statePlaneY = attrs.CENTROID_Y;
-      
-      // Simplified conversion for Washington State Plane South to WGS84
-      const lng = -120.5 + (statePlaneX - 1640000) / 288000;
-      const lat = 46.0 + (statePlaneY - 600000) / 364000;
-      
-      coordinates = [lng, lat];
+      // Benton County provides coordinates in WGS84 (longitude, latitude)
+      coordinates = [attrs.CENTROID_X, attrs.CENTROID_Y];
     } else if (geom?.x && geom?.y) {
-      // Direct coordinate handling
+      // Use geometry coordinates directly
       coordinates = [geom.x, geom.y];
     }
     
