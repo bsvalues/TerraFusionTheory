@@ -1,5 +1,5 @@
 import React from 'react';
-import { BadgeWithProgress } from '@/types';
+import { BadgeWithProgress } from '@/types/index';
 import { Badge } from '../ui/badge';
 import { Progress } from '../ui/progress';
 import { Award, Trophy, Star, Target } from 'lucide-react';

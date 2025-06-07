@@ -1,5 +1,5 @@
 import React from 'react';
-import { ProjectInfo, BadgeWithProgress } from '@/types';
+import { ProjectInfo, BadgeWithProgress } from '@/types/index';
 import { Badge } from '../ui/badge';
 import UserBadges from '../badges/UserBadges';
 import { useBadges } from '@/hooks/useBadges';
