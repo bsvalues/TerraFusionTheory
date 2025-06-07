@@ -1,7 +1,6 @@
 import { Request, Response, NextFunction } from 'express';
 import { storage } from '../storage';
 import { LogLevel, LogCategory } from '../../shared/schema';
-import { alertManager, sendWarningAlert } from '../services/alert';
 
 // Threshold in milliseconds for slow requests
 const SLOW_REQUEST_THRESHOLD = 1000; // 1 second
