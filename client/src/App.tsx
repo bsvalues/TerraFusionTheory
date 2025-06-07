@@ -13,13 +13,8 @@ import { queryClient } from '@/lib/queryClient';
 import { ComparisonProvider } from './context/ComparisonContext';
 import RealEstateAnalyticsPage from './pages/RealEstateAnalyticsPage';
 import PropertyValuationPage from './pages/PropertyValuationPage';
-import NeighborhoodSentimentPage from './pages/NeighborhoodSentimentPage';
 import ConsolidatedSentimentPage from './pages/ConsolidatedSentimentPage';
-import PropertyEnrichmentDemo from './pages/PropertyEnrichmentDemo';
 import NeighborhoodComparisonPage from './pages/NeighborhoodComparisonPage';
-import SchoolAndEconomicAnalysisPage from './pages/SchoolAndEconomicAnalysisPage';
-import EconomicIndicatorsPage from './pages/EconomicIndicatorsPage';
-import PropertyDetailPage from './pages/PropertyDetailPage';
 import PropertyComparisonPage from './pages/PropertyComparisonPage';
 import AdvancedPropertyComparisonPage from './pages/AdvancedPropertyComparisonPage';
 import MarketTrendsPage from './pages/MarketTrendsPage';
@@ -27,9 +22,7 @@ import NaturalHazardPage from './pages/NaturalHazardPage';
 import MassAppraisalPage from './pages/MassAppraisalPage';
 import MarketHeatMapPage from './pages/MarketHeatMapPage';
 import ValuationAssistantPage from './pages/ValuationAssistantPage';
-import AdaptiveColorSchemePage from './pages/AdaptiveColorSchemePage';
 import MCPToolPage from './pages/MCPToolPage';
-import BlackScreenHelpPage from './pages/BlackScreenHelpPage';
 import HelpCenterPage from './pages/HelpCenterPage';
 import DevAuthLoginPage from './pages/DevAuthLoginPage';
 import DevAuthAdminPage from './pages/DevAuthAdminPage';
@@ -96,7 +89,6 @@ const App = () => {
               <Route path="/neighborhood-sentiment" component={ConsolidatedSentimentPage} />
               <Route path="/sentiment-map" component={ConsolidatedSentimentPage} />
               <Route path="/sentiment-trends" component={ConsolidatedSentimentPage} />
-              <Route path="/property-enrichment" component={PropertyEnrichmentDemo} />
               <Route path="/neighborhood-comparison" component={NeighborhoodComparisonPage} />
               
               {/* Consolidated economic analysis pages */}
@@ -116,11 +108,9 @@ const App = () => {
               <Route path="/market-heat-map" component={MarketHeatMapPage} />
               <Route path="/neighborhood-trends" component={NeighborhoodTrendsPage} />
               <Route path="/valuation-assistant" component={ValuationAssistantPage} />
-              <Route path="/adaptive-color-scheme" component={AdaptiveColorSchemePage} />
               <Route path="/mcp-tool" component={MCPToolPage} />
               <Route path="/recommendations" component={RecommendationsPage} />
               <Route path="/system/monitor" component={SystemMonitorPage} />
-              <Route path="/fix-my-screen/help" component={BlackScreenHelpPage} />
               <Route path="/help" component={HelpCenterPage} />
               <Route path="/help/topics/:categoryId/:topicId" component={HelpCenterPage} />
               <Route path="/dev-auth" component={DevAuthLoginPage} />
