@@ -30,8 +30,7 @@ import {
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { AdvancedComparisonProvider } from '@/context/AdvancedComparisonContext';
-import AdvancedPropertyComparison from '@/components/comparison/AdvancedPropertyComparison';
+import { ComparisonProvider } from '@/context/ComparisonContext';
 
 interface PropertySample {
   id: string;
@@ -130,7 +129,7 @@ const AdvancedPropertyComparisonPage: React.FC = () => {
   ];
 
   return (
-    <AdvancedComparisonProvider>
+    <ComparisonProvider>
       <div className="container mx-auto py-6 px-4">
         <Helmet>
           <title>Advanced Property Comparison | IntelligentEstate</title>
@@ -176,7 +175,21 @@ const AdvancedPropertyComparisonPage: React.FC = () => {
           </TabsList>
           
           <TabsContent value="compare">
-            <AdvancedPropertyComparison />
+            <Card>
+              <CardHeader>
+                <CardTitle>Property Comparison</CardTitle>
+                <CardDescription>
+                  Compare properties side by side with advanced metrics
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="text-center py-8">
+                  <p className="text-muted-foreground">
+                    Select properties from the search tab to begin comparison
+                  </p>
+                </div>
+              </CardContent>
+            </Card>
           </TabsContent>
           
           <TabsContent value="search">
@@ -322,7 +335,7 @@ const AdvancedPropertyComparisonPage: React.FC = () => {
           </div>
         </div>
       </div>
-    </AdvancedComparisonProvider>
+    </ComparisonProvider>
   );
 };
 

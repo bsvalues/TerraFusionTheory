@@ -40,13 +40,39 @@ import {
   Waves,
   Wind
 } from 'lucide-react';
-import naturalHazardService, {
-  PropertyRiskAssessment,
-  RiskLevel,
-  FloodRisk,
-  FireRisk,
-  EarthquakeRisk
-} from '@/services/natural-hazard.service';
+// Natural hazard assessment types
+interface PropertyRiskAssessment {
+  propertyId: string;
+  floodRisk: FloodRisk;
+  fireRisk: FireRisk;
+  earthquakeRisk: EarthquakeRisk;
+  overallRisk: RiskLevel;
+}
+
+interface FloodRisk {
+  level: RiskLevel;
+  zone: string;
+  probability: number;
+}
+
+interface FireRisk {
+  level: RiskLevel;
+  wildfire: number;
+  structural: number;
+}
+
+interface EarthquakeRisk {
+  level: RiskLevel;
+  magnitude: number;
+  probability: number;
+}
+
+enum RiskLevel {
+  LOW = 'low',
+  MODERATE = 'moderate',
+  HIGH = 'high',
+  EXTREME = 'extreme'
+}
 
 interface NaturalHazardRiskAssessmentProps {
   propertyId?: string;
