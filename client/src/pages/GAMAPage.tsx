@@ -89,8 +89,13 @@ interface GAMAMetrics {
 const fetchBentonCountyProperties = async (): Promise<PropertyData[]> => {
   try {
     const response = await fetch('/api/benton-county/properties?limit=150');
+    
     if (!response.ok) {
-      throw new Error(`Failed to fetch properties: ${response.status}`);
+      const errorData = await response.json();
+      if (errorData.requiresApiKeySetup) {
+        throw new Error(`Benton County API Setup Required: ${errorData.message}\n\nSuggestion: ${errorData.suggestion}`);
+      }
+      throw new Error(`Failed to fetch properties: ${response.status} - ${errorData.message || 'Unknown error'}`);
     }
     
     const data = await response.json();
@@ -101,8 +106,7 @@ const fetchBentonCountyProperties = async (): Promise<PropertyData[]> => {
     }
   } catch (error) {
     console.error('Error fetching Benton County properties:', error);
-    // Return empty array on error - component will show loading state
-    return [];
+    throw error; // Re-throw to handle in component
   }
 };
 
@@ -372,6 +376,7 @@ export const GAMAPage: React.FC = () => {
   const [isRunning, setIsRunning] = useState(false);
   const [properties, setProperties] = useState<PropertyData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [marketClusters] = useState<MarketCluster[]>(generateMockMarketClusters());
   const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
 
@@ -380,10 +385,12 @@ export const GAMAPage: React.FC = () => {
     const loadProperties = async () => {
       try {
         setLoading(true);
+        setError(null);
         const propertyData = await fetchBentonCountyProperties();
         setProperties(propertyData);
       } catch (error) {
         console.error('Failed to load property data:', error);
+        setError(error instanceof Error ? error.message : 'Failed to load Benton County property data');
       } finally {
         setLoading(false);
       }

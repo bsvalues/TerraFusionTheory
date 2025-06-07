@@ -26,11 +26,23 @@ router.get('/properties', async (req, res) => {
     });
   } catch (error) {
     console.error('[BentonCounty API] Error fetching properties:', error);
-    res.status(500).json({
-      success: false,
-      error: 'Failed to fetch property data',
-      message: error instanceof Error ? error.message : 'Unknown error'
-    });
+    const errorMessage = error instanceof Error ? error.message : 'Unknown error';
+    
+    if (errorMessage.includes('ENOTFOUND') || errorMessage.includes('fetch failed')) {
+      res.status(503).json({
+        success: false,
+        error: 'Service Unavailable',
+        message: 'Unable to connect to Benton County ArcGIS services. This may be due to network restrictions or API key configuration requirements.',
+        requiresApiKeySetup: true,
+        suggestion: 'Please verify your BENTON_COUNTY_ARCGIS_API key has proper permissions and network access is available.'
+      });
+    } else {
+      res.status(500).json({
+        success: false,
+        error: 'Failed to fetch property data',
+        message: errorMessage
+      });
+    }
   }
 });
 

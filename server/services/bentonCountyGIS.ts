@@ -48,7 +48,7 @@ interface PropertyData {
 
 export class BentonCountyGISService {
   private apiKey: string;
-  private baseUrl = 'https://gis.co.benton.wa.us/arcgis/rest/services';
+  private baseUrl = 'https://services.arcgis.com/YWmuSGSGV7ixfRcf/arcgis/rest/services';
   
   constructor() {
     this.apiKey = process.env.BENTON_COUNTY_ARCGIS_API || '';
@@ -66,12 +66,12 @@ export class BentonCountyGISService {
     }
 
     try {
-      const parcelsUrl = `${this.baseUrl}/AssessorData/Parcels/MapServer/0/query`;
+      const parcelsUrl = `${this.baseUrl}/Benton_County_Parcels/FeatureServer/0/query`;
       const params = new URLSearchParams({
         f: 'json',
         where: '1=1',
-        outFields: 'OBJECTID,PARCEL_ID,SITE_ADDR,OWNER_NAME,ASSESSED_VALUE,MARKET_VALUE,LAND_USE,ZONE_CLASS,ACRES',
-        geometryType: 'esriGeometryPoint',
+        outFields: '*',
+        geometryType: 'esriGeometryPolygon',
         spatialRel: 'esriSpatialRelIntersects',
         returnGeometry: 'true',
         returnCentroid: 'true',
@@ -100,7 +100,7 @@ export class BentonCountyGISService {
 
     } catch (error) {
       console.error('[BentonCountyGIS] Failed to retrieve authentic Benton County data:', error);
-      throw error;
+      throw new Error(`[BentonCountyGIS] Unable to connect to Benton County ArcGIS services. Please verify network connectivity and API key permissions. Original error: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 
