@@ -13,11 +13,11 @@ import { storage } from '../../storage';
  */
 const defaultCAMAConnectors: { name: string; config: CAMAConnectorConfig }[] = [
   {
-    name: 'grandview-cama',
+    name: 'benton-county-cama',
     config: {
-      baseUrl: 'https://county-data-lookup-api-apiverve.p.rapidapi.com',
-      apiKey: '451301875bmsh347cde0b3c6bf7ep1fad23jsn9f94e7d04b55',
-      county: 'Yakima',
+      baseUrl: 'https://maps.bentoncountywa.gov/arcgis/rest/services',
+      apiKey: process.env.BENTON_COUNTY_ARCGIS_API || '',
+      county: 'Benton',
       state: 'WA',
       useAdvancedFiltering: true
     }
@@ -29,12 +29,12 @@ const defaultCAMAConnectors: { name: string; config: CAMAConnectorConfig }[] = [
  */
 const defaultGISConnectors: { name: string; config: GISConnectorConfig }[] = [
   {
-    name: 'grandview-gis',
+    name: 'benton-county-gis',
     config: {
-      baseUrl: 'https://mapbox-reverse-geocoding-api-latitude-and-longitude.p.rapidapi.com',
-      apiKey: '451301875bmsh347cde0b3c6bf7ep1fad23jsn9f94e7d04b55',
-      serviceType: 'mapbox',
-      county: 'Yakima',
+      baseUrl: 'https://maps.bentoncountywa.gov/arcgis/rest/services',
+      apiKey: process.env.BENTON_COUNTY_ARCGIS_API || '',
+      serviceType: 'arcgis',
+      county: 'Benton',
       state: 'WA'
     }
   }
@@ -45,9 +45,9 @@ const defaultGISConnectors: { name: string; config: GISConnectorConfig }[] = [
  */
 const defaultMarketDataConnectors: { name: string; config: MarketDataConnectorConfig }[] = [
   {
-    name: 'grandview-market',
+    name: 'benton-county-market',
     config: {
-      dataDirectory: './attached_assets',
+      dataDirectory: './data/benton-county',
       defaultFormat: 'csv'
     }
   }
@@ -58,9 +58,9 @@ const defaultMarketDataConnectors: { name: string; config: MarketDataConnectorCo
  */
 const defaultPDFConnectors: { name: string; config: PDFConnectorConfig }[] = [
   {
-    name: 'grandview-property-docs',
+    name: 'benton-county-property-docs',
     config: {
-      dataDirectory: './attached_assets'
+      dataDirectory: './data/benton-county/documents'
     }
   }
 ];
@@ -70,11 +70,11 @@ const defaultPDFConnectors: { name: string; config: PDFConnectorConfig }[] = [
  */
 const defaultWeatherConnectors: { name: string; config: WeatherConnectorConfig }[] = [
   {
-    name: 'weather-data',
+    name: 'benton-county-weather',
     config: {
       baseUrl: 'https://weatherapi-com.p.rapidapi.com',
       apiKey: '451301875bmsh347cde0b3c6bf7ep1fad23jsn9f94e7d04b55',
-      defaultLocation: 'Grandview,WA',
+      defaultLocation: 'Richland,WA',
       units: 'imperial'
     }
   }
