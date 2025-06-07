@@ -1,0 +1,38 @@
+security:
+  rate_limiting:
+    enabled: true
+    requests_per_minute: 100
+    burst_limit: 50
+
+  authentication:
+    jwt_secret: ${JWT_SECRET}
+    token_expiry: 3600
+    refresh_token_expiry: 604800
+
+  cors:
+    allowed_origins:
+      - https://*.terrafusion.ai
+    allowed_methods:
+      - GET
+      - POST
+      - PUT
+      - DELETE
+    allowed_headers:
+      - Authorization
+      - Content-Type
+
+  ssl:
+    enabled: true
+    cert_path: /etc/ssl/certs/gama.crt
+    key_path: /etc/ssl/private/gama.key
+
+  headers:
+    x_frame_options: DENY
+    x_content_type_options: nosniff
+    x_xss_protection: 1; mode=block
+    strict_transport_security: max-age=31536000; includeSubDomains
+
+  logging:
+    level: INFO
+    format: json
+    output: /var/log/gama/security.log 

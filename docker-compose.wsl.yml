@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  gama-frontend:
+    environment:
+      - NODE_ENV=production
+      - WSL_MODE=true
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  gama-backend:
+    environment:
+      - WSL_MODE=true
+      - DISABLE_GPU=true
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+
+  gama-agents:
+    environment:
+      - WSL_MODE=true
+      - DISABLE_GPU=true
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  gama-spatial:
+    environment:
+      - WSL_MODE=true
+      - DISABLE_GPU=true
+    deploy:
+      resources:
+        limits:
+          cpus: '1'
+          memory: 1G
+
+  prometheus:
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 512M 

@@ -1,6 +1,6 @@
 import React from 'react';
-import TerraFusionSynestheticDemo from './components/terrafusion/TerraFusionSynestheticDemo';
-import './styles/terrafusion.css';
+import { AIProvider } from './context/AIContext';
+import MainLayout from './components/MainLayout';
 
 /**
  * Main App Component
@@ -15,9 +15,9 @@ import './styles/terrafusion.css';
  */
 function App() {
   return (
-    <div className="app">
-      <TerraFusionSynestheticDemo />
-    </div>
+    <AIProvider>
+      <MainLayout />
+    </AIProvider>
   );
 }
 

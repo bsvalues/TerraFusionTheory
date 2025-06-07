@@ -1,0 +1,10 @@
+FROM postgis/postgis:15-3.3
+
+WORKDIR /app
+
+COPY spatial/ ./spatial/
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+EXPOSE 8080
+CMD ["python", "-m", "spatial.main"] 

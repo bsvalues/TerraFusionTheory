@@ -1,128 +1,205 @@
-# TerraFusion CompFusion Platform
+# GAMA (Geometric Assessment & Market Analysis)
 
-A cutting-edge Real Estate Intelligence Platform that leverages advanced geospatial technologies and intelligent analysis to transform complex property data into actionable insights for professionals and investors.
+A revolutionary property assessment and market analysis system that combines sacred geometry, AI, and advanced analytics to provide unprecedented insights into property markets.
 
-## Features
+## 🌟 Features
 
-- **Smart Comp Selection System**: Drag-and-drop interface for comparable property selection with AI-powered recommendations
-- **Real-time SHAP Calculator**: Live calculation of property feature impacts with detailed breakdowns
-- **Advanced Visualization**: Interactive Plotly-based waterfall charts showing value impacts
-- **Narrative Generation**: Plain-language explanations of technical adjustments
-- **Modern UI/UX**: Dark-mode AI-first visual styling with consistent component design
+- **Sacred Geometry Visualization**: Advanced property market analysis using Fibonacci spirals and Voronoi tessellations
+- **AI-Powered Analysis**: Machine learning models for property valuation and market prediction
+- **Real-time Market Energy**: Dynamic visualization of market forces and property flows
+- **Secure Data Processing**: Enterprise-grade security with end-to-end encryption
+- **Scalable Architecture**: Cloud-native design for global deployment
+- **Intuitive Interface**: Clean, modern UI with powerful visualization tools
 
-## Core Components
+## 🚀 Quick Start
 
-### 1. GAMA Simulation System
+### Prerequisites
 
-The Geographic Assisted Mass Appraisal (GAMA) system provides accurate property valuations using:
+- Docker 20.10+
+- Docker Compose 2.0+
+- Node.js 16+
+- Python 3.8+
+- 8GB RAM minimum
+- 20GB free disk space
 
-- Spatial regression and machine learning models
-- GIS-based visualization of property values
-- Parameter configuration for valuation adjustments
-- Interactive map viewer built on Leaflet.js
-- Comprehensive audit logging for compliance
+### Installation
 
-### 2. Enterprise Extensions
+1. Clone the repository:
+```bash
+git clone https://github.com/terrafusion/gama.git
+cd gama
+```
 
-Enterprise-grade extensions for large-scale deployments:
+2. Set up environment variables:
+```bash
+cp .env.example .env
+# Edit .env with your configuration
+```
 
-- **Auto-Updater**: Secure component-level updates with delta patching and rollback capabilities
-- **Audit Logging**: Comprehensive compliance tracking system
-- **Audit Sync Tool**: Synchronizes local audit logs with central secure servers
-- **AI Audit Review**: Analyzes compliance logs for potential issues
-- **Valuation Benchmarking**: Evaluates valuation accuracy against market standards
-- **DriftGuard Operator**: Kubernetes operator for configuration integrity management
+3. Start the system:
+```bash
+# Windows
+StartGAMA.bat
 
-### 3. Spatial Analytics Components
+# Linux/Mac
+./StartGAMA.sh
+```
 
-Advanced spatial analysis tools for property valuation:
+4. Access the application:
+- Frontend: http://localhost:3000
+- Backend API: http://localhost:8000
+- Documentation: http://localhost:8080
 
-- R-tree spatial indexing for efficient spatial queries
-- Feature engineering for spatial variables
-- Geographically Weighted Regression (GWR) modeling
-- Quantile Gradient Boosting predictive models
-- SHAP value analysis for model interpretation
+## 🏗️ Architecture
 
-## Deployment & CI/CD
+### Components
 
-The platform includes a complete CI/CD pipeline for enterprise deployment:
+- **Frontend**: React-based UI with Three.js visualizations
+- **Backend**: Node.js API with Express
+- **Agent System**: Python-based AI agents
+- **Spatial Engine**: Geospatial processing engine
+- **Database**: PostgreSQL with PostGIS
+- **Cache**: Redis for performance optimization
+- **Message Queue**: RabbitMQ for async processing
+- **Monitoring**: Prometheus & Grafana
 
-- **GitHub Actions Integration**: Automated testing, building, and deployment
-- **Multi-environment Support**: Staging and production deployment paths
-- **Windows Installer Generation**: Automated creation of Windows installation packages
-- **Version Management**: Smart versioning and automatic update manifest generation
-- **Component Updates**: Granular updates for specific system components
-- **Kubernetes Integration**: DriftGuard operator deployment and configuration management
+### Data Flow
 
-## Valuation Benchmarking
+1. Property data ingestion
+2. Market energy calculation
+3. AI analysis and prediction
+4. Visualization generation
+5. User interface updates
 
-The GAMA Valuation Benchmarking system evaluates the accuracy of property valuations:
+## 🔒 Security
 
-- **Statistical Analysis**: Calculates industry-standard metrics (COD, PRD, PRB)
-- **Performance Testing**: Measures valuation model speed and scalability
-- **Scenario Testing**: Tests multiple parameter configurations
-- **Professional Standards**: Validates compliance with IAAO and USPAP requirements
-- **Recommendations**: Generates automatic improvement suggestions
+- JWT authentication
+- Role-based access control
+- End-to-end encryption
+- Rate limiting
+- CORS protection
+- SSL/TLS encryption
+- Security headers
+- Audit logging
 
-## Installation and Setup
+## 📊 Monitoring
 
-### System Requirements
+- System health metrics
+- Performance monitoring
+- Error tracking
+- Usage analytics
+- Security alerts
+- Resource utilization
+- API metrics
+- User activity
 
-- Windows 10/11 (64-bit) or modern Linux distribution
-- Python 3.8 or higher
-- Minimum 4GB RAM, 8GB recommended
-- 500MB free disk space
-- Network connection for updates and sync (optional)
+## 🔄 Development
 
-### Installation Process
+### Setup Development Environment
 
-1. Run the TerraFusion Installer package
-2. Follow on-screen prompts to complete installation
-3. Set up network share for audit log synchronization (optional)
-4. Configure authentication for compliance reporting
+1. Install dependencies:
+```bash
+# Frontend
+cd frontend
+npm install
 
-### Configuration
+# Backend
+cd backend
+npm install
 
-All configuration settings are stored in `config/simulation_params.json`. Key parameters include:
+# Agent System
+cd agents
+pip install -r requirements.txt
+```
 
-- `policy_id`: Identifier for valuation policy
-- `value_adjust_factor`: Adjustment factor for valuations
-- `location_weight`: Weight factor for location impact
-- `market_condition_factor`: Factor for market conditions
+2. Start development servers:
+```bash
+# Frontend
+npm run dev
 
-## Security Features
+# Backend
+npm run dev
 
-- **Secure Updates**: All updates verified with SHA-256 checksums
-- **Enterprise Authentication**: Role-based access control
-- **Audit Compliance**: Complete activity logging for regulatory compliance
-- **Encrypted Backups**: Securely store configuration and data
-- **Component Integrity**: Verification of system component integrity
-- **Configuration Drift Detection**: DriftGuard operator monitors for unauthorized configuration changes
+# Agent System
+python run.py
+```
 
-## Documentation
+### Testing
 
-Complete documentation is available in the `docs` directory, including:
+```bash
+# Frontend tests
+npm test
 
-- User Guide
-- Administrator Guide
-- API Reference
-- Developer Guide
-- Compliance Documentation
+# Backend tests
+npm test
 
-## Integrations
+# Agent tests
+pytest
 
-TerraFusion integrates with existing enterprise systems:
+# E2E tests
+npm run test:e2e
+```
 
-- MLS Data Systems
-- GIS Platforms
-- County Assessment Software
-- Document Management Systems
-- Enterprise Authentication Services
+## 📚 Documentation
 
-## License
+- [User Guide](docs/USER_GUIDE.md)
+- [API Documentation](docs/API.md)
+- [Development Guide](docs/DEVELOPMENT.md)
+- [Testing Guide](docs/TESTING.md)
+- [Security Guide](docs/SECURITY.md)
+- [Deployment Guide](docs/DEPLOYMENT.md)
 
-TerraFusion is available under the Business Source License 1.1. See LICENSE file for details.
+## 🤝 Contributing
 
-## Contact
+1. Fork the repository
+2. Create your feature branch
+3. Commit your changes
+4. Push to the branch
+5. Create a Pull Request
 
-For more information, email info@terrafusion.ai
+See [CONTRIBUTING.md](docs/CONTRIBUTING.md) for details.
+
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Tesla's precision and automation principles
+- Jobs' elegance and simplicity in design
+- Musk's scale and autonomy concepts
+- ICSF's secure simulation kernel
+- Brady/Belichick tactical execution
+- Annunaki-tier data knowledge matrix
+
+## 📞 Support
+
+- Documentation: [docs.gama-county.ai](https://docs.gama-county.ai)
+- Issues: [github.com/terrafusion/gama/issues](https://github.com/terrafusion/gama/issues)
+- Email: support@gama-county.ai
+- Phone: 1-800-GAMA-AI
+
+## 🔄 Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for a list of changes.
+
+## 📈 Roadmap
+
+- Enhanced AI capabilities
+- Advanced analytics
+- Mobile application
+- Blockchain integration
+- API marketplace
+- Multi-tenant support
+- Global deployment
+- Edge computing
+- AI model updates
+- Performance improvements
+
+## 🌐 Community
+
+- [Discord](https://discord.gg/gama)
+- [Twitter](https://twitter.com/gama_county)
+- [LinkedIn](https://linkedin.com/company/gama-county)
+- [YouTube](https://youtube.com/gama-county)
+- [Blog](https://blog.gama-county.ai)
