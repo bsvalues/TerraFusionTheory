@@ -281,4 +281,3 @@ export const useTutorial = (): TutorialContextType => {
 
 // Export tutorial flows for reference
 export { TUTORIAL_FLOWS };
-export type { TutorialFlow, TutorialStep };
