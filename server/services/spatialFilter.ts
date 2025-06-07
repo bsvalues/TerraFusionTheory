@@ -55,13 +55,21 @@ export interface FilterStats {
 }
 
 class SpatialFilterService {
-  private gisService: BentonCountyGISService;
+  private gisService: BentonCountyGISService | null = null;
   private cachedData: FilteredProperty[] = [];
   private lastCacheUpdate: Date | null = null;
   private readonly CACHE_DURATION = 5 * 60 * 1000; // 5 minutes
 
   constructor() {
-    this.gisService = new BentonCountyGISService();
+    // Lazy initialization - GIS service will be created when needed
+  }
+
+  private getGISService(): BentonCountyGISService {
+    if (!this.gisService) {
+      console.log('[SpatialFilter] Initializing Benton County GIS service...');
+      this.gisService = new BentonCountyGISService();
+    }
+    return this.gisService;
   }
 
   /**
@@ -157,16 +165,31 @@ class SpatialFilterService {
     }
 
     try {
+      console.log('[SpatialFilter] Attempting to fetch parcels from GIS service...');
+      
       // Directly use the GIS service to fetch parcels
       const rawData = await this.gisService.fetchParcels(limit);
+      
+      console.log(`[SpatialFilter] Received ${rawData?.length || 0} raw parcels from GIS service`);
+      
+      if (!rawData || rawData.length === 0) {
+        throw new Error('No parcel data received from GIS service');
+      }
 
       // Transform to filtered property format
+      console.log('[SpatialFilter] Transforming raw data to filtered properties...');
       this.cachedData = this.transformToFilteredProperties(rawData);
+      console.log(`[SpatialFilter] Successfully transformed to ${this.cachedData.length} filtered properties`);
+      
       this.lastCacheUpdate = new Date();
       
       return this.cachedData;
     } catch (error) {
       console.error('[SpatialFilter] Error fetching dataset:', error);
+      console.error('[SpatialFilter] Error details:', {
+        message: error.message,
+        stack: error.stack
+      });
       throw new Error('Failed to load property data for filtering');
     }
   }
@@ -176,23 +199,23 @@ class SpatialFilterService {
    */
   private transformToFilteredProperties(rawData: any[]): FilteredProperty[] {
     return rawData.map(property => ({
-      id: property.PARCEL_ID || property.OBJECTID?.toString() || 'unknown',
-      coordinates: [
+      id: property.id || property.PARCEL_ID || property.OBJECTID?.toString() || 'unknown',
+      coordinates: property.coordinates || [
         property.geometry?.coordinates?.[0] || property.longitude || 0,
         property.geometry?.coordinates?.[1] || property.latitude || 0
       ] as [number, number],
-      assessedValue: this.parseNumber(property.ASSESSED_VALUE || property.assessedValue) || 0,
-      marketValue: this.parseNumber(property.MARKET_VALUE || property.marketValue),
-      propertyType: this.normalizePropertyType(property.PROPERTY_TYPE || property.propertyType || 'Unknown'),
-      livingArea: this.parseNumber(property.LIVING_AREA || property.livingArea) || 0,
-      lotSize: this.parseNumber(property.LOT_SIZE || property.lotSize) || 0,
-      buildYear: this.parseNumber(property.BUILD_YEAR || property.buildYear),
-      address: property.ADDRESS || property.address || 'Address Not Available',
-      neighborhood: property.NEIGHBORHOOD || property.neighborhood || 'Unknown',
-      zoning: property.ZONING || property.zoning,
+      assessedValue: this.parseNumber(property.assessedValue || property.ASSESSED_VALUE) || 0,
+      marketValue: this.parseNumber(property.marketValue || property.MARKET_VALUE),
+      propertyType: this.normalizePropertyType(property.propertyType || property.PROPERTY_TYPE || 'Unknown'),
+      livingArea: this.parseNumber(property.livingArea || property.LIVING_AREA) || 0,
+      lotSize: this.parseNumber(property.lotSize || property.LOT_SIZE) || 0,
+      buildYear: this.parseNumber(property.buildYear || property.BUILD_YEAR),
+      address: property.address || property.ADDRESS || 'Address Not Available',
+      neighborhood: property.neighborhood || property.NEIGHBORHOOD || 'Unknown',
+      zoning: property.zoning || property.ZONING,
       assessmentRatio: this.calculateAssessmentRatio(
-        this.parseNumber(property.ASSESSED_VALUE || property.assessedValue),
-        this.parseNumber(property.MARKET_VALUE || property.marketValue)
+        this.parseNumber(property.assessedValue || property.ASSESSED_VALUE),
+        this.parseNumber(property.marketValue || property.MARKET_VALUE)
       )
     }));
   }
