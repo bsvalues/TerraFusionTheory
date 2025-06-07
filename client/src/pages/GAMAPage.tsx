@@ -375,6 +375,23 @@ export const GAMAPage: React.FC = () => {
   const [marketClusters] = useState<MarketCluster[]>(generateMockMarketClusters());
   const [selectedProperty, setSelectedProperty] = useState<PropertyData | null>(null);
 
+  // Load real Benton County property data on component mount
+  useEffect(() => {
+    const loadProperties = async () => {
+      try {
+        setLoading(true);
+        const propertyData = await fetchBentonCountyProperties();
+        setProperties(propertyData);
+      } catch (error) {
+        console.error('Failed to load property data:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    loadProperties();
+  }, []);
+
   const metrics: GAMAMetrics = {
     totalProperties: properties.length,
     completedProperties: properties.filter(p => p.status === 'completed').length,
@@ -474,11 +491,20 @@ export const GAMAPage: React.FC = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="p-0 h-[calc(100%-80px)]">
-                <GAMAMap
-                  properties={properties}
-                  marketClusters={marketClusters}
-                  onPropertySelect={setSelectedProperty}
-                />
+                {loading ? (
+                  <div className="flex items-center justify-center h-full">
+                    <div className="text-center space-y-4">
+                      <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
+                      <div className="text-sm text-gray-600">Loading Benton County property data...</div>
+                    </div>
+                  </div>
+                ) : (
+                  <GAMAMap
+                    properties={properties}
+                    marketClusters={marketClusters}
+                    onPropertySelect={setSelectedProperty}
+                  />
+                )}
               </CardContent>
             </Card>
           </div>
