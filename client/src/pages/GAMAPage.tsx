@@ -91,26 +91,26 @@ const generateMockProperties = (): PropertyData[] => {
   const neighborhoods = ['West Richland', 'Kennewick Heights', 'Finley', 'Badger Mountain', 'Columbia Point', 'Southridge', 'Canyon Lakes'];
   
   for (let i = 0; i < 150; i++) {
-    // Distribute properties across actual Benton County cities
+    // Distribute properties across actual Benton County cities on land areas only
     let lat, lng;
     const cityRandom = Math.random();
     
     if (cityRandom < 0.4) {
-      // Kennewick (largest city)
-      lat = 46.2112 + (Math.random() - 0.5) * 0.04;
-      lng = -119.1372 + (Math.random() - 0.5) * 0.06;
+      // Kennewick (east side of rivers, actual city boundaries)
+      lat = 46.2012 + Math.random() * 0.035; // North of river
+      lng = -119.1772 + Math.random() * 0.045; // East of river
     } else if (cityRandom < 0.7) {
-      // Richland
-      lat = 46.2857 + (Math.random() - 0.5) * 0.03;
-      lng = -119.2844 + (Math.random() - 0.5) * 0.04;
+      // Richland (west side, between rivers)
+      lat = 46.2757 + Math.random() * 0.025; // Controlled area
+      lng = -119.3044 + Math.random() * 0.03; // West of Yakima River
     } else if (cityRandom < 0.85) {
-      // West Richland
-      lat = 46.3043 + (Math.random() - 0.5) * 0.025;
-      lng = -119.3614 + (Math.random() - 0.5) * 0.03;
+      // West Richland (furthest west)
+      lat = 46.2943 + Math.random() * 0.02;
+      lng = -119.3714 + Math.random() * 0.025; // Safe west zone
     } else {
-      // Rural Benton County
-      lat = 46.15 + Math.random() * 0.25;
-      lng = -119.6 + Math.random() * 0.4;
+      // Rural Benton County (eastern agricultural areas)
+      lat = 46.12 + Math.random() * 0.18; // North-south spread
+      lng = -119.75 + Math.random() * 0.35; // Western rural areas only
     }
     
     const assessedValue = 180000 + Math.random() * 600000;
