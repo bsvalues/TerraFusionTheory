@@ -88,16 +88,16 @@ interface GAMAMetrics {
 // Mock data generators
 const generateMockProperties = (): PropertyData[] => {
   const properties: PropertyData[] = [];
-  const neighborhoods = ['Downtown', 'Riverside', 'Oak Hills', 'Pine Valley', 'Cedar Ridge'];
+  const neighborhoods = ['West Richland', 'Kennewick Heights', 'Finley', 'Badger Mountain', 'Columbia Point', 'Southridge', 'Canyon Lakes'];
   
   for (let i = 0; i < 150; i++) {
-    const lat = 39.7392 + (Math.random() - 0.5) * 0.15;
-    const lng = -104.9903 + (Math.random() - 0.5) * 0.15;
-    const assessedValue = 200000 + Math.random() * 800000;
+    const lat = 46.2619 + (Math.random() - 0.5) * 0.08;
+    const lng = -119.2706 + (Math.random() - 0.5) * 0.12;
+    const assessedValue = 180000 + Math.random() * 600000;
     
     properties.push({
       id: `prop_${i}`,
-      address: `${1000 + i} Sample St`,
+      address: `${1000 + i} ${['Columbia River Rd', 'Queensgate Dr', 'Clearwater Ave', 'Road 68', 'Bombing Range Rd', 'Canal Dr', 'Richland Hills Dr'][Math.floor(Math.random() * 7)]}`,
       coordinates: [lat, lng],
       assessedValue,
       marketValue: assessedValue * (0.9 + Math.random() * 0.2),
@@ -137,33 +137,43 @@ const generateMockMarketClusters = (): MarketCluster[] => {
   return [
     {
       id: 'cluster_1',
-      name: 'Urban Core',
-      center: [39.7392, -104.9903],
-      radius: 2000,
-      averageValue: 450000,
-      sampleSize: 125,
-      confidence: 0.85,
-      characteristics: ['High density', 'Mixed use', 'Transit access']
+      name: 'Kennewick Commercial Core',
+      center: [46.2119, -119.1372],
+      radius: 1800,
+      averageValue: 285000,
+      sampleSize: 78,
+      confidence: 0.82,
+      characteristics: ['Commercial proximity', 'Established neighborhoods', 'Columbia River access']
     },
     {
       id: 'cluster_2',
-      name: 'Suburban Family',
-      center: [39.7292, -104.9803],
-      radius: 1500,
-      averageValue: 325000,
-      sampleSize: 89,
-      confidence: 0.78,
-      characteristics: ['Single family', 'Schools nearby', 'Residential']
+      name: 'West Richland Family',
+      center: [46.3043, -119.3614],
+      radius: 2200,
+      averageValue: 425000,
+      sampleSize: 65,
+      confidence: 0.79,
+      characteristics: ['Single family', 'New construction', 'Family oriented']
     },
     {
       id: 'cluster_3',
-      name: 'Luxury District',
-      center: [39.7492, -104.9703],
-      radius: 1000,
-      averageValue: 750000,
-      sampleSize: 45,
-      confidence: 0.72,
-      characteristics: ['High-end', 'Large lots', 'Premium amenities']
+      name: 'Badger Mountain Premium',
+      center: [46.3219, -119.2106],
+      radius: 1200,
+      averageValue: 580000,
+      sampleSize: 42,
+      confidence: 0.75,
+      characteristics: ['Hill views', 'Large lots', 'Premium location']
+    },
+    {
+      id: 'cluster_4',
+      name: 'Rural Agricultural',
+      center: [46.1850, -119.4500],
+      radius: 3000,
+      averageValue: 320000,
+      sampleSize: 38,
+      confidence: 0.71,
+      characteristics: ['Agricultural', 'Large parcels', 'Rural lifestyle']
     }
   ];
 };

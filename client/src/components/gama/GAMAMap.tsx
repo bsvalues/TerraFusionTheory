@@ -449,8 +449,8 @@ export const GAMAMap: React.FC<{
   properties?: PropertyData[];
   marketClusters?: MarketCluster[];
 }> = ({ 
-  center = [39.7392, -104.9903], 
-  zoom = 12,
+  center = [46.2619, -119.2706], // Benton County, WA (Kennewick area)
+  zoom = 11,
   onPropertySelect,
   properties = [],
   marketClusters = []
