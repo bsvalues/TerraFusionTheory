@@ -8,10 +8,13 @@
 import { v4 as uuidv4 } from 'uuid';
 import { BaseAgent, AgentConfig, AgentStatus, AgentTask, AgentCapability } from '../interfaces/agent-interface';
 import { Tool } from '../interfaces/tool-interface';
-import { toolRegistry } from './tool-registry';
-import { vectorMemory } from '../memory/vector';
+import { AgentEventHandler } from './agent-events';
+import { AgentTaskQueue } from './agent-task-queue';
+import { AgentToolUsage } from './agent-tool-usage';
 import { LogCategory, LogLevel } from '../../shared/schema';
 import { storage } from '../../server/storage';
+import { toolRegistry } from './tool-registry';
+import { vectorMemory } from '../memory/vector';
 
 /**
  * Generic base agent implementation that can be extended by specialized agents
@@ -72,7 +75,7 @@ export class GenericAgent extends BaseAgent {
     }
     
     // Validate inputs if the tool has a validator
-    if (tool.validateInputs && !tool.validateInputs(inputs)) {
+    if (tool.validate && !tool.validate(inputs)) {
       throw new Error(`Invalid inputs for tool: ${toolName}`);
     }
     

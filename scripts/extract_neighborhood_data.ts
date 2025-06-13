@@ -8,6 +8,13 @@
 import { db } from '../server/db';
 import { properties, propertySales, neighborhoods } from '../shared/schema';
 import { sql } from 'drizzle-orm';
+const USAGE = `\nTerraFusionTheory Neighborhood Extractor\n\nUsage:\n  npx ts-node scripts/extract_neighborhood_data.ts <input.csv> [options]\n\nOptions:\n  --help       Show this help message and exit\n\nDescription:\n  Extracts and aggregates neighborhood data from a CSV file and saves to the database.\n  Supports interactive prompts for missing fields.\n\nExample:\n  npx ts-node scripts/extract_neighborhood_data.ts data/properties.csv\n\n`;
+
+if (process.argv.includes('--help') || process.argv.length <= 2) {
+  console.log(USAGE);
+  process.exit(0);
+}
+
 import * as fs from 'fs';
 import * as path from 'path';
 

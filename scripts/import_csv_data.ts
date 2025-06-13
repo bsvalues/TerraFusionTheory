@@ -8,6 +8,13 @@
  * - Neighborhoods table (derived from property data)
  */
 
+const USAGE = `\nTerraFusionTheory CSV Importer\n\nUsage:\n  npx ts-node scripts/import_csv_data.ts <input.csv> [options]\n\nOptions:\n  --help       Show this help message and exit\n\nDescription:\n  Imports property or sales data from a CSV file into the TerraFusion database.\n  Supports auto-detection of schema and interactive prompts for missing fields.\n\nExample:\n  npx ts-node scripts/import_csv_data.ts data/properties.csv\n\n`;
+
+if (process.argv.includes('--help') || process.argv.length <= 2) {
+  console.log(USAGE);
+  process.exit(0);
+}
+
 import fs from 'fs';
 import path from 'path';
 import { parse } from 'csv-parse/sync';

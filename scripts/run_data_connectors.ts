@@ -5,6 +5,13 @@
  * by fetching real data from external sources and saving it to the database.
  */
 
+const USAGE = `\nTerraFusionTheory Data Connector Runner\n\nUsage:\n  npx ts-node scripts/run_data_connectors.ts [options]\n\nOptions:\n  --help       Show this help message and exit\n\nDescription:\n  Runs and tests all available data connectors (CAMA, GIS, Market Data, PDF, Weather, Census) and saves output to the database and ./output.\n  Requires valid API keys in environment variables or .env file.\n\nExample:\n  npx ts-node scripts/run_data_connectors.ts\n\n`;
+
+if (process.argv.includes('--help') || process.argv.length <= 2) {
+  console.log(USAGE);
+  process.exit(0);
+}
+
 import { connectorFactory } from '../server/services/connectors/connector.factory';
 import { testDatabaseConnection } from '../server/db';
 import { storage } from '../server/storage';
